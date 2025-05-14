@@ -27,6 +27,8 @@ class ShaderUtils {
 		VkShaderModule compute_shader;
 	};
 
+	static ShaderUtils &getInstance(VkDevice &device);
+
 	ShaderModules compileShaderProgram(std::string &shader_source_root_dir);
 
   private:

@@ -15,6 +15,11 @@ ShaderUtils::ShaderUtils(VkDevice &device) : device(device) {
 	createDirectory(shader_cache_path);
 }
 
+ShaderUtils &ShaderUtils::getInstance(VkDevice &device) {
+	static ShaderUtils instance(device);
+	return instance;
+}
+
 ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shader_source_root_dir) {
 	namespace fs = std::filesystem;
 
