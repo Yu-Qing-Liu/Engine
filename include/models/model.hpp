@@ -1,3 +1,5 @@
+#pragma once
+
 #include "shaderutils.hpp"
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -8,14 +10,14 @@ using namespace glm;
 
 class Model {
   public:
-	Model(VkDevice &device, std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Model(VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Model(Model &&) = default;
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
 	Model &operator=(const Model &) = delete;
-	~Model() = default;
+	virtual ~Model() = default;
 
-	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
+	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
 	ShaderUtils *shader_utils;
@@ -31,5 +33,5 @@ class Model {
 	VkRenderPass &renderPass;
 	VkExtent2D &swapChainExtent;
 
-	std::string &modelRootPath;
+	std::string modelRootPath;
 };

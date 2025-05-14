@@ -29,7 +29,7 @@ class ShaderUtils {
 
 	static ShaderUtils &getInstance(VkDevice &device);
 
-	ShaderModules compileShaderProgram(std::string &shaderRootDir);
+	ShaderModules compileShaderProgram(const std::string &shaderRootDir);
 	VkPipelineShaderStageCreateInfo createShaderStageInfo(VkShaderModule &shaderModule, VkShaderStageFlagBits stage);
 
   private:

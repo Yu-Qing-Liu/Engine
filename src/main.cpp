@@ -1,6 +1,8 @@
+#include <string>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include "models/implementations/triangle.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -8,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -100,6 +103,13 @@ class Application {
 
 	bool framebufferResized = false;
 
+	std::unique_ptr<Model> triangleModel;
+
+	void createTriangleModel() {
+		std::string rootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/triangle";
+		triangleModel = std::make_unique<Triangle>(device, rootPath, renderPass, swapChainExtent);
+	}
+
 	void initWindow() {
 		glfwInit();
 
@@ -124,7 +134,8 @@ class Application {
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
-		createGraphicsPipeline();
+        createTriangleModel();
+		/* createGraphicsPipeline(); */
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
@@ -623,23 +634,25 @@ class Application {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+        triangleModel->draw(commandBuffer);
 
-		VkViewport viewport{};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapChainExtent.width;
-		viewport.height = (float)swapChainExtent.height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		/* vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline); */
 
-		VkRect2D scissor{};
-		scissor.offset = {0, 0};
-		scissor.extent = swapChainExtent;
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		/* VkViewport viewport{}; */
+		/* viewport.x = 0.0f; */
+		/* viewport.y = 0.0f; */
+		/* viewport.width = (float)swapChainExtent.width; */
+		/* viewport.height = (float)swapChainExtent.height; */
+		/* viewport.minDepth = 0.0f; */
+		/* viewport.maxDepth = 1.0f; */
+		/* vkCmdSetViewport(commandBuffer, 0, 1, &viewport); */
 
-		vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+		/* VkRect2D scissor{}; */
+		/* scissor.offset = {0, 0}; */
+		/* scissor.extent = swapChainExtent; */
+		/* vkCmdSetScissor(commandBuffer, 0, 1, &scissor); */
+
+		/* vkCmdDraw(commandBuffer, 3, 1, 0, 0); */
 
 		vkCmdEndRenderPass(commandBuffer);
 

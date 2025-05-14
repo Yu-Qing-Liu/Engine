@@ -1,15 +1,17 @@
+#pragma once
+
 #include "models/model.hpp"
 
 class Triangle : public Model {
   public:
-	Triangle(VkDevice &device, std::string &modelRoot, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Triangle(VkDevice &device, const std::string &modelRoot, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Triangle(Triangle &&) = default;
 	Triangle(const Triangle &) = delete;
 	Triangle &operator=(Triangle &&) = delete;
 	Triangle &operator=(const Triangle &) = delete;
 	~Triangle() = default;
 
-	void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f)) override;
+	void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f)) override;
 
   private:
 };

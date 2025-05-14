@@ -29,7 +29,7 @@ VkPipelineShaderStageCreateInfo ShaderUtils::createShaderStageInfo(VkShaderModul
 	return info;
 }
 
-ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shaderRootDir) {
+ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(const std::string &shaderRootDir) {
 	namespace fs = std::filesystem;
 
 	ShaderModules modules;
