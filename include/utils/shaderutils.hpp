@@ -48,7 +48,7 @@ class ShaderUtils {
 	CompileOptions options;
 
 	std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders";
-	std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/cache";
+	std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
 
 	std::unordered_map<std::string, shaderc_shader_kind> shaderExtensions = {{".vert", shaderc_glsl_vertex_shader}, {".tesc", shaderc_glsl_tess_control_shader}, {".tese", shaderc_glsl_tess_evaluation_shader}, {".geom", shaderc_glsl_geometry_shader}, {".frag", shaderc_glsl_fragment_shader}, {".comp", shaderc_glsl_compute_shader}};
 

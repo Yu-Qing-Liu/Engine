@@ -129,7 +129,7 @@ std::vector<uint32_t> ShaderUtils::compileShader(const std::string &shaderPath) 
 		}
 	}
 
-	shaderc_shader_kind kind = getShaderKind(extension);
+	shaderc_shader_kind kind = getShaderKind(shaderPath);
 
 	SpvCompilationResult result = compiler.CompileGlslToSpv(shaderCode, kind, shaderPath.c_str(), options);
 	if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
@@ -153,7 +153,9 @@ std::string ShaderUtils::computeHash(const std::string &input) {
 	return ss.str();
 }
 
-shaderc_shader_kind ShaderUtils::getShaderKind(const std::string &extension) {
+shaderc_shader_kind ShaderUtils::getShaderKind(const std::string &filePath) {
+    path p(filePath);
+    std::string extension = p.extension().string();
 	if (shaderExtensions.contains(extension)) {
 		return shaderExtensions[extension];
 	} else {
