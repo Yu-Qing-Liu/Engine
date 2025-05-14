@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <openssl/sha.h>
 #include <shaderc/shaderc.h>
 #include <shaderc/shaderc.hpp>
 #include <string>
@@ -14,13 +15,79 @@ ShaderUtils::ShaderUtils(VkDevice &device) : device(device) {
 	createDirectory(shader_cache_path);
 }
 
-// [.../xxx.vert, .../xxx.frag, .../xxx.geom, ...]
+ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shader_source_root_dir) {
+	namespace fs = std::filesystem;
+
+	ShaderModules modules;
+	std::vector<std::string> shader_paths;
+
+	try {
+		fs::directory_iterator dir_iter(shader_source_root_dir);
+
+		for (const auto &entry : dir_iter) {
+			if (entry.is_regular_file()) {
+				const std::string ext = entry.path().extension().string();
+				if (shader_extensions.contains(ext)) {
+					shader_paths.push_back(entry.path().string());
+				}
+			}
+		}
+	} catch (const fs::filesystem_error &e) {
+		std::cerr << "Failed to read shader directory: " << e.what() << "\n";
+		exit(1);
+	}
+
+	if (shader_paths.empty()) {
+		std::cerr << "No shader files found in directory: " << shader_source_root_dir << "\n";
+		exit(1);
+	}
+
+	// Compile all shaders to SPIR-V binaries
+	ShaderBinaries binaries = compileShader(shader_paths);
+
+	// Create Vulkan shader modules from binaries
+	auto createModule = [&](const auto &binary, VkShaderModule &module) {
+		if (!binary.empty()) {
+			module = createShaderModule(binary);
+		}
+	};
+
+	createModule(binaries.vertex_shader, modules.vertex_shader);
+	createModule(binaries.tessellation_control_shader, modules.tessellation_control_shader);
+	createModule(binaries.tessellation_evaluation_shader, modules.tessellation_evaluation_shader);
+	createModule(binaries.geometry_shader, modules.geometry_shader);
+	createModule(binaries.fragment_shader, modules.fragment_shader);
+	createModule(binaries.compute_shader, modules.compute_shader);
+
+	return modules;
+}
+
 ShaderUtils::ShaderBinaries ShaderUtils::compileShader(const std::vector<std::string> &shader_paths) {
 	ShaderBinaries binaries;
 	for (const auto &p : shader_paths) {
-		std::string extension = path(p).extension().string();
-
-		if (extension == ".vert") {
+		shaderc_shader_kind shader_kind = getShaderKind(p);
+		switch (shader_kind) {
+		case shaderc_glsl_vertex_shader:
+			binaries.vertex_shader = compileShader(p);
+			break;
+		case shaderc_glsl_tess_control_shader:
+			binaries.tessellation_control_shader = compileShader(p);
+			break;
+		case shaderc_glsl_tess_evaluation_shader:
+			binaries.tessellation_evaluation_shader = compileShader(p);
+			break;
+		case shaderc_glsl_geometry_shader:
+			binaries.geometry_shader = compileShader(p);
+			break;
+		case shaderc_glsl_fragment_shader:
+			binaries.fragment_shader = compileShader(p);
+			break;
+		case shaderc_glsl_compute_shader:
+			binaries.compute_shader = compileShader(p);
+			break;
+		default:
+			std::cerr << "Unsupported shader type: " << path(p).extension() << std::endl;
+			exit(0);
 		}
 	}
 	return binaries;
@@ -28,14 +95,57 @@ ShaderUtils::ShaderBinaries ShaderUtils::compileShader(const std::vector<std::st
 
 std::vector<uint32_t> ShaderUtils::compileShader(const std::string &shader_path) {
 	std::string shader_code = readFile(shader_path);
-	SpvCompilationResult result = compiler.CompileGlslToSpv(shader_code, shaderc_glsl_vertex_shader, shader_path.c_str());
+	if (shader_code.empty()) {
+		return {};
+	}
+
+	path p(shader_path);
+	std::string extension = p.extension().string();
+
+	std::string hash_input = extension + shader_code;
+	std::string hash_str = computeHash(hash_input);
+
+	path cache_dir(shader_cache_path);
+	path cached_path = cache_dir / (hash_str + ".spv");
+
+	if (exists(cached_path)) {
+		auto cached_binary = readBinaryFile(cached_path.string());
+		if (!cached_binary.empty()) {
+			return cached_binary;
+		}
+	}
+
+	shaderc_shader_kind kind = getShaderKind(extension);
+
+	SpvCompilationResult result = compiler.CompileGlslToSpv(shader_code, kind, shader_path.c_str(), options);
 	if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-		std::cerr << "Failed to compile shader: " << shader_path << std::endl;
-		std::cerr << "Error: " << result.GetErrorMessage() << std::endl;
-        return {};
-	} 
-    std::vector<uint32_t> spirv(result.cbegin(), result.cend());
-    return spirv;
+		std::cerr << "Failed to compile shader: " << shader_path << "\nError: " << result.GetErrorMessage() << std::endl;
+		return {};
+	}
+
+	std::vector<uint32_t> spirv(result.cbegin(), result.cend());
+	writeBinaryFile(cached_path.string(), spirv);
+
+	return spirv;
+}
+
+std::string ShaderUtils::computeHash(const std::string &input) {
+	unsigned char hash[SHA_DIGEST_LENGTH];
+	SHA1(reinterpret_cast<const unsigned char *>(input.data()), input.size(), hash);
+	std::stringstream ss;
+	for (int i = 0; i < SHA_DIGEST_LENGTH; ++i) {
+		ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+	}
+	return ss.str();
+}
+
+shaderc_shader_kind ShaderUtils::getShaderKind(const std::string &extension) {
+	if (shader_extensions.contains(extension)) {
+		return shader_extensions[extension];
+	} else {
+		std::cerr << "Unsupported shader extension: " << extension << std::endl;
+		exit(1);
+	}
 }
 
 void ShaderUtils::createDirectory(const std::string &path) {
@@ -66,11 +176,44 @@ std::string ShaderUtils::readFile(const std::string &file_path) {
 	return content;
 }
 
-VkShaderModule ShaderUtils::createShaderModule(const std::vector<char> &binary) {
+std::vector<uint32_t> ShaderUtils::readBinaryFile(const std::string &path) {
+	std::ifstream file(path, std::ios::binary | std::ios::ate);
+	if (!file.is_open()) {
+		return {};
+	}
+
+	std::streamsize size = file.tellg();
+	file.seekg(0, std::ios::beg);
+
+	if (size % sizeof(uint32_t) != 0) {
+		std::cerr << "Cache file is corrupted: " << path << std::endl;
+		return {};
+	}
+
+	std::vector<uint32_t> data(size / sizeof(uint32_t));
+	if (!file.read(reinterpret_cast<char *>(data.data()), size)) {
+		std::cerr << "Failed to read cache file: " << path << std::endl;
+		return {};
+	}
+
+	return data;
+}
+
+void ShaderUtils::writeBinaryFile(const std::string &path, const std::vector<uint32_t> &data) {
+	std::ofstream file(path, std::ios::binary);
+	if (file.is_open()) {
+		file.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(uint32_t));
+		file.close();
+	} else {
+		std::cerr << "Failed to write cache file: " << path << std::endl;
+	}
+}
+
+VkShaderModule ShaderUtils::createShaderModule(const std::vector<uint32_t> &binary) {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = binary.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t *>(binary.data());
+	createInfo.pCode = binary.data();
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
