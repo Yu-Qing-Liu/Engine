@@ -11,8 +11,8 @@
 using namespace std::filesystem;
 
 ShaderUtils::ShaderUtils(VkDevice &device) : device(device) {
-	createDirectory(shader_root_path);
-	createDirectory(shader_cache_path);
+	createDirectory(shaderRootPath);
+	createDirectory(shaderCachePath);
 }
 
 ShaderUtils &ShaderUtils::getInstance(VkDevice &device) {
@@ -20,19 +20,28 @@ ShaderUtils &ShaderUtils::getInstance(VkDevice &device) {
 	return instance;
 }
 
-ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shader_source_root_dir) {
+VkPipelineShaderStageCreateInfo ShaderUtils::createShaderStageInfo(VkShaderModule &shaderModule, VkShaderStageFlagBits stage) {
+	VkPipelineShaderStageCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	info.stage = stage;
+	info.module = shaderModule;
+	info.pName = "main";
+	return info;
+}
+
+ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shaderRootDir) {
 	namespace fs = std::filesystem;
 
 	ShaderModules modules;
 	std::vector<std::string> shader_paths;
 
 	try {
-		fs::directory_iterator dir_iter(shader_source_root_dir);
+		fs::directory_iterator dir_iter(shaderRootDir);
 
 		for (const auto &entry : dir_iter) {
 			if (entry.is_regular_file()) {
 				const std::string ext = entry.path().extension().string();
-				if (shader_extensions.contains(ext)) {
+				if (shaderExtensions.contains(ext)) {
 					shader_paths.push_back(entry.path().string());
 				}
 			}
@@ -43,7 +52,7 @@ ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shader
 	}
 
 	if (shader_paths.empty()) {
-		std::cerr << "No shader files found in directory: " << shader_source_root_dir << "\n";
+		std::cerr << "No shader files found in directory: " << shaderRootDir << "\n";
 		exit(1);
 	}
 
@@ -57,38 +66,38 @@ ShaderUtils::ShaderModules ShaderUtils::compileShaderProgram(std::string &shader
 		}
 	};
 
-	createModule(binaries.vertex_shader, modules.vertex_shader);
-	createModule(binaries.tessellation_control_shader, modules.tessellation_control_shader);
-	createModule(binaries.tessellation_evaluation_shader, modules.tessellation_evaluation_shader);
-	createModule(binaries.geometry_shader, modules.geometry_shader);
-	createModule(binaries.fragment_shader, modules.fragment_shader);
-	createModule(binaries.compute_shader, modules.compute_shader);
+	createModule(binaries.vertexShader, modules.vertexShader);
+	createModule(binaries.tessellationControlShader, modules.tessellationControlShader);
+	createModule(binaries.tessellationEvaluationShader, modules.tessellationEvaluationShader);
+	createModule(binaries.geometryShader, modules.geometryShader);
+	createModule(binaries.fragmentShader, modules.fragmentShader);
+	createModule(binaries.computeShader, modules.computeShader);
 
 	return modules;
 }
 
-ShaderUtils::ShaderBinaries ShaderUtils::compileShader(const std::vector<std::string> &shader_paths) {
+ShaderUtils::ShaderBinaries ShaderUtils::compileShader(const std::vector<std::string> &shaderPaths) {
 	ShaderBinaries binaries;
-	for (const auto &p : shader_paths) {
+	for (const auto &p : shaderPaths) {
 		shaderc_shader_kind shader_kind = getShaderKind(p);
 		switch (shader_kind) {
 		case shaderc_glsl_vertex_shader:
-			binaries.vertex_shader = compileShader(p);
+			binaries.vertexShader = compileShader(p);
 			break;
 		case shaderc_glsl_tess_control_shader:
-			binaries.tessellation_control_shader = compileShader(p);
+			binaries.tessellationControlShader = compileShader(p);
 			break;
 		case shaderc_glsl_tess_evaluation_shader:
-			binaries.tessellation_evaluation_shader = compileShader(p);
+			binaries.tessellationEvaluationShader = compileShader(p);
 			break;
 		case shaderc_glsl_geometry_shader:
-			binaries.geometry_shader = compileShader(p);
+			binaries.geometryShader = compileShader(p);
 			break;
 		case shaderc_glsl_fragment_shader:
-			binaries.fragment_shader = compileShader(p);
+			binaries.fragmentShader = compileShader(p);
 			break;
 		case shaderc_glsl_compute_shader:
-			binaries.compute_shader = compileShader(p);
+			binaries.computeShader = compileShader(p);
 			break;
 		default:
 			std::cerr << "Unsupported shader type: " << path(p).extension() << std::endl;
@@ -98,19 +107,19 @@ ShaderUtils::ShaderBinaries ShaderUtils::compileShader(const std::vector<std::st
 	return binaries;
 }
 
-std::vector<uint32_t> ShaderUtils::compileShader(const std::string &shader_path) {
-	std::string shader_code = readFile(shader_path);
-	if (shader_code.empty()) {
+std::vector<uint32_t> ShaderUtils::compileShader(const std::string &shaderPath) {
+	std::string shaderCode = readFile(shaderPath);
+	if (shaderCode.empty()) {
 		return {};
 	}
 
-	path p(shader_path);
+	path p(shaderPath);
 	std::string extension = p.extension().string();
 
-	std::string hash_input = extension + shader_code;
+	std::string hash_input = extension + shaderCode;
 	std::string hash_str = computeHash(hash_input);
 
-	path cache_dir(shader_cache_path);
+	path cache_dir(shaderCachePath);
 	path cached_path = cache_dir / (hash_str + ".spv");
 
 	if (exists(cached_path)) {
@@ -122,9 +131,9 @@ std::vector<uint32_t> ShaderUtils::compileShader(const std::string &shader_path)
 
 	shaderc_shader_kind kind = getShaderKind(extension);
 
-	SpvCompilationResult result = compiler.CompileGlslToSpv(shader_code, kind, shader_path.c_str(), options);
+	SpvCompilationResult result = compiler.CompileGlslToSpv(shaderCode, kind, shaderPath.c_str(), options);
 	if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-		std::cerr << "Failed to compile shader: " << shader_path << "\nError: " << result.GetErrorMessage() << std::endl;
+		std::cerr << "Failed to compile shader: " << shaderPath << "\nError: " << result.GetErrorMessage() << std::endl;
 		return {};
 	}
 
@@ -145,8 +154,8 @@ std::string ShaderUtils::computeHash(const std::string &input) {
 }
 
 shaderc_shader_kind ShaderUtils::getShaderKind(const std::string &extension) {
-	if (shader_extensions.contains(extension)) {
-		return shader_extensions[extension];
+	if (shaderExtensions.contains(extension)) {
+		return shaderExtensions[extension];
 	} else {
 		std::cerr << "Unsupported shader extension: " << extension << std::endl;
 		exit(1);
@@ -169,10 +178,10 @@ void ShaderUtils::createDirectory(const std::string &path) {
 	}
 }
 
-std::string ShaderUtils::readFile(const std::string &file_path) {
-	std::ifstream shader_file(file_path);
+std::string ShaderUtils::readFile(const std::string &filePath) {
+	std::ifstream shader_file(filePath);
 	if (!shader_file.is_open()) {
-		std::cerr << "Failed to open shader file: " << file_path << std::endl;
+		std::cerr << "Failed to open shader file: " << filePath << std::endl;
 		return "";
 	}
 	std::stringstream buffer;
