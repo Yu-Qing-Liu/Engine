@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -135,7 +134,6 @@ class Application {
 		createImageViews();
 		createRenderPass();
         createTriangleModel();
-		/* createGraphicsPipeline(); */
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
