@@ -28,7 +28,6 @@ class Model {
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 
-  private:
 	VkDevice &device;
 	VkRenderPass &renderPass;
 	VkExtent2D &swapChainExtent;

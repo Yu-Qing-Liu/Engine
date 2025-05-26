@@ -228,7 +228,7 @@ void ShaderUtils::writeBinaryFile(const std::string &path, const std::vector<uin
 VkShaderModule ShaderUtils::createShaderModule(const std::vector<uint32_t> &binary) {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = binary.size();
+	createInfo.codeSize = binary.size() * sizeof(uint32_t);
 	createInfo.pCode = binary.data();
 
 	VkShaderModule shaderModule;
