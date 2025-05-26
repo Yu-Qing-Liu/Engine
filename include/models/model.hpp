@@ -15,7 +15,7 @@ class Model {
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
 	Model &operator=(const Model &) = delete;
-	virtual ~Model() = default;
+	virtual ~Model();
 
 	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 

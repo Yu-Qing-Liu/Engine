@@ -19,12 +19,12 @@ class ShaderUtils {
 	~ShaderUtils() = default;
 
 	struct ShaderModules {
-		VkShaderModule vertexShader;
-		VkShaderModule tessellationControlShader;
-		VkShaderModule tessellationEvaluationShader;
-		VkShaderModule geometryShader;
-		VkShaderModule fragmentShader;
-		VkShaderModule computeShader;
+		VkShaderModule vertexShader = VK_NULL_HANDLE;
+		VkShaderModule tessellationControlShader = VK_NULL_HANDLE;
+		VkShaderModule tessellationEvaluationShader = VK_NULL_HANDLE;
+		VkShaderModule geometryShader = VK_NULL_HANDLE;
+		VkShaderModule fragmentShader = VK_NULL_HANDLE;
+		VkShaderModule computeShader = VK_NULL_HANDLE;
 	};
 
 	static ShaderUtils &getInstance(VkDevice &device);
