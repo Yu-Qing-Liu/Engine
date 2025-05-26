@@ -8,27 +8,29 @@ Model::Model(VkDevice &device, const std::string &modelRootPath, VkRenderPass &r
 }
 
 Model::~Model() {
-    if (shader_program.computeShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.computeShader, nullptr);
-    }
-    if (shader_program.fragmentShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.fragmentShader, nullptr);
-    }
-    if (shader_program.geometryShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.geometryShader, nullptr);
-    }
-    if (shader_program.tessellationControlShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.tessellationControlShader, nullptr);
-    }
-    if (shader_program.tessellationEvaluationShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.tessellationEvaluationShader, nullptr);
-    }
-    if (shader_program.vertexShader != VK_NULL_HANDLE) {
-        vkDestroyShaderModule(device, shader_program.vertexShader, nullptr);
-    }
-    vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	if (shader_program.computeShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.computeShader, nullptr);
+	}
+	if (shader_program.fragmentShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.fragmentShader, nullptr);
+	}
+	if (shader_program.geometryShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.geometryShader, nullptr);
+	}
+	if (shader_program.tessellationControlShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.tessellationControlShader, nullptr);
+	}
+	if (shader_program.tessellationEvaluationShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.tessellationEvaluationShader, nullptr);
+	}
+	if (shader_program.vertexShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shader_program.vertexShader, nullptr);
+	}
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
+
+void Model::setVPMatrix(const mat4 &view, const mat4 &proj) { vp = proj * view; }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
 	// Viewport and Scissor State (using dynamic states)

@@ -19,6 +19,8 @@ class Model {
 
 	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
+	void setVPMatrix(const mat4 &view, const mat4 &proj);
+
   protected:
 	ShaderUtils *shader_utils;
 	ShaderUtils::ShaderModules shader_program;
@@ -26,11 +28,12 @@ class Model {
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
-	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
-
 	VkDevice &device;
 	VkRenderPass &renderPass;
 	VkExtent2D &swapChainExtent;
 
 	std::string modelRootPath;
+	mat4 vp = mat4(1);
+
+	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 };
