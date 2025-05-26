@@ -26,6 +26,8 @@ Model::~Model() {
     if (shader_program.vertexShader != VK_NULL_HANDLE) {
         vkDestroyShaderModule(device, shader_program.vertexShader, nullptr);
     }
+    vkDestroyPipeline(device, graphicsPipeline, nullptr);
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {

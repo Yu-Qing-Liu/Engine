@@ -133,7 +133,7 @@ class Application {
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
-        createTriangleModel();
+		createTriangleModel();
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
@@ -164,16 +164,25 @@ class Application {
 	void cleanup() {
 		cleanupSwapChain();
 
-		vkDestroyPipeline(device, graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		triangleModel.reset();
 
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+		// Destroy synchronization objects
+		// Iterate based on the actual current sizes of the vectors
+		for (size_t i = 0; i < imageAvailableSemaphores.size(); i++) {
 			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+		}
+		for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
+			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+		}
+		for (size_t i = 0; i < inFlightFences.size(); i++) {
 			vkDestroyFence(device, inFlightFences[i], nullptr);
 		}
+		// Optional: clear vectors if desired, though the Application object is being destroyed.
+		// imageAvailableSemaphores.clear();
+		// renderFinishedSemaphores.clear();
+		// inFlightFences.clear();
 
 		vkDestroyCommandPool(device, commandPool, nullptr);
 
@@ -191,6 +200,23 @@ class Application {
 		glfwTerminate();
 	}
 
+	void cleanupSyncObjects() {
+		// Loop over the current actual sizes of the vectors
+		for (size_t i = 0; i < imageAvailableSemaphores.size(); i++) {
+			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+		}
+		for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
+			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+		}
+		for (size_t i = 0; i < inFlightFences.size(); i++) {
+			vkDestroyFence(device, inFlightFences[i], nullptr);
+		}
+
+		imageAvailableSemaphores.clear();
+		renderFinishedSemaphores.clear();
+		inFlightFences.clear();
+	}
+
 	void recreateSwapChain() {
 		int width = 0, height = 0;
 		glfwGetFramebufferSize(window, &width, &height);
@@ -202,10 +228,14 @@ class Application {
 		vkDeviceWaitIdle(device);
 
 		cleanupSwapChain();
+		cleanupSyncObjects();
 
 		createSwapChain();
 		createImageViews();
 		createFramebuffers();
+
+		createSyncObjects();
+		currentFrame = 0;
 	}
 
 	void createInstance() {
@@ -527,7 +557,7 @@ class Application {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-        triangleModel->draw(commandBuffer);
+		triangleModel->draw(commandBuffer);
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -538,8 +568,12 @@ class Application {
 
 	void createSyncObjects() {
 		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-		renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		// renderFinishedSemaphores will be sized based on swapchain images
 		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+		// Resize renderFinishedSemaphores based on the actual number of swapchain images
+		// This is safe because createSwapChain() which populates swapChainImages is called before createSyncObjects()
+		renderFinishedSemaphores.resize(swapChainImages.size());
 
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -549,8 +583,15 @@ class Application {
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-				throw std::runtime_error("failed to create synchronization objects for a frame!");
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create synchronization objects for a frame (imageAvailable/inFlightFence)!");
+			}
+		}
+
+		// Create renderFinishedSemaphores, one for each swapchain image
+		for (size_t i = 0; i < swapChainImages.size(); i++) {
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create render finished semaphores!");
 			}
 		}
 	}
@@ -585,7 +626,8 @@ class Application {
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
 
-		VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[currentFrame]};
+		// Use the semaphore corresponding to the acquired swapchain image
+		VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[imageIndex]};
 		submitInfo.signalSemaphoreCount = 1;
 		submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -596,6 +638,8 @@ class Application {
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
+		// Present will wait on the semaphore that was signaled by vkQueueSubmit,
+		// which is now renderFinishedSemaphores[imageIndex]
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = signalSemaphores;
 
