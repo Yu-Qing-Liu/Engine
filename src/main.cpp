@@ -556,7 +556,7 @@ class Application {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		scenes->render();
+		scenes->render(commandBuffer);
 
 		vkCmdEndRenderPass(commandBuffer);
 

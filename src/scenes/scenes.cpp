@@ -5,9 +5,9 @@ Scenes::Scenes(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChain
     scenes.emplace(DEFAULT, std::make_unique<Default>(device, renderPass, swapChainExtent));
 }
 
-void Scenes::render() {
+void Scenes::render(VkCommandBuffer &commandBuffer) {
     /*
      * Main render loop
      * */
-    scenes[DEFAULT]->render();
+    scenes[DEFAULT]->render(commandBuffer);
 }

@@ -6,6 +6,4 @@ Scene::Scene(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainEx
     models = std::make_unique<Models>(device, renderPass, swapChainExtent);
 }
 
-void Scene::render() {
-
-}
+void Scene::render(VkCommandBuffer &commandBuffer) {}

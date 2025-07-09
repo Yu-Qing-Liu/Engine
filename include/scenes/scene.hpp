@@ -12,7 +12,7 @@ class Scene {
 	Scene &operator=(const Scene &) = delete;
 	~Scene() = default;
 
-	virtual void render();
+	virtual void render(VkCommandBuffer &commandBuffer);
 
   protected:
 	std::unique_ptr<Models> models;

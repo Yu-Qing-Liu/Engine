@@ -9,5 +9,5 @@ class Default : Scene {
 	Default &operator=(const Default &) = delete;
 	~Default() = default;
 
-	void render() override;
+	void render(VkCommandBuffer &commandBuffer) override;
 };

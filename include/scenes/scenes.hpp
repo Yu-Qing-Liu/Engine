@@ -16,7 +16,7 @@ class Scenes {
 		DEFAULT,
 	};
 
-	void render();
+	void render(VkCommandBuffer &commandBuffer);
 
   private:
 	std::unordered_map<SceneName, std::unique_ptr<Scene>> scenes;
