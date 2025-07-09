@@ -1,3 +1,5 @@
+#pragma once
+
 #include "models.hpp"
 #include <vulkan/vulkan_core.h>
 

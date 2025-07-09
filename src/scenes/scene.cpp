@@ -5,3 +5,7 @@
 Scene::Scene(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) {
     models = std::make_unique<Models>(device, renderPass, swapChainExtent);
 }
+
+void Scene::render() {
+
+}

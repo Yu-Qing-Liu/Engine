@@ -1,0 +1,13 @@
+#include "scenes/scenes.hpp"
+#include "scenes/implementations/default.hpp"
+
+Scenes::Scenes(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) {
+    scenes.emplace(DEFAULT, std::make_unique<Default>(device, renderPass, swapChainExtent));
+}
+
+void Scenes::render() {
+    /*
+     * Main render loop
+     * */
+    scenes[DEFAULT]->render();
+}

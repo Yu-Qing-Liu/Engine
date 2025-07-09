@@ -2,7 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "models/models.hpp"
+#include "scenes/scenes.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -102,10 +102,10 @@ class Application {
 
 	bool framebufferResized = false;
 
-	std::unique_ptr<Models> models;
+	std::unique_ptr<Scenes> scenes;
 
-	void initializeModels() {
-		models = std::make_unique<Models>(device, renderPass, swapChainExtent);
+	void initializeScenes() {
+		scenes = std::make_unique<Scenes>(device, renderPass, swapChainExtent);
 	}
 
 	void initWindow() {
@@ -163,7 +163,7 @@ class Application {
 	void cleanup() {
 		cleanupSwapChain();
 
-		triangleModel.reset();
+        scenes.reset();
 
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
@@ -556,7 +556,7 @@ class Application {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		triangleModel->draw(commandBuffer);
+		scenes->render();
 
 		vkCmdEndRenderPass(commandBuffer);
 
