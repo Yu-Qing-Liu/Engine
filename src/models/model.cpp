@@ -116,3 +116,5 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 }
 
 void Model::draw(VkCommandBuffer &commandBuffer, const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
+
+void Model::setup() {}
