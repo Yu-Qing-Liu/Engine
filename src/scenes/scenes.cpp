@@ -1,5 +1,5 @@
-#include "scenes/scenes.hpp"
-#include "scenes/implementations/default.hpp"
+#include "scenes.hpp"
+#include "default.hpp"
 
 Scenes::Scenes(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) {
     scenes.emplace(DEFAULT, std::make_unique<Default>(device, renderPass, swapChainExtent));

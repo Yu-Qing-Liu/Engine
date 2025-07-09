@@ -132,7 +132,7 @@ class Application {
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
-		initializeModels();
+		initializeScenes();
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();

@@ -10,7 +10,7 @@ class Scene {
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;
-	~Scene() = default;
+	virtual ~Scene();
 
 	virtual void render(VkCommandBuffer &commandBuffer);
 

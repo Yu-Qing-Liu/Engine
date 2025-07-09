@@ -1,6 +1,8 @@
+#pragma once
+
 #include "scenes/scene.hpp"
 
-class Default : Scene {
+class Default : public Scene {
   public:
 	Default(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Default(Default &&) = default;
