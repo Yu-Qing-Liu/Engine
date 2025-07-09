@@ -22,7 +22,7 @@ class Model {
 	void setVPMatrix(const mat4 &view, const mat4 &proj);
 
   protected:
-	ShaderUtils *shader_utils;
+	ShaderUtils *shaderUtils;
 	ShaderUtils::ShaderModules shader_program;
 
 	VkPipelineLayout pipelineLayout;

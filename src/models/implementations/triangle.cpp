@@ -2,7 +2,7 @@
 
 Triangle::Triangle(VkDevice &device, const std::string &modelRoot, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) : Model(device, modelRoot, renderPass, swapChainExtent) {
 	// Create pipeline stages
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {shader_utils->createShaderStageInfo(shader_program.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), shader_utils->createShaderStageInfo(shader_program.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {shaderUtils->createShaderStageInfo(shader_program.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), shaderUtils->createShaderStageInfo(shader_program.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	// Pipeline configuration
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};

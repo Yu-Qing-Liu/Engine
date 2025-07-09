@@ -3,8 +3,8 @@
 #include <vulkan/vulkan_core.h>
 
 Model::Model(VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) : device(device), modelRootPath(modelRootPath), renderPass(renderPass), swapChainExtent(swapChainExtent) {
-	shader_utils = &ShaderUtils::getInstance(device);
-	shader_program = shader_utils->compileShaderProgram(modelRootPath);
+	shaderUtils = &ShaderUtils::getInstance(device);
+	shader_program = shaderUtils->compileShaderProgram(modelRootPath);
 }
 
 Model::~Model() {
