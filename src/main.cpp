@@ -2,7 +2,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "models/implementations/triangle.hpp"
+#include "models/models.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
@@ -102,11 +102,10 @@ class Application {
 
 	bool framebufferResized = false;
 
-	std::unique_ptr<Model> triangleModel;
+	std::unique_ptr<Models> models;
 
-	void createTriangleModel() {
-		std::string rootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/triangle";
-		triangleModel = std::make_unique<Triangle>(device, rootPath, renderPass, swapChainExtent);
+	void initializeModels() {
+		models = std::make_unique<Models>(device, renderPass, swapChainExtent);
 	}
 
 	void initWindow() {
@@ -133,7 +132,7 @@ class Application {
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
-		createTriangleModel();
+		initializeModels();
 		createFramebuffers();
 		createCommandPool();
 		createCommandBuffers();
