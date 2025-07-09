@@ -19,8 +19,5 @@ class Models {
 	std::unordered_map<ModelName, std::unique_ptr<Model>> models;
 
   private:
-	VkDevice &device;
-	VkRenderPass &renderPass;
-	VkExtent2D &swapChainExtent;
 	std::string modelsPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/triangle";
 };

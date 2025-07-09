@@ -12,6 +12,6 @@ class Scene {
 
 	virtual void render();
 
-  private:
+  protected:
 	std::unique_ptr<Models> models;
 };
