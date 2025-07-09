@@ -1,0 +1,17 @@
+#include "models.hpp"
+#include <vulkan/vulkan_core.h>
+
+class Scene {
+  public:
+	Scene(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Scene(Scene &&) = default;
+	Scene(const Scene &) = delete;
+	Scene &operator=(Scene &&) = delete;
+	Scene &operator=(const Scene &) = delete;
+	~Scene() = default;
+
+	virtual void render();
+
+  private:
+	std::unique_ptr<Models> models;
+};
