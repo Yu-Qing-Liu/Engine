@@ -29,6 +29,10 @@ void Triangle::setup() {
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 }
 
+void Triangle::createVertexBuffer() {
+
+}
+
 void Triangle::draw(VkCommandBuffer &commandBuffer, const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
