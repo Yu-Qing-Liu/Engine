@@ -5,7 +5,7 @@
 
 class Scenes {
   public:
-	Scenes(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Scenes(VkPhysicalDevice &physicalDevice, VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Scenes(Scenes &&) = default;
 	Scenes(const Scenes &) = default;
 	Scenes &operator=(Scenes &&) = delete;

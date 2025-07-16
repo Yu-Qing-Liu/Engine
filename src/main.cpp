@@ -105,7 +105,7 @@ class Application {
 	std::unique_ptr<Scenes> scenes;
 
 	void initializeScenes() {
-		scenes = std::make_unique<Scenes>(device, renderPass, swapChainExtent);
+		scenes = std::make_unique<Scenes>(physicalDevice, device, renderPass, swapChainExtent);
 	}
 
 	void initWindow() {

@@ -11,7 +11,7 @@ using namespace glm;
 
 class Model {
   public:
-	Model(VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Model(VkPhysicalDevice &physicalDevice, VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Model(Model &&) = default;
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
@@ -24,6 +24,10 @@ class Model {
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
 			return bindingDescription;
 		}
 
@@ -61,6 +65,7 @@ class Model {
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
+	VkPhysicalDevice &physicalDevice;
 	VkDevice &device;
 	VkRenderPass &renderPass;
 	VkExtent2D &swapChainExtent;
@@ -69,4 +74,5 @@ class Model {
 	mat4 vp = mat4(1);
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 };

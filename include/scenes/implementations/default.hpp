@@ -4,7 +4,7 @@
 
 class Default : public Scene {
   public:
-	Default(VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Default(VkPhysicalDevice &physicalDevice, VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
 	Default(Default &&) = default;
 	Default(const Default &) = delete;
 	Default &operator=(Default &&) = delete;
