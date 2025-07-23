@@ -5,9 +5,10 @@ Triangle::Triangle(VkPhysicalDevice &physicalDevice, VkDevice &device, const std
 	// Create pipeline stages
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {shaderUtils->createShaderStageInfo(shader_program.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), shaderUtils->createShaderStageInfo(shader_program.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 	// Pipeline configuration
+	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
+    // VBO
     setup();
     createVertexBuffer();
-	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
 }
 
 Triangle::~Triangle() {
@@ -51,7 +52,7 @@ void Triangle::createVertexBuffer() {
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate vertex buffer memory!");
+        throw std::runtime_error("failed to allocate vertex buffer memory!");
     }
 
     vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
