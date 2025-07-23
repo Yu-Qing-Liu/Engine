@@ -5,23 +5,18 @@ Triangle::Triangle(VkPhysicalDevice &physicalDevice, VkDevice &device, const std
 	// Create pipeline stages
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {shaderUtils->createShaderStageInfo(shader_program.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), shaderUtils->createShaderStageInfo(shader_program.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 	// Pipeline configuration
+    setup();
 	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
     // VBO
-    setup();
     createVertexBuffer();
 }
 
 Triangle::~Triangle() {
     vkDestroyBuffer(device, vertexBuffer, nullptr);
+    vkFreeMemory(device, vertexBufferMemory, nullptr);
 }
 
 void Triangle::setup() {
-    vertices = {
-        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
-    };
-
     auto bindingDescription = Vertex::getBindingDescription();
     auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
@@ -37,6 +32,12 @@ void Triangle::setup() {
 }
 
 void Triangle::createVertexBuffer() {
+    vertices = {
+        {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    };
+
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = sizeof(vertices[0]) * vertices.size();
     bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
