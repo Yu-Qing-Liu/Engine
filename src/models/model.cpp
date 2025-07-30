@@ -3,28 +3,34 @@
 #include <vulkan/vulkan_core.h>
 
 Model::Model(VkPhysicalDevice &physicalDevice, VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) : physicalDevice(physicalDevice), device(device), modelRootPath(modelRootPath), renderPass(renderPass), swapChainExtent(swapChainExtent) {
+	vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+	inputAssembly = {};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+
 	shaderUtils = &ShaderUtils::getInstance(device);
-	shader_program = shaderUtils->compileShaderProgram(modelRootPath);
+	shaderProgram = shaderUtils->compileShaderProgram(modelRootPath);
 }
 
 Model::~Model() {
-	if (shader_program.computeShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.computeShader, nullptr);
+	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.computeShader, nullptr);
 	}
-	if (shader_program.fragmentShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.fragmentShader, nullptr);
+	if (shaderProgram.fragmentShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.fragmentShader, nullptr);
 	}
-	if (shader_program.geometryShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.geometryShader, nullptr);
+	if (shaderProgram.geometryShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.geometryShader, nullptr);
 	}
-	if (shader_program.tessellationControlShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.tessellationControlShader, nullptr);
+	if (shaderProgram.tessellationControlShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.tessellationControlShader, nullptr);
 	}
-	if (shader_program.tessellationEvaluationShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.tessellationEvaluationShader, nullptr);
+	if (shaderProgram.tessellationEvaluationShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.tessellationEvaluationShader, nullptr);
 	}
-	if (shader_program.vertexShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shader_program.vertexShader, nullptr);
+	if (shaderProgram.vertexShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(device, shaderProgram.vertexShader, nullptr);
 	}
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -116,16 +122,16 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 }
 
 uint32_t Model::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
-    }
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
 
-    throw std::runtime_error("failed to find suitable memory type!");
+	throw std::runtime_error("failed to find suitable memory type!");
 }
 
 void Model::draw(VkCommandBuffer &commandBuffer, const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}

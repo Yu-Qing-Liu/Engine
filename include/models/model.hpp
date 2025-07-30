@@ -60,10 +60,13 @@ class Model {
 
   protected:
 	ShaderUtils *shaderUtils;
-	ShaderUtils::ShaderModules shader_program;
+	ShaderUtils::ShaderModules shaderProgram;
 
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
+
+	VkVertexInputBindingDescription bindingDescription;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
 	VkPhysicalDevice &physicalDevice;
 	VkDevice &device;
