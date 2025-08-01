@@ -15,11 +15,16 @@ class Triangle : public Model {
 	void setup() override;
 
   private:
+
+	VkVertexInputBindingDescription bindingDescription;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+
 	VkBuffer vertexBuffer;
 	VkBufferCreateInfo bufferInfo{};
 	VkMemoryRequirements memRequirements;
 	VkMemoryAllocateInfo allocInfo{};
 	VkDeviceMemory vertexBufferMemory;
 	void *data;
+
 	void createVertexBuffer();
 };

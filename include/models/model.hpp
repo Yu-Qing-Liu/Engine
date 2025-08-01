@@ -65,9 +65,6 @@ class Model {
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
-	VkVertexInputBindingDescription bindingDescription;
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-
 	VkPhysicalDevice &physicalDevice;
 	VkDevice &device;
 	VkRenderPass &renderPass;
