@@ -53,10 +53,8 @@ class Model {
 
 	std::vector<Vertex> vertices;
 
-	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 	virtual void setup();
-
-	void setVPMatrix(const mat4 &view, const mat4 &proj);
+	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
 	ShaderUtils *shaderUtils;
@@ -71,7 +69,6 @@ class Model {
 	VkExtent2D &swapChainExtent;
 
 	std::string modelRootPath;
-	mat4 vp = mat4(1);
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);

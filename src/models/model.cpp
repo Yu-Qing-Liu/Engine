@@ -36,8 +36,6 @@ Model::~Model() {
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
-void Model::setVPMatrix(const mat4 &view, const mat4 &proj) { vp = proj * view; }
-
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
 	// Viewport and Scissor State (using dynamic states)
 	VkPipelineViewportStateCreateInfo viewportState{};
