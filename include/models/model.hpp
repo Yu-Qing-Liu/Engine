@@ -18,6 +18,12 @@ class Model {
 	Model &operator=(const Model &) = delete;
 	virtual ~Model();
 
+	struct UBO {
+		mat4 model;
+		mat4 view;
+		mat4 proj;
+	};
+
 	struct Vertex {
 		vec2 pos;
 		vec3 color;
@@ -48,9 +54,6 @@ class Model {
 		}
 	};
 
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-
 	std::vector<Vertex> vertices;
 
 	virtual void setup();
@@ -70,6 +73,13 @@ class Model {
 
 	std::string modelRootPath;
 
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+  private:
+	void createDescriptorSetLayout();
 };

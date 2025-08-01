@@ -132,6 +132,13 @@ uint32_t Model::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags proper
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
+void Model::setup() {}
+
 void Model::draw(VkCommandBuffer &commandBuffer, const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
 
-void Model::setup() {}
+void createDescriptorSetLayout() {
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+}
