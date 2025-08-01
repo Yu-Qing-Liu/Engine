@@ -89,8 +89,6 @@ class Application {
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 
 	VkRenderPass renderPass;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
 
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
