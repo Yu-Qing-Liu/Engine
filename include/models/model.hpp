@@ -63,6 +63,7 @@ class Model {
 	ShaderUtils *shaderUtils;
 	ShaderUtils::ShaderModules shaderProgram;
 
+	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
@@ -76,6 +77,8 @@ class Model {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
