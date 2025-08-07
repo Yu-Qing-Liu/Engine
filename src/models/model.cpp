@@ -1,40 +1,38 @@
 #include "models/model.hpp"
-#include <string>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(VkPhysicalDevice &physicalDevice, VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) : physicalDevice(physicalDevice), device(device), modelRootPath(modelRootPath), renderPass(renderPass), swapChainExtent(swapChainExtent) {
+Model::Model(const std::string &shaderPath) {
 	vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 	inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 
-	shaderUtils = &ShaderUtils::getInstance(device);
-	shaderProgram = shaderUtils->compileShaderProgram(modelRootPath);
+	shaderProgram = EngineUtils::compileShaderProgram(shaderPath);
 }
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.computeShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.computeShader, nullptr);
 	}
 	if (shaderProgram.fragmentShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.fragmentShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.fragmentShader, nullptr);
 	}
 	if (shaderProgram.geometryShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.geometryShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.geometryShader, nullptr);
 	}
 	if (shaderProgram.tessellationControlShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.tessellationControlShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.tessellationControlShader, nullptr);
 	}
 	if (shaderProgram.tessellationEvaluationShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.tessellationEvaluationShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.tessellationEvaluationShader, nullptr);
 	}
 	if (shaderProgram.vertexShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(device, shaderProgram.vertexShader, nullptr);
+		vkDestroyShaderModule(EngineUtils::device, shaderProgram.vertexShader, nullptr);
 	}
-	vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+	vkDestroyPipeline(EngineUtils::device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(EngineUtils::device, pipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(EngineUtils::device, descriptorSetLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
@@ -92,7 +90,7 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(EngineUtils::device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create pipeline layout!");
 	}
 
@@ -110,32 +108,19 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.renderPass = EngineUtils::renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(EngineUtils::device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create graphics pipeline!");
 	}
 }
 
-uint32_t Model::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-			return i;
-		}
-	}
-
-	throw std::runtime_error("failed to find suitable memory type!");
-}
-
 void Model::setup() {}
 
-void Model::draw(VkCommandBuffer &commandBuffer, const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
+void Model::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
 
 void Model::createDescriptorSetLayout() {
     VkDescriptorSetLayoutBinding uboLayoutBinding{};
@@ -149,7 +134,7 @@ void Model::createDescriptorSetLayout() {
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(EngineUtils::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 

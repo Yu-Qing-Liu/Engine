@@ -5,7 +5,7 @@
 
 class Scenes {
   public:
-	Scenes(VkPhysicalDevice &physicalDevice, VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Scenes();
 	Scenes(Scenes &&) = default;
 	Scenes(const Scenes &) = default;
 	Scenes &operator=(Scenes &&) = delete;
@@ -16,7 +16,7 @@ class Scenes {
 		DEFAULT,
 	};
 
-	void render(VkCommandBuffer &commandBuffer);
+	void render();
 
   private:
 	std::unordered_map<SceneName, std::unique_ptr<Scene>> scenes;

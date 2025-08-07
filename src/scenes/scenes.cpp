@@ -1,13 +1,13 @@
 #include "scenes.hpp"
 #include "default.hpp"
 
-Scenes::Scenes(VkPhysicalDevice &physicalDevice, VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent) {
-    scenes.emplace(DEFAULT, std::make_unique<Default>(physicalDevice, device, renderPass, swapChainExtent));
+Scenes::Scenes() {
+    scenes.emplace(DEFAULT, std::make_unique<Default>());
 }
 
-void Scenes::render(VkCommandBuffer &commandBuffer) {
+void Scenes::render() {
     /*
      * Main render loop
      * */
-    scenes[DEFAULT]->render(commandBuffer);
+    scenes[DEFAULT]->render();
 }

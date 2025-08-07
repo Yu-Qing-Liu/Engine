@@ -5,7 +5,7 @@
 
 class Models {
   public:
-	Models(VkPhysicalDevice &physicalDevice, VkDevice &device, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Models();
 	Models(Models &&) = default;
 	Models(const Models &) = default;
 	Models &operator=(Models &&) = delete;

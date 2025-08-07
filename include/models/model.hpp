@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shaderutils.hpp"
+#include "engineutils.hpp"
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -11,7 +11,7 @@ using namespace glm;
 
 class Model {
   public:
-	Model(VkPhysicalDevice &physicalDevice, VkDevice &device, const std::string &modelRootPath, VkRenderPass &renderPass, VkExtent2D &swapChainExtent);
+	Model(const std::string &shaderPath);
 	Model(Model &&) = default;
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
@@ -57,22 +57,14 @@ class Model {
 	std::vector<Vertex> vertices;
 
 	virtual void setup();
-	virtual void draw(VkCommandBuffer &commandBuffer, const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
+	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
-	ShaderUtils *shaderUtils;
-	ShaderUtils::ShaderModules shaderProgram;
+	EngineUtils::ShaderModules shaderProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
-
-	VkPhysicalDevice &physicalDevice;
-	VkDevice &device;
-	VkRenderPass &renderPass;
-	VkExtent2D &swapChainExtent;
-
-	std::string modelRootPath;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -81,7 +73,6 @@ class Model {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
-	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
   private:
 	void createDescriptorSetLayout();
