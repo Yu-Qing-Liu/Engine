@@ -32,7 +32,7 @@ Model::~Model() {
 	}
 	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
-    vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
+    // vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {

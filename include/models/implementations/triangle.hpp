@@ -20,9 +20,6 @@ class Triangle : public Model {
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
 	VkBuffer vertexBuffer;
-	VkBufferCreateInfo bufferInfo{};
-	VkMemoryRequirements memRequirements;
-	VkMemoryAllocateInfo allocInfo{};
 	VkDeviceMemory vertexBufferMemory;
 	void *data;
 
