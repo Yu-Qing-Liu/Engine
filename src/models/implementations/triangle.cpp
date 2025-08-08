@@ -9,7 +9,6 @@ Triangle::Triangle(const std::string &shaderPath) : Model(shaderPath) {
 	// Pipeline configuration
 	setup();
 	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
-	// VBO
 	createVertexBuffer();
 }
 
