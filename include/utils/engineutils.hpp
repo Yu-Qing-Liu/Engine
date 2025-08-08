@@ -15,7 +15,7 @@
 using namespace shaderc;
 using namespace std::filesystem;
 
-namespace EngineUtils {
+namespace Engine {
 
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders";
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
@@ -286,7 +286,7 @@ inline VkPipelineShaderStageCreateInfo createShaderStageInfo(VkShaderModule &sha
 
 inline uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(EngineUtils::physicalDevice, &memProperties);
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -297,4 +297,4 @@ inline uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags proper
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-}; // namespace EngineUtils
+}; // namespace Engine

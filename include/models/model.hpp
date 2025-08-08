@@ -60,7 +60,7 @@ class Model {
 	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
-	EngineUtils::ShaderModules shaderProgram;
+	Engine::ShaderModules shaderProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;

@@ -8,31 +8,31 @@ Model::Model(const std::string &shaderPath) {
 	inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 
-	shaderProgram = EngineUtils::compileShaderProgram(shaderPath);
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
 }
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.computeShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.computeShader, nullptr);
 	}
 	if (shaderProgram.fragmentShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.fragmentShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.fragmentShader, nullptr);
 	}
 	if (shaderProgram.geometryShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.geometryShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.geometryShader, nullptr);
 	}
 	if (shaderProgram.tessellationControlShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.tessellationControlShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.tessellationControlShader, nullptr);
 	}
 	if (shaderProgram.tessellationEvaluationShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.tessellationEvaluationShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.tessellationEvaluationShader, nullptr);
 	}
 	if (shaderProgram.vertexShader != VK_NULL_HANDLE) {
-		vkDestroyShaderModule(EngineUtils::device, shaderProgram.vertexShader, nullptr);
+		vkDestroyShaderModule(Engine::device, shaderProgram.vertexShader, nullptr);
 	}
-	vkDestroyPipeline(EngineUtils::device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(EngineUtils::device, pipelineLayout, nullptr);
-    vkDestroyDescriptorSetLayout(EngineUtils::device, descriptorSetLayout, nullptr);
+	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
@@ -90,7 +90,7 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-	if (vkCreatePipelineLayout(EngineUtils::device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(Engine::device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create pipeline layout!");
 	}
 
@@ -108,12 +108,12 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = EngineUtils::renderPass;
+	pipelineInfo.renderPass = Engine::renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(EngineUtils::device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create graphics pipeline!");
 	}
 }
@@ -134,7 +134,7 @@ void Model::createDescriptorSetLayout() {
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(EngineUtils::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+    if (vkCreateDescriptorSetLayout(Engine::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
