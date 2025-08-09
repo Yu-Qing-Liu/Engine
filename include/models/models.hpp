@@ -14,10 +14,8 @@ class Models {
 
 	enum ModelName {
 		TRIANGLE,
+        RECTANGLE,
 	};
 
 	std::unordered_map<ModelName, std::unique_ptr<Model>> models;
-
-  private:
-	std::string modelsPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/triangle";
 };

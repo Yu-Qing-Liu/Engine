@@ -16,6 +16,9 @@ Rectangle::Rectangle(const std::string &shaderPath) : Model(shaderPath) {
 Rectangle::~Rectangle() {
 	vkDestroyBuffer(Engine::device, vertexBuffer, nullptr);
 	vkFreeMemory(Engine::device, vertexBufferMemory, nullptr);
+
+	vkDestroyBuffer(Engine::device, indexBuffer, nullptr);
+	vkFreeMemory(Engine::device, indexBufferMemory, nullptr);
 }
 
 void Rectangle::setup() {
@@ -40,10 +43,6 @@ void Rectangle::createVertexBuffer() {
         {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
         {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
-    };
-
-    indices = {
-        0, 1, 2, 2, 3, 0
     };
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -97,13 +96,13 @@ void Rectangle::createIndexBuffer() {
 
     Engine::createBuffer(
         bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        vertexBuffer,
-        vertexBufferMemory
+        indexBuffer,
+        indexBufferMemory
     );
 
-    Engine::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+    Engine::copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
     vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
     vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
@@ -129,6 +128,7 @@ void Rectangle::draw(const vec3 &position, const quat &rotation, const vec3 &sca
 	VkBuffer vertexBuffers[] = {vertexBuffer};
 	VkDeviceSize offsets[] = {0};
 	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-	vkCmdDraw(Engine::currentCommandBuffer(), static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 }

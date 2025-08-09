@@ -1,6 +1,7 @@
 #pragma once
 
 #include "models/model.hpp"
+#include <vulkan/vulkan_core.h>
 
 class Rectangle : public Model {
   public:
@@ -22,6 +23,8 @@ class Rectangle : public Model {
 	VkDeviceMemory stagingBufferMemory;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
 
 	void createVertexBuffer();
     void createIndexBuffer();
