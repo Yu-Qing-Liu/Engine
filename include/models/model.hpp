@@ -54,7 +54,6 @@ class Model {
 		}
 	};
 
-	std::vector<Vertex> vertices;
 
 	virtual void setup();
 	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
@@ -71,6 +70,9 @@ class Model {
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 
