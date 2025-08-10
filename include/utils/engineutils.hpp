@@ -17,6 +17,8 @@ using namespace std::filesystem;
 
 namespace Engine {
 
+inline const int MAX_FRAMES_IN_FLIGHT = 2;
+
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders";
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
 

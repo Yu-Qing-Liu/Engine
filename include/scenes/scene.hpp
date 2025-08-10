@@ -13,6 +13,7 @@ class Scene {
 	virtual ~Scene();
 
 	virtual void render();
+	virtual void drawFrame();
 
   protected:
 	std::unique_ptr<Models> models;

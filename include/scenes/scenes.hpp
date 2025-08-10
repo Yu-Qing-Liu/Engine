@@ -17,6 +17,7 @@ class Scenes {
 	};
 
 	void render();
+	void drawFrames();
 
   private:
 	std::unordered_map<SceneName, std::unique_ptr<Scene>> scenes;

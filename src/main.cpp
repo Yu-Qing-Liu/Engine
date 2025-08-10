@@ -19,8 +19,6 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
-
 const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
 const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -508,7 +506,7 @@ class Application {
 	}
 
 	void createCommandBuffers() {
-        Engine::commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        Engine::commandBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 
 		VkCommandBufferAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -552,9 +550,9 @@ class Application {
 	}
 
 	void createSyncObjects() {
-		imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+		imageAvailableSemaphores.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 		// renderFinishedSemaphores will be sized based on swapchain images
-		inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+		inFlightFences.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 
 		// Resize renderFinishedSemaphores based on the actual number of swapchain images
 		// This is safe because createSwapChain() which populates swapChainImages is called before createSyncObjects()
@@ -567,7 +565,7 @@ class Application {
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 			if (vkCreateSemaphore(Engine::device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(Engine::device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 				throw std::runtime_error("failed to create synchronization objects for a frame (imageAvailable/inFlightFence)!");
 			}
@@ -593,6 +591,8 @@ class Application {
 		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
+
+        scenes->drawFrames();
 
 		vkResetFences(Engine::device, 1, &inFlightFences[Engine::currentFrame]);
 
@@ -643,7 +643,7 @@ class Application {
 			throw std::runtime_error("failed to present swap chain image!");
 		}
 
-        Engine::currentFrame = (Engine::currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        Engine::currentFrame = (Engine::currentFrame + 1) % Engine::MAX_FRAMES_IN_FLIGHT;
 	}
 
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats) {

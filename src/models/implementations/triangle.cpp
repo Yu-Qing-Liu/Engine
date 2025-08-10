@@ -7,7 +7,6 @@ Triangle::Triangle(const std::string &shaderPath) : Model(shaderPath) {
 	// Create pipeline stages
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 	// Pipeline configuration
-	setup();
 	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
 	createVertexBuffer();
 }
@@ -15,22 +14,6 @@ Triangle::Triangle(const std::string &shaderPath) : Model(shaderPath) {
 Triangle::~Triangle() {
 	vkDestroyBuffer(Engine::device, vertexBuffer, nullptr);
 	vkFreeMemory(Engine::device, vertexBufferMemory, nullptr);
-}
-
-void Triangle::setup() {
-	bindingDescription = Vertex::getBindingDescription();
-	auto attrs = Vertex::getAttributeDescriptions();
-	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
-
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 }
 
 void Triangle::createVertexBuffer() {
@@ -63,6 +46,10 @@ void Triangle::createVertexBuffer() {
 
     vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
     vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+}
+
+void Triangle::updateUniformBuffer() {
+
 }
 
 void Triangle::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {

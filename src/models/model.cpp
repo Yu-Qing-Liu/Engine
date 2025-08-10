@@ -1,4 +1,5 @@
 #include "models/model.hpp"
+#include "engineutils.hpp"
 #include <vulkan/vulkan_core.h>
 
 Model::Model(const std::string &shaderPath) {
@@ -9,6 +10,10 @@ Model::Model(const std::string &shaderPath) {
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 
 	shaderProgram = Engine::compileShaderProgram(shaderPath);
+
+    setup();
+	// createDescriptorSetLayout();
+	// createUniformBuffers();
 }
 
 Model::~Model() {
@@ -32,7 +37,12 @@ Model::~Model() {
 	}
 	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
-    // vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
+
+	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
+		vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
+	}
+	vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
@@ -118,27 +128,56 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	}
 }
 
-void Model::setup() {}
+void Model::setup() {
+	bindingDescription = Vertex::getBindingDescription();
+	auto attrs = Vertex::getAttributeDescriptions();
+	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
+
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+}
+
+void Model::updateUniformBuffer() {}
 
 void Model::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
 
 void Model::createDescriptorSetLayout() {
-    VkDescriptorSetLayoutBinding uboLayoutBinding{};
-    uboLayoutBinding.binding = 0;
-    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    uboLayoutBinding.pImmutableSamplers = nullptr;
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
 
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &uboLayoutBinding;
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
 
-    if (vkCreateDescriptorSetLayout(Engine::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create descriptor set layout!");
-    }
+	if (vkCreateDescriptorSetLayout(Engine::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor set layout!");
+	}
 
-    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+}
+
+void Model::createUniformBuffers() {
+	VkDeviceSize bufferSize = sizeof(UBO);
+
+	uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+		vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+	}
 }

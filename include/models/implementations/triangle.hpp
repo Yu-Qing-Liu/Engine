@@ -12,7 +12,7 @@ class Triangle : public Model {
 	~Triangle();
 
 	void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f)) override;
-	void setup() override;
+	void updateUniformBuffer() override;
 
   private:
 	VkVertexInputBindingDescription bindingDescription;

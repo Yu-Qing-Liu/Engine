@@ -13,19 +13,16 @@ class Rectangle : public Model {
 	~Rectangle();
 
 	void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f)) override;
-	void setup() override;
+	void updateUniformBuffer() override;
 
   private:
-	VkVertexInputBindingDescription bindingDescription;
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
 
 	void createVertexBuffer();
-    void createIndexBuffer();
+	void createIndexBuffer();
 };

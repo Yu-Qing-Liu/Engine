@@ -12,4 +12,5 @@ class Default : public Scene {
 	~Default() = default;
 
 	void render() override;
+    void drawFrame() override;
 };

@@ -54,8 +54,8 @@ class Model {
 		}
 	};
 
-
-	virtual void setup();
+	void setup();
+	virtual void updateUniformBuffer();
 	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
@@ -65,6 +65,9 @@ class Model {
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
 
+	VkVertexInputBindingDescription bindingDescription;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
@@ -73,9 +76,15 @@ class Model {
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::vector<void *> uniformBuffersMapped;
+
+	UBO ubo{};
 
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 
   private:
 	void createDescriptorSetLayout();
+	void createUniformBuffers();
 };

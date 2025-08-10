@@ -6,8 +6,11 @@ Scenes::Scenes() {
 }
 
 void Scenes::render() {
-    /*
-     * Main render loop
-     * */
     scenes[DEFAULT]->render();
+}
+
+void Scenes::drawFrames() {
+    for(const auto &scene : scenes) {
+        scene.second->drawFrame();
+    }
 }
