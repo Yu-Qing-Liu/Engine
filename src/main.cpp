@@ -144,9 +144,6 @@ class Application {
 
 	void cleanup() {
 		cleanupSwapChain();
-
-		scenes.reset();
-
 		vkDestroyRenderPass(Engine::device, Engine::renderPass, nullptr);
 
 		// Destroy synchronization objects
@@ -160,12 +157,15 @@ class Application {
 		for (size_t i = 0; i < inFlightFences.size(); i++) {
 			vkDestroyFence(Engine::device, inFlightFences[i], nullptr);
 		}
+
 		// Optional: clear vectors if desired, though the Application object is being destroyed.
 		// imageAvailableSemaphores.clear();
 		// renderFinishedSemaphores.clear();
 		// inFlightFences.clear();
 
 		vkDestroyCommandPool(Engine::device, Engine::commandPool, nullptr);
+
+		scenes.reset();
 
 		vkDestroyDevice(Engine::device, nullptr);
 

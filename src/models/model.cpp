@@ -12,11 +12,14 @@ Model::Model(const std::string &shaderPath) {
 
 	shaderProgram = Engine::compileShaderProgram(shaderPath);
 
-    setup();
 	createDescriptorSetLayout();
+	createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
-	createUniformBuffers();
+
+    setup();
+	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
+	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
 }
 
 Model::~Model() {
@@ -38,14 +41,17 @@ Model::~Model() {
 	if (shaderProgram.vertexShader != VK_NULL_HANDLE) {
 		vkDestroyShaderModule(Engine::device, shaderProgram.vertexShader, nullptr);
 	}
-	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
 		vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
 	}
+
+    vkDestroyDescriptorPool(Engine::device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
+
+	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
@@ -100,7 +106,8 @@ void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreate
 	// Pipeline Layout
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
 	if (vkCreatePipelineLayout(Engine::device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
@@ -157,7 +164,6 @@ void Model::createDescriptorSetLayout() {
 	uboLayoutBinding.descriptorCount = 1;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = 1;

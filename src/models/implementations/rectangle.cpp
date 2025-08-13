@@ -7,10 +7,6 @@
 using namespace glm;
 
 Rectangle::Rectangle(const std::string &shaderPath) : Model(shaderPath) {
-	// Create pipeline stages
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
-	// Pipeline configuration
-	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
 	createVertexBuffer();
     createIndexBuffer();
 }
@@ -128,6 +124,8 @@ void Rectangle::draw(const vec3 &position, const quat &rotation, const vec3 &sca
 	VkDeviceSize offsets[] = {0};
 	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vertexBuffers, offsets);
     vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+    vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 }

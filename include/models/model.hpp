@@ -66,6 +66,8 @@ class Model {
 	VkPipeline graphicsPipeline;
 	VkDescriptorPool descriptorPool;
 
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
 	VkVertexInputBindingDescription bindingDescription;
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 	std::vector<VkDescriptorSet> descriptorSets;

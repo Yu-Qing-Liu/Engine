@@ -4,10 +4,6 @@
 #include <vulkan/vulkan_core.h>
 
 Triangle::Triangle(const std::string &shaderPath) : Model(shaderPath) {
-	// Create pipeline stages
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
-	// Pipeline configuration
-	createGraphicsPipeline(shaderStages, vertexInputInfo, inputAssembly);
 	createVertexBuffer();
 }
 
