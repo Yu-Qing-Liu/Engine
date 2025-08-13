@@ -68,6 +68,7 @@ void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &pr
     ubo.view = view;
     ubo.proj = proj;
     ubo.proj[1][1] *= -1;
+    memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
