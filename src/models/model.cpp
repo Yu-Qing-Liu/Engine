@@ -1,9 +1,10 @@
 #include "models/model.hpp"
 #include "engineutils.hpp"
+#include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(const std::string &shaderPath) {
+Model::Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : vertices(vertices), indices(indices) {
 	vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
@@ -16,6 +17,8 @@ Model::Model(const std::string &shaderPath) {
 	createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
+    createVertexBuffer();
+    createIndexBuffer();
 
     setup();
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
@@ -47,6 +50,12 @@ Model::~Model() {
 		vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
 	}
 
+	vkDestroyBuffer(Engine::device, vertexBuffer, nullptr);
+	vkFreeMemory(Engine::device, vertexBufferMemory, nullptr);
+
+	vkDestroyBuffer(Engine::device, indexBuffer, nullptr);
+	vkFreeMemory(Engine::device, indexBufferMemory, nullptr);
+
     vkDestroyDescriptorPool(Engine::device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
 
@@ -58,6 +67,7 @@ void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &pr
     ubo.model = model;
     ubo.view = view;
     ubo.proj = proj;
+    ubo.proj[1][1] *= -1;
 }
 
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
@@ -162,8 +172,6 @@ void Model::setup() {
 
 void Model::updateUniformBuffer() {}
 
-void Model::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {}
-
 void Model::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -178,6 +186,66 @@ void Model::createDescriptorSetLayout() {
 	if (vkCreateDescriptorSetLayout(Engine::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
+}
+
+void Model::createVertexBuffer() {
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+    Engine::createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory
+    );
+
+	void *data;
+	vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferSize);
+	vkUnmapMemory(Engine::device, stagingBufferMemory);
+
+    Engine::createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        vertexBuffer,
+        vertexBufferMemory
+    );
+
+    Engine::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+    vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
+    vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+}
+
+void Model::createIndexBuffer() {
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    Engine::createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        stagingBuffer,
+        stagingBufferMemory
+    );
+
+	void *data;
+	vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(Engine::device, stagingBufferMemory);
+
+    Engine::createBuffer(
+        bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        indexBuffer,
+        indexBufferMemory
+    );
+
+    Engine::copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+    vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
+    vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
 }
 
 void Model::createUniformBuffers() {
@@ -237,4 +305,31 @@ void Model::createDescriptorSets() {
         
         vkUpdateDescriptorSets(Engine::device, 1, &descriptorWrite, 0, nullptr);
     }
+}
+
+void Model::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {
+	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+	VkViewport viewport{};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)Engine::swapChainExtent.width;
+	viewport.height = (float)Engine::swapChainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &viewport);
+
+	VkRect2D scissor{};
+	scissor.offset = {0, 0};
+	scissor.extent = Engine::swapChainExtent;
+	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &scissor);
+
+	VkBuffer vertexBuffers[] = {vertexBuffer};
+	VkDeviceSize offsets[] = {0};
+	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+    vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
+
+	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 }

@@ -14,12 +14,10 @@ using namespace glm;
 
 class Model {
   public:
-	Model(const std::string &shaderPath);
 	Model(Model &&) = default;
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
 	Model &operator=(const Model &) = delete;
-	virtual ~Model();
 
 	struct UBO {
 		mat4 model;
@@ -57,11 +55,14 @@ class Model {
 		}
 	};
 
+	Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
+	virtual ~Model();
+
 	void setup();
 	void setUniformBuffer(const mat4 &model = mat4(1.0f), const mat4 &view = mat4(1.0f), const mat4 &proj = mat4(1.0f));
 
 	virtual void updateUniformBuffer();
-	virtual void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
+	void draw(const vec3 &position = vec3(0.0f, 0.0f, 0.0f), const quat &rotation = quat(), const vec3 &scale = vec3(1.0f, 1.0f, 1.0f), const vec3 &color = vec3(1.0f, 1.0f, 1.0f));
 
   protected:
 	Engine::ShaderModules shaderProgram;
@@ -94,11 +95,20 @@ class Model {
 
 	UBO ubo{};
 
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 
   private:
+	void createDescriptorSetLayout();
+	void createVertexBuffer();
+	void createIndexBuffer();
 	void createDescriptorPool();
 	void createDescriptorSets();
-	void createDescriptorSetLayout();
 	void createUniformBuffers();
 };
