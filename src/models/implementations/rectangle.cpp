@@ -27,7 +27,7 @@ void Rectangle::updateUniformBuffer() {
 
     setUniformBuffer(
         rotate(mat4(1.0f), time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)), 
-        lookAt(vec3(2.0f, 2.0f, 2.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)),
+        lookAt(vec3(0.0f, 0.1f, 3.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -2.0f)),
         perspective(radians(45.0f), Engine::swapChainExtent.width / (float) Engine::swapChainExtent.height, 0.1f, 10.0f)
     );
 }
