@@ -64,15 +64,20 @@ class Model {
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
+	VkDescriptorPool descriptorPool;
 
 	VkVertexInputBindingDescription bindingDescription;
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	std::vector<VkDescriptorSet> descriptorSets;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	VkDescriptorPoolSize poolSize{};
+	VkDescriptorPoolCreateInfo poolInfo{};
+	VkDescriptorSetAllocateInfo allocInfo{};
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
@@ -85,6 +90,8 @@ class Model {
 	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
 
   private:
+	void createDescriptorPool();
+	void createDescriptorSets();
 	void createDescriptorSetLayout();
 	void createUniformBuffers();
 };
