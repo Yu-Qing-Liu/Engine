@@ -14,9 +14,9 @@ Model::Model(const std::string &shaderPath) {
 
     setup();
 	createDescriptorSetLayout();
-	createUniformBuffers();
     createDescriptorPool();
     createDescriptorSets();
+	createUniformBuffers();
 }
 
 Model::~Model() {
@@ -208,5 +208,21 @@ void Model::createDescriptorSets() {
         throw std::runtime_error("failed to allocate descritor set");
     }
 
-    //TODO
+    for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UBO);
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        
+        vkUpdateDescriptorSets(Engine::device, 1, &descriptorWrite, 0, nullptr);
+    }
 }

@@ -63,7 +63,6 @@ class Application {
 	void run() {
 		initWindow();
 		initVulkan();
-		initializeScenes();
 		mainLoop();
 		cleanup();
 	}
@@ -90,8 +89,6 @@ class Application {
 	bool framebufferResized = false;
 
 	std::unique_ptr<Scenes> scenes;
-
-	void initializeScenes() { scenes = std::make_unique<Scenes>(); }
 
 	void initWindow() {
 		glfwInit();
@@ -121,6 +118,7 @@ class Application {
 		createCommandPool();
 		createCommandBuffers();
 		createSyncObjects();
+        scenes = std::make_unique<Scenes>();
 	}
 
 	void mainLoop() {
