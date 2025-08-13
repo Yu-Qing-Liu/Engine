@@ -54,6 +54,12 @@ Model::~Model() {
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 }
 
+void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj) {
+    ubo.model = model;
+    ubo.view = view;
+    ubo.proj = proj;
+}
+
 void Model::createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly) {
 	// Viewport and Scissor State (using dynamic states)
 	VkPipelineViewportStateCreateInfo viewportState{};
