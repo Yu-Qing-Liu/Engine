@@ -1,16 +1,15 @@
 #include "scenes.hpp"
 #include "default.hpp"
+#include "engine.hpp"
 
 Scenes::Scenes() {
-    scenes.emplace(DEFAULT, std::make_unique<Default>());
+    scenes.emplace(Engine::DEFAULT, std::make_unique<Default>());
 }
 
-void Scenes::render() {
-    scenes[DEFAULT]->renderPass();
+void Scenes::renderPass() {
+    scenes[Engine::currentScene]->renderPass();
 }
 
-void Scenes::drawFrames() {
-    for(const auto &scene : scenes) {
-        scene.second->drawFrame();
-    }
+void Scenes::drawFrame() {
+    scenes[Engine::currentScene]->drawFrame();
 }

@@ -538,7 +538,7 @@ class Application {
 
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		scenes->render();
+		scenes->renderPass();
 
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -590,7 +590,7 @@ class Application {
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
-        scenes->drawFrames();
+        scenes->drawFrame();
 
 		vkResetFences(Engine::device, 1, &inFlightFences[Engine::currentFrame]);
 

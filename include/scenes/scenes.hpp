@@ -12,13 +12,9 @@ class Scenes {
 	Scenes &operator=(const Scenes &) = delete;
 	~Scenes() = default;
 
-	enum SceneName {
-		DEFAULT,
-	};
-
-	void render();
-	void drawFrames();
+	void renderPass();
+	void drawFrame();
 
   private:
-	std::unordered_map<SceneName, std::unique_ptr<Scene>> scenes;
+	std::unordered_map<Engine::Scene, std::unique_ptr<Scene>> scenes;
 };

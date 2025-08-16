@@ -38,6 +38,12 @@ inline VkCommandPool commandPool;
 inline std::vector<VkCommandBuffer> commandBuffers;
 inline uint32_t currentFrame = 0;
 
+enum Scene {
+    DEFAULT,
+};
+
+inline Scene currentScene = DEFAULT;
+
 inline void createDirectory(const std::string &path) {
 	if (!exists(path)) {
 		try {
