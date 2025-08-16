@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scenes/scene.hpp"
+#include "scene.hpp"
 
 class Default : public Scene {
   public:
@@ -11,6 +11,6 @@ class Default : public Scene {
 	Default &operator=(const Default &) = delete;
 	~Default() = default;
 
-	void render() override;
+	void renderPass() override;
     void drawFrame() override;
 };

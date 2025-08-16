@@ -1,9 +1,9 @@
-#include "engineutils.hpp"
+#include "engine.hpp"
 #include <string>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "scenes/scenes.hpp"
+#include "scenes.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>

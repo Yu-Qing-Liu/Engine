@@ -1,5 +1,5 @@
-#include "models/implementations/triangle.hpp"
-#include "engineutils.hpp"
+#include "triangle.hpp"
+#include "engine.hpp"
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 

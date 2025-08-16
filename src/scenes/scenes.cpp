@@ -6,7 +6,7 @@ Scenes::Scenes() {
 }
 
 void Scenes::render() {
-    scenes[DEFAULT]->render();
+    scenes[DEFAULT]->renderPass();
 }
 
 void Scenes::drawFrames() {

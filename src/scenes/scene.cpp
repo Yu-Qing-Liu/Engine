@@ -8,5 +8,5 @@ Scene::Scene() {
 
 Scene::~Scene() {}
 
-void Scene::render() {}
+void Scene::renderPass() {}
 void Scene::drawFrame() {}

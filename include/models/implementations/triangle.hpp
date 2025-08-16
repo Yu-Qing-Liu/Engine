@@ -1,6 +1,6 @@
 #pragma once
 
-#include "models/model.hpp"
+#include "model.hpp"
 #include <vulkan/vulkan_core.h>
 
 class Triangle : public Model {

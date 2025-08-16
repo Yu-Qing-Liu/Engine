@@ -1,6 +1,6 @@
 #include "default.hpp"
 
-void Default::render() {
+void Default::renderPass() {
     models->models[Models::TRIANGLE]->draw();
     models->models[Models::RECTANGLE]->draw();
 }

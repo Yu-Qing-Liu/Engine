@@ -12,7 +12,7 @@ class Scene {
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene();
 
-	virtual void render();
+	virtual void renderPass();
 	virtual void drawFrame();
 
   protected:
