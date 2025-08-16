@@ -308,7 +308,7 @@ void Model::createDescriptorSets() {
     }
 }
 
-void Model::draw(const vec3 &position, const quat &rotation, const vec3 &scale, const vec3 &color) {
+void Model::draw() {
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	VkViewport viewport{};

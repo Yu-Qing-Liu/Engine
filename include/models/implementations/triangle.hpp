@@ -11,6 +11,4 @@ class Triangle : public Model {
 	Triangle &operator=(Triangle &&) = delete;
 	Triangle &operator=(const Triangle &) = delete;
 	~Triangle() = default;
-
-	void updateUniformBuffer() override;
 };
