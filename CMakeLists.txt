@@ -17,6 +17,7 @@ find_package(OpenSSL REQUIRED)
 
 include_directories(
   include
+  include/utils
   include/vulkan
   include/models
   include/models/implementations
