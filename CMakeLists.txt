@@ -25,12 +25,11 @@ include_directories(
   ${SHADERC_INCLUDE_DIRS}
 )
 
-file(GLOB UTILS ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp)
 file(GLOB MODELS ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)
 file(GLOB MODELS_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/src/models/implementations/*.cpp)
 file(GLOB SCENES ${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/*.cpp)
 file(GLOB SCENES_IMPL ${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/implementations/*.cpp)
-add_library(SOURCES ${UTILS} ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL})
+add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_executable(${PROJECT_NAME}
