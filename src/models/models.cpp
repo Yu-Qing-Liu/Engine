@@ -1,8 +1,10 @@
 #include "models.hpp"
+#include "image.hpp"
 #include "rectangle.hpp"
 #include "triangle.hpp"
 
 Models::Models() {
-    models.emplace(TRIANGLE, std::make_unique<Triangle>());
-    models.emplace(RECTANGLE, std::make_unique<Rectangle>());
+    shapes.emplace(TRIANGLE, std::make_unique<Triangle>());
+    shapes.emplace(RECTANGLE, std::make_unique<Rectangle>());
+    // textures.emplace(VK_LOGO, std::make_unique<Image>(Engine::textureRootPath + "/logos/vulkanlogo.png"));
 }

@@ -14,8 +14,10 @@ class Models {
 
 	enum ModelName {
 		TRIANGLE,
-        RECTANGLE,
+		RECTANGLE,
+		VK_LOGO,
 	};
 
-	std::unordered_map<ModelName, std::unique_ptr<Model>> models;
+	std::unordered_map<ModelName, std::unique_ptr<Model>> shapes;
+	std::unordered_map<ModelName, std::unique_ptr<Model>> textures;
 };

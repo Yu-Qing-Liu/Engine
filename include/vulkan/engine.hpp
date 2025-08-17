@@ -20,6 +20,7 @@ namespace Engine {
 inline const int MAX_FRAMES_IN_FLIGHT = 2;
 
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders";
+inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/src/textures";
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
 
 inline Compiler compiler;
@@ -62,6 +63,7 @@ inline void createDirectory(const std::string &path) {
 
 inline void initialize() {
 	createDirectory(shaderRootPath);
+    createDirectory(textureRootPath);
 	createDirectory(shaderCachePath);
 }
 
