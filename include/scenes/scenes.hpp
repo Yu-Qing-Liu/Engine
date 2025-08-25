@@ -1,7 +1,7 @@
 #pragma once
 
+#include "engine.hpp"
 #include "scene.hpp"
-#include <unordered_map>
 
 class Scenes {
   public:
@@ -16,5 +16,5 @@ class Scenes {
 	void drawFrame();
 
   private:
-	std::unordered_map<Engine::Scene, std::unique_ptr<Scene>> scenes;
+	std::unordered_map<Engine::SceneName, std::unique_ptr<Scene>> scenes;
 };

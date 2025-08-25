@@ -1,5 +1,8 @@
 #pragma once
 
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -23,6 +26,12 @@ inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shader
 inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/src/textures";
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
 
+inline VkDebugUtilsMessengerEXT debugMessenger;
+inline GLFWwindow *window;
+inline VkSurfaceKHR surface;
+
+inline VkInstance instance;
+
 inline Compiler compiler;
 inline CompileOptions options;
 
@@ -36,14 +45,27 @@ inline VkExtent2D swapChainExtent;
 
 inline VkCommandPool commandPool;
 
+inline VkFormat swapChainImageFormat;
+inline std::vector<VkImageView> swapChainImageViews;
+inline std::vector<VkImage> swapChainImages;
+
 inline std::vector<VkCommandBuffer> commandBuffers;
 inline uint32_t currentFrame = 0;
 
-enum Scene {
+inline VkQueue presentQueue;
+
+inline VkSwapchainKHR swapChain;
+inline std::vector<VkFramebuffer> swapChainFramebuffers;
+
+inline std::vector<VkSemaphore> imageAvailableSemaphores;
+inline std::vector<VkSemaphore> renderFinishedSemaphores;
+inline std::vector<VkFence> inFlightFences;
+
+enum SceneName {
 	DEFAULT,
 };
 
-inline Scene currentScene = DEFAULT;
+inline SceneName currentScene = DEFAULT;
 
 inline void createDirectory(const std::string &path) {
 	if (!exists(path)) {
@@ -407,6 +429,26 @@ inline void createImage(uint32_t width, uint32_t height, VkFormat format, VkImag
 	}
 
 	vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+inline VkImageView createImageView(VkImage image, VkFormat format) {
+	VkImageViewCreateInfo viewInfo{};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	VkImageView imageView;
+	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create image view!");
+	}
+
+	return imageView;
 }
 
 }; // namespace Engine

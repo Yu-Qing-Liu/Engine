@@ -46,6 +46,10 @@ void Image::createTextureImage() {
     transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
+void Image::createTextureImageView() {
+    textureImageView = Engine::createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+}
+
 void Image::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBuffer commandBuffer = Engine::beginSingleTimeCommands();
 
