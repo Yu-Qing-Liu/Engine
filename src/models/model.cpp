@@ -168,8 +168,6 @@ void Model::createGraphicsPipeline() {
 	}
 }
 
-void Model::updateUniformBuffer() {}
-
 void Model::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -318,7 +316,7 @@ void Model::createDescriptorSets() {
     }
 }
 
-void Model::draw() {
+void Model::render() {
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	VkViewport viewport{};
@@ -343,4 +341,10 @@ void Model::draw() {
     vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+}
+
+void Model::draw() {
+    if(onFrameUpdate) {
+        onFrameUpdate(*this);
+    }
 }

@@ -11,6 +11,4 @@ class Rectangle : public Model {
 	Rectangle &operator=(Rectangle &&) = delete;
 	Rectangle &operator=(const Rectangle &) = delete;
 	~Rectangle() = default;
-
-	void updateUniformBuffer() override;
 };

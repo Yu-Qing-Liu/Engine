@@ -5,6 +5,7 @@
 
 #include "engine.hpp"
 #include <array>
+#include <functional>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <string>
@@ -97,8 +98,11 @@ class Model {
 
 	void setUniformBuffer(const mat4 &model = mat4(1.0f), const mat4 &view = mat4(1.0f), const mat4 &proj = mat4(1.0f));
 
-	virtual void updateUniformBuffer();
-	void draw();
+	std::function<void(Model&)> onFrameUpdate;
+    void setOnFrameUpdate(std::function<void(Model&)> cb) { onFrameUpdate = cb; }
+
+	void render();
+    void draw();
 
   protected:
 	Engine::ShaderModules shaderProgram;
