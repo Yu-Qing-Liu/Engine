@@ -9,7 +9,7 @@ using namespace glm;
 Rectangle::Rectangle() :
 Model(
     Engine::shaderRootPath + "/rectangle", 
-    {
+    std::vector<Vertex> {
         {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
         {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
         {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
@@ -25,6 +25,7 @@ Model(
 	createDescriptorSets();
 	createVertexBuffer();
 	createIndexBuffer();
+    createBindingDescriptions();
 	createGraphicsPipeline();
 }
 

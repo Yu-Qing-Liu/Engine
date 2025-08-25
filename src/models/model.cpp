@@ -12,6 +12,14 @@ Model::Model(const std::string &shaderPath, const std::vector<Vertex> &vertices,
 	shaderProgram = Engine::compileShaderProgram(shaderPath);
 }
 
+Model::Model(const std::string &shaderPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices) : texVertices(vertices), indices(indices) {
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
+}
+
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
 		vkDestroyShaderModule(Engine::device, shaderProgram.computeShader, nullptr);
@@ -58,11 +66,13 @@ void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &pr
     memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
 }
 
-void Model::createGraphicsPipeline() {
-	bindingDescription = Vertex::getBindingDescription();
+void Model::createBindingDescriptions() {
+    bindingDescription = Vertex::getBindingDescription();
 	auto attrs = Vertex::getAttributeDescriptions();
 	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
+}
 
+void Model::createGraphicsPipeline() {
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
@@ -73,7 +83,7 @@ void Model::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
+    shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	// Viewport and Scissor State (using dynamic states)
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -177,7 +187,14 @@ void Model::createDescriptorSetLayout() {
 }
 
 void Model::createVertexBuffer() {
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+    VkDeviceSize bufferSize;
+    if (!vertices.empty()) {
+        bufferSize = sizeof(vertices[0]) * vertices.size();
+    } else if(!texVertices.empty()) {
+        bufferSize = sizeof(texVertices[0]) * texVertices.size();
+    } else {
+        throw std::runtime_error("No vertices specified for Vertex Buffer");
+    }
 
     Engine::createBuffer(
         bufferSize,
@@ -189,7 +206,13 @@ void Model::createVertexBuffer() {
 
 	void *data;
 	vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, vertices.data(), (size_t)bufferSize);
+    if (!vertices.empty()) {
+        memcpy(data, vertices.data(), (size_t)bufferSize);
+    } else if(!texVertices.empty()) {
+        memcpy(data, texVertices.data(), (size_t)bufferSize);
+    } else {
+        throw std::runtime_error("No vertices specified for Vertex Buffer");
+    }
 	vkUnmapMemory(Engine::device, stagingBufferMemory);
 
     Engine::createBuffer(

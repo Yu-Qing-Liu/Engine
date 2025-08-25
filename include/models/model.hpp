@@ -55,7 +55,44 @@ class Model {
 		}
 	};
 
+	struct TexVertex {
+		vec2 pos;
+		vec3 color;
+		glm::vec2 texCoord;
+
+		static VkVertexInputBindingDescription getBindingDescription() {
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(TexVertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(TexVertex, pos);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(TexVertex, color);
+
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(TexVertex, texCoord);
+
+			return attributeDescriptions;
+		}
+	};
+
 	Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
+	Model(const std::string &shaderPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices);
 	virtual ~Model();
 
 	void setUniformBuffer(const mat4 &model = mat4(1.0f), const mat4 &view = mat4(1.0f), const mat4 &proj = mat4(1.0f));
@@ -87,6 +124,7 @@ class Model {
 	VkDescriptorSetAllocateInfo allocInfo{};
 
 	std::vector<Vertex> vertices;
+	std::vector<TexVertex> texVertices;
 	std::vector<uint16_t> indices;
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
@@ -107,5 +145,6 @@ class Model {
 	virtual void createDescriptorSets();
 	virtual void createVertexBuffer();
 	virtual void createIndexBuffer();
+	virtual void createBindingDescriptions();
 	virtual void createGraphicsPipeline();
 };
