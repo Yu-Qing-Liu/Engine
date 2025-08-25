@@ -15,7 +15,7 @@ class Models {
 	enum ModelName {
 		TRIANGLE,
 		RECTANGLE,
-		LOGO,
+		IMAGE,
 	};
 
 	std::unordered_map<ModelName, std::unique_ptr<Model>> shapes;

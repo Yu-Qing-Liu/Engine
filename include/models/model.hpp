@@ -2,6 +2,7 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_TYPES
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include "engine.hpp"
 #include <array>
@@ -27,7 +28,7 @@ class Model {
 	};
 
 	struct Vertex {
-		vec2 pos;
+		vec3 pos;
 		vec3 color;
 
 		static VkVertexInputBindingDescription getBindingDescription() {
@@ -44,7 +45,7 @@ class Model {
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
 			attributeDescriptions[1].binding = 0;
@@ -57,7 +58,7 @@ class Model {
 	};
 
 	struct TexVertex {
-		vec2 pos;
+		vec3 pos;
 		vec3 color;
 		glm::vec2 texCoord;
 
@@ -75,7 +76,7 @@ class Model {
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[0].offset = offsetof(TexVertex, pos);
 
 			attributeDescriptions[1].binding = 0;

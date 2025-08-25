@@ -6,5 +6,5 @@
 Models::Models() {
     shapes.emplace(TRIANGLE, std::make_unique<Triangle>());
     shapes.emplace(RECTANGLE, std::make_unique<Rectangle>());
-    textures.emplace(LOGO, std::make_unique<Image>(Engine::textureRootPath + "/logos/logo.png"));
+    textures.emplace(IMAGE, std::make_unique<Image>(Engine::textureRootPath + "/example/example.png"));
 }
