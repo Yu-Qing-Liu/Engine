@@ -17,11 +17,14 @@ class Image : public Model {
   private:
 	VkImage textureImage;
 	VkImageView textureImageView;
+	VkSampler textureSampler;
+
 	VkDeviceMemory textureImageMemory;
 	VkImageCreateInfo imageInfo{};
 
 	void createTextureImage();
 	void createTextureImageView();
+	void createTextureSampler();
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);

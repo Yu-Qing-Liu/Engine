@@ -58,7 +58,6 @@ class Model {
 	Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
 	virtual ~Model();
 
-	void setup();
 	void setUniformBuffer(const mat4 &model = mat4(1.0f), const mat4 &view = mat4(1.0f), const mat4 &proj = mat4(1.0f));
 
 	virtual void updateUniformBuffer();
@@ -102,13 +101,11 @@ class Model {
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	void createGraphicsPipeline(const std::vector<VkPipelineShaderStageCreateInfo> &shaderStages, VkPipelineVertexInputStateCreateInfo vertexInputInfo, VkPipelineInputAssemblyStateCreateInfo inputAssembly);
-
-  private:
-	void createDescriptorSetLayout();
-	void createVertexBuffer();
-	void createIndexBuffer();
-	void createDescriptorPool();
-	void createDescriptorSets();
-	void createUniformBuffers();
+	virtual void createDescriptorSetLayout();
+	virtual void createUniformBuffers();
+	virtual void createDescriptorPool();
+	virtual void createDescriptorSets();
+	virtual void createVertexBuffer();
+	virtual void createIndexBuffer();
+	virtual void createGraphicsPipeline();
 };

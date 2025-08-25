@@ -18,7 +18,15 @@ Model(
     {
         0, 1, 2, 2, 3, 0
     }
-) {}
+) {
+	createDescriptorSetLayout();
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+	createVertexBuffer();
+	createIndexBuffer();
+	createGraphicsPipeline();
+}
 
 void Rectangle::updateUniformBuffer() {
     static auto startTime = std::chrono::high_resolution_clock::now();

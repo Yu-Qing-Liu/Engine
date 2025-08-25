@@ -16,4 +16,12 @@ Model(
     {
         0, 1, 2
     }
-) {}
+) {
+	createDescriptorSetLayout();
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+	createVertexBuffer();
+	createIndexBuffer();
+	createGraphicsPipeline();
+}
