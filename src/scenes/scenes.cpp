@@ -6,9 +6,5 @@ Scenes::Scenes() {
 }
 
 void Scenes::renderPass() {
-    scenes[Engine::currentScene]->renderPass();
-}
-
-void Scenes::drawFrame() {
     scenes[Engine::currentScene]->drawFrame();
 }
