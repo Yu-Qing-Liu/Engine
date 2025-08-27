@@ -1,20 +1,22 @@
 #pragma once
 
-#include "models.hpp"
-#include <vulkan/vulkan_core.h>
+#include <functional>
+#include <memory>
+#include <vector>
+using std::unique_ptr;
 
 class Scene {
   public:
-	Scene();
+	Scene() = default;
 	Scene(Scene &&) = default;
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;
-	virtual ~Scene();
+	virtual ~Scene() = default;
 
 	virtual void renderPass();
-	virtual void drawFrame();
+	void drawFrame();
 
   protected:
-	std::unique_ptr<Models> models;
+	std::vector<std::function<void()>> frameCallbacks;
 };

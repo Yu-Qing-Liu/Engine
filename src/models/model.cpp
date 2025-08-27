@@ -326,7 +326,10 @@ void Model::createDescriptorSets() {
     }
 }
 
-void Model::render() {
+void Model::render(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
+    if (model.has_value() && view.has_value() && proj.has_value()) {
+        setUniformBuffer(model.value(), view.value(), proj.value());
+    }
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	VkViewport viewport{};
@@ -351,10 +354,4 @@ void Model::render() {
     vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-}
-
-void Model::draw() {
-    if(onFrameUpdate) {
-        onFrameUpdate(*this);
-    }
 }

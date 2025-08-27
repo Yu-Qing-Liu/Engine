@@ -6,13 +6,14 @@
 
 #include "engine.hpp"
 #include <array>
-#include <functional>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <optional>
 #include <string>
 #include <vulkan/vulkan_core.h>
 
 using namespace glm;
+using std::optional;
 
 class Model {
   public:
@@ -97,13 +98,8 @@ class Model {
 	Model(const std::string &shaderPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices);
 	virtual ~Model();
 
-	void setUniformBuffer(const mat4 &model = mat4(1.0f), const mat4 &view = mat4(1.0f), const mat4 &proj = mat4(1.0f));
-
-	std::function<void(Model&)> onFrameUpdate;
-    void setOnFrameUpdate(std::function<void(Model&)> cb) { onFrameUpdate = cb; }
-
-	void render();
-    void draw();
+	void setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj);
+	void render(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 
   protected:
 	Engine::ShaderModules shaderProgram;
