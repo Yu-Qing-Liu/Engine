@@ -1,5 +1,6 @@
 # MISC
 cache/
+.gcroots/
 
 ##### Windows
 # Windows thumbnail cache files
