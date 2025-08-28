@@ -1,9 +1,18 @@
 #include "default.hpp"
 #include "image.hpp"
-#include "triangle.hpp"
+#include "polygon.hpp"
 
 Default::Default() {
-    this->triangle = std::make_unique<Triangle>();
+    this->triangle = make_unique<Polygon>(
+        std::vector<Model::Vertex> {
+            {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+            {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+            {{0.433f, -0.25f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+        },
+        std::vector<uint16_t> {
+            0, 1, 2
+        }
+    );
 
     this->example = make_unique<Image>(Engine::textureRootPath + "/example/example.png");
     frameCallbacks.emplace_back(

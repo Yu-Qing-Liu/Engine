@@ -14,6 +14,7 @@ find_package(Vulkan REQUIRED)
 find_package(glm REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(assimp REQUIRED)
 
 include_directories(
   include
@@ -43,4 +44,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   glfw
   OpenSSL::Crypto
   ${SHADERC_LIBRARIES}
+  assimp
 )

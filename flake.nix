@@ -46,6 +46,7 @@
             pkgs.glm
             pkgs.freetype
             pkgs.openssl
+            pkgs.assimp
           ];
 
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
@@ -54,16 +55,19 @@
             "${pkgs.freetype}/lib"
             "${pkgs.vulkan-loader}/lib"
             "${pkgs.vulkan-validation-layers}/lib"
+            "${pkgs.assimp.dev}/lib"
           ];
 
           PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
             pkgs.shaderc.dev
+            pkgs.assimp.dev
           ];
 
           VULKAN_SDK = "${pkgs.vulkan-headers}";
           VK_LAYER_PATH = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
           glm_DIR = "${pkgs.glm}";
           glfw3_DIR = "${pkgs.glfw}/lib/cmake/glfw3";
+          assimp_DIR = "${pkgs.assimp.dev}/lib/cmake/assimp-5.4";
         };
       });
 }
