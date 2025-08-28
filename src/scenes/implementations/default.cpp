@@ -1,5 +1,5 @@
 #include "default.hpp"
-#include "image.hpp"
+#include "texture.hpp"
 #include "polygon.hpp"
 
 Default::Default() {
@@ -14,7 +14,24 @@ Default::Default() {
         }
     );
 
-    this->example = make_unique<Image>(Engine::textureRootPath + "/example/example.png");
+    this->example = make_unique<Texture>(
+        Engine::textureRootPath + "/example/example.png", 
+        std::vector<Model::TexVertex> {
+            {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+            {{1.0f, -0.5f, 0.25f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+            {{1.0f, 0.5f, 0.25f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+            {{0.0f, 0.5f, 0.25f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+            {{-0.5f, -0.5f, -0.25f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+            {{0.5f, -0.5f, -0.25f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+            {{0.5f, 0.5f, -0.25f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+            {{-0.5f, 0.5f, -0.25f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+        },
+        std::vector<uint16_t> {
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4
+        }
+    );
     frameCallbacks.emplace_back(
         [this]() {
             static auto startTime = std::chrono::high_resolution_clock::now();

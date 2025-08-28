@@ -3,14 +3,14 @@
 #include "model.hpp"
 #include <vulkan/vulkan_core.h>
 
-class Image : public Model {
+class Texture : public Model {
   public:
-	Image(const std::string &texturePath);
-	Image(Image &&) = default;
-	Image(const Image &) = delete;
-	Image &operator=(Image &&) = delete;
-	Image &operator=(const Image &) = delete;
-	~Image() override;
+	Texture(const std::string &texturePath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices);
+	Texture(Texture &&) = default;
+	Texture(const Texture &) = delete;
+	Texture &operator=(Texture &&) = delete;
+	Texture &operator=(const Texture &) = delete;
+	~Texture() override;
 
 	const std::string texturePath;
 
