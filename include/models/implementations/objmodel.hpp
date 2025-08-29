@@ -1,39 +1,30 @@
 #pragma once
 
+#include "assimp/Importer.hpp"
+#include "assimp/scene.h"
 #include "model.hpp"
 #include <vulkan/vulkan_core.h>
 
-class OBJModel : public Model {
+using std::unique_ptr;
+
+class OBJModel {
   public:
-	OBJModel(const std::string &objPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices);
+	OBJModel(const string &objPath);
 	OBJModel(OBJModel &&) = default;
 	OBJModel(const OBJModel &) = delete;
 	OBJModel &operator=(OBJModel &&) = delete;
 	OBJModel &operator=(const OBJModel &) = delete;
-	~OBJModel() override;
+	~OBJModel() = default;
 
-	const std::string texturePath;
-	const std::string objPath;
+	const string objPath;
+	string directory;
+
+	void render(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 
   private:
-	VkImage textureImage;
-	VkImageView textureImageView;
-	VkSampler textureSampler;
-	VkDeviceMemory textureImageMemory;
+	vector<unique_ptr<Model>> meshes;
 
-	VkImageCreateInfo imageInfo{};
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-
-	void createTextureImage();
-	void createTextureImageView();
-	void createTextureSampler();
-
-	void createDescriptorSetLayout() override;
-	void createDescriptorPool() override;
-	void createDescriptorSets() override;
-	void createBindingDescriptions() override;
-
-	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	void loadModel();
+	void processNode(aiNode *node, const aiScene *scene);
+	unique_ptr<Model> processMesh(aiMesh *mesh, const aiScene *scene);
 };
-

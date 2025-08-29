@@ -3,9 +3,7 @@
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 
-using namespace glm;
-
-Polygon::Polygon(const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : Model(Engine::shaderRootPath + "/polygon", vertices, indices) {
+Polygon::Polygon(const vector<Vertex> &vertices, const vector<uint16_t> &indices) : Model(Engine::shaderRootPath + "/polygon", vertices, indices) {
 	createDescriptorSetLayout();
 	createUniformBuffers();
 	createDescriptorPool();

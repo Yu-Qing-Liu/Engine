@@ -14,6 +14,9 @@
 
 using namespace glm;
 using std::optional;
+using std::vector;
+using std::string;
+using std::array;
 
 class Model {
   public:
@@ -30,7 +33,7 @@ class Model {
 
 	struct Vertex {
 		vec3 pos;
-		vec3 color;
+		vec4 color;
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -41,8 +44,8 @@ class Model {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+		static array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+			array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -51,7 +54,7 @@ class Model {
 
 			attributeDescriptions[1].binding = 0;
 			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(Vertex, color);
 
 			return attributeDescriptions;
@@ -60,8 +63,8 @@ class Model {
 
 	struct TexVertex {
 		vec3 pos;
-		vec3 color;
-		glm::vec2 texCoord;
+		vec4 color;
+		vec2 texCoord;
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -72,8 +75,8 @@ class Model {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+		static array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -82,7 +85,7 @@ class Model {
 
 			attributeDescriptions[1].binding = 0;
 			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(TexVertex, color);
 
 			attributeDescriptions[2].binding = 0;
@@ -94,8 +97,8 @@ class Model {
 		}
 	};
 
-	Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
-	Model(const std::string &shaderPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices);
+	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
+	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	void setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj);
@@ -109,11 +112,11 @@ class Model {
 	VkPipeline graphicsPipeline;
 	VkDescriptorPool descriptorPool;
 
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+	vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
 	VkVertexInputBindingDescription bindingDescription;
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	std::vector<VkDescriptorSet> descriptorSets;
+	vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	vector<VkDescriptorSet> descriptorSets;
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -124,12 +127,12 @@ class Model {
 	VkDescriptorPoolCreateInfo poolInfo{};
 	VkDescriptorSetAllocateInfo allocInfo{};
 
-	std::vector<Vertex> vertices;
-	std::vector<TexVertex> texVertices;
-	std::vector<uint16_t> indices;
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-	std::vector<void *> uniformBuffersMapped;
+	vector<Vertex> vertices;
+	vector<TexVertex> texVertices;
+	vector<uint16_t> indices;
+	vector<VkBuffer> uniformBuffers;
+	vector<VkDeviceMemory> uniformBuffersMemory;
+	vector<void *> uniformBuffersMapped;
 
 	UBO ubo{};
 

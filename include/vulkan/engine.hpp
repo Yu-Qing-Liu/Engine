@@ -25,6 +25,7 @@ inline const int MAX_FRAMES_IN_FLIGHT = 2;
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/src/shaders";
 inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/src/textures";
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/src/shaders/cache";
+inline std::string modelRootPath = std::string(PROJECT_ROOT_DIR) + "/src/meshes";
 
 inline VkDebugUtilsMessengerEXT debugMessenger;
 inline GLFWwindow *window;

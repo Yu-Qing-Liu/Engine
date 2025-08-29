@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(const std::string &shaderPath, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : vertices(vertices), indices(indices) {
+Model::Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : vertices(vertices), indices(indices) {
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -12,7 +12,7 @@ Model::Model(const std::string &shaderPath, const std::vector<Vertex> &vertices,
 	shaderProgram = Engine::compileShaderProgram(shaderPath);
 }
 
-Model::Model(const std::string &shaderPath, const std::vector<TexVertex> &vertices, const std::vector<uint16_t> &indices) : texVertices(vertices), indices(indices) {
+Model::Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : texVertices(vertices), indices(indices) {
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -69,7 +69,7 @@ void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &pr
 void Model::createBindingDescriptions() {
     bindingDescription = Vertex::getBindingDescription();
 	auto attrs = Vertex::getAttributeDescriptions();
-	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
+	attributeDescriptions = vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
 void Model::createGraphicsPipeline() {
@@ -135,7 +135,7 @@ void Model::createGraphicsPipeline() {
 	colorBlending.blendConstants[3] = 0.0f;
 
 	// Dynamic States
-	std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 
 	VkPipelineDynamicStateCreateInfo dynamicState{};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -295,7 +295,7 @@ void Model::createDescriptorPool() {
 }
 
 void Model::createDescriptorSets() {
-    std::vector<VkDescriptorSetLayout> layouts(Engine::MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+    vector<VkDescriptorSetLayout> layouts(Engine::MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(Engine::MAX_FRAMES_IN_FLIGHT);

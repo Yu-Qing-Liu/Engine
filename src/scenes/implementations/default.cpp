@@ -1,13 +1,15 @@
 #include "default.hpp"
+#include "engine.hpp"
+#include "objmodel.hpp"
 #include "texture.hpp"
 #include "polygon.hpp"
 
 Default::Default() {
     this->triangle = make_unique<Polygon>(
         std::vector<Model::Vertex> {
-            {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-            {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-            {{0.433f, -0.25f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+            {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+            {{0.433f, -0.25f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
         },
         std::vector<uint16_t> {
             0, 1, 2
@@ -17,15 +19,15 @@ Default::Default() {
     this->example = make_unique<Texture>(
         Engine::textureRootPath + "/example/example.png", 
         std::vector<Model::TexVertex> {
-            {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-            {{1.0f, -0.5f, 0.25f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{1.0f, 0.5f, 0.25f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-            {{0.0f, 0.5f, 0.25f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+            {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+            {{1.0f, -0.5f, 0.25f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+            {{1.0f, 0.5f, 0.25f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+            {{0.0f, 0.5f, 0.25f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-            {{-0.5f, -0.5f, -0.25f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f, -0.25f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f, -0.25f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f, -0.25f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+            {{-0.5f, -0.5f, -0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+            {{0.5f, -0.5f, -0.25f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+            {{0.5f, 0.5f, -0.25f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+            {{-0.5f, 0.5f, -0.25f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
         },
         std::vector<uint16_t> {
             0, 1, 2, 2, 3, 0,
@@ -45,11 +47,18 @@ Default::Default() {
             );
         }
     );
+
+    this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
 }
 
 void Default::renderPass() {
-    example->render();
-    triangle->render(
+    // example->render();
+    // triangle->render(
+    //     mat4(1.0f),
+    //     lookAt(vec3(2.0f, 2.0f, 2.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)),
+    //     perspective(radians(45.0f), Engine::swapChainExtent.width / (float) Engine::swapChainExtent.height, 0.1f, 10.0f)
+    // );
+    this->room->render(
         mat4(1.0f),
         lookAt(vec3(2.0f, 2.0f, 2.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)),
         perspective(radians(45.0f), Engine::swapChainExtent.width / (float) Engine::swapChainExtent.height, 0.1f, 10.0f)
