@@ -24,6 +24,7 @@
             # C++ Tools
             pkgs.stdenv.cc
             pkgs.cmake
+            pkgs.pkg-config
             pkgs.gnumake
             pkgs.clang-tools
             pkgs.llvmPackages.openmp
