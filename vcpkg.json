@@ -1,0 +1,12 @@
+{
+  "dependencies": [
+    "vulkan",
+    "vulkan-sdk-components",
+    "vulkan-validationlayers",
+    "glfw3",
+    "assimp",
+    "shaderc",
+    "glm",
+    "openssl"
+  ]
+}
