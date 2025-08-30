@@ -7,6 +7,7 @@
     "assimp",
     "shaderc",
     "glm",
-    "openssl"
+    "openssl",
+    "freetype"
   ]
 }

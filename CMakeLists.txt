@@ -20,6 +20,7 @@ find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(assimp CONFIG REQUIRED)
+find_package(Freetype  CONFIG REQUIRED)
 
 file(GLOB MODELS       ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)
 file(GLOB MODELS_IMPL  ${CMAKE_CURRENT_SOURCE_DIR}/src/models/implementations/*.cpp)
@@ -50,6 +51,7 @@ if(WIN32)
         OpenSSL::Crypto
         assimp::assimp
         unofficial::shaderc::shaderc
+        Freetype::Freetype
     )
 else()
     target_include_directories(SOURCES PUBLIC
