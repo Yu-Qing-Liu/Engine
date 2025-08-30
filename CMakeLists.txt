@@ -18,7 +18,7 @@ endif()
 find_package(Vulkan REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
-find_package(OpenSSL CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 
 file(GLOB MODELS       ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)

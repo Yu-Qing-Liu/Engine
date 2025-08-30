@@ -79,7 +79,7 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
                 material->GetTexture(aiTextureType_BASE_COLOR, 0, &str) == AI_SUCCESS) {
 
                 const std::string texPath = directory + "/" + str.C_Str();
-                std::cout << texPath << std::endl;
+                // std::cout << texPath << std::endl;
 
                 // Embedded? path like "*0"
                 if (!texPath.empty() && texPath[0] == '*') {
