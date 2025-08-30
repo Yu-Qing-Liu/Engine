@@ -57,11 +57,13 @@
             "${pkgs.vulkan-loader}/lib"
             "${pkgs.vulkan-validation-layers}/lib"
             "${pkgs.assimp.dev}/lib"
+            "${pkgs.openssl.dev}/lib"
           ];
 
           PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
             pkgs.shaderc.dev
             pkgs.assimp.dev
+            pkgs.openssl.dev
           ];
 
           VULKAN_SDK = "${pkgs.vulkan-headers}";
