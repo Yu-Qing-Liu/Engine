@@ -6,6 +6,7 @@
 #include <vulkan/vulkan_core.h>
 
 using std::unique_ptr;
+using std::make_unique;
 
 class OBJModel {
   public:
@@ -19,7 +20,7 @@ class OBJModel {
 	const string objPath;
 	string directory;
 
-	void render(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void render(optional<Model::UBO> ubo = std::nullopt);
 
   private:
 	vector<unique_ptr<Model>> meshes;

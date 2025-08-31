@@ -137,9 +137,9 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
     }
 }
 
-void OBJModel::render(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
+void OBJModel::render(optional<Model::UBO> ubo) {
     for (const auto &m : meshes) {
-        m->render(model, view, proj);
+        m->render(ubo);
     }
 }
 

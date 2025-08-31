@@ -9,17 +9,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 if(WIN32)
-    find_package(unofficial-shaderc CONFIG REQUIRED)
+    find_package(unofficial-shaderc REQUIRED)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SHADERC REQUIRED shaderc)
+    pkg_check_modules(Freetype REQUIRED)
 endif()
 
 find_package(Vulkan REQUIRED)
-find_package(glm CONFIG REQUIRED)
+find_package(glm REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(assimp CONFIG REQUIRED)
+find_package(assimp REQUIRED)
+find_package(Freetype REQUIRED)
 
 file(GLOB MODELS       ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)
 file(GLOB MODELS_IMPL  ${CMAKE_CURRENT_SOURCE_DIR}/src/models/implementations/*.cpp)
@@ -32,44 +34,37 @@ add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 if(WIN32)
     target_include_directories(SOURCES PUBLIC
         ${VCPKG_INSTALLED_DIR}/x64-windows/include
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/include/utils
-        ${CMAKE_SOURCE_DIR}/include/vulkan
-        ${CMAKE_SOURCE_DIR}/include/models
-        ${CMAKE_SOURCE_DIR}/include/models/implementations
-        ${CMAKE_SOURCE_DIR}/include/scenes
-        ${CMAKE_SOURCE_DIR}/include/scenes/implementations
-        ${SHADERC_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        SOURCES
-        Vulkan::Vulkan
-        glm::glm-header-only
-        glfw
-        OpenSSL::Crypto
-        assimp::assimp
-        unofficial::shaderc::shaderc
-    )
-else()
-    target_include_directories(SOURCES PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/include/utils
-        ${CMAKE_SOURCE_DIR}/include/vulkan
-        ${CMAKE_SOURCE_DIR}/include/models
-        ${CMAKE_SOURCE_DIR}/include/models/implementations
-        ${CMAKE_SOURCE_DIR}/include/scenes
-        ${CMAKE_SOURCE_DIR}/include/scenes/implementations
-        ${SHADERC_INCLUDE_DIRS}
-    )
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        SOURCES
-        Vulkan::Vulkan
-        glm
-        glfw
-        OpenSSL::Crypto
-        ${SHADERC_LIBRARIES}
-        assimp
     )
 endif()
+
+target_include_directories(SOURCES PUBLIC
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/include/vulkan
+    ${CMAKE_SOURCE_DIR}/include/models
+    ${CMAKE_SOURCE_DIR}/include/models/implementations
+    ${CMAKE_SOURCE_DIR}/include/scenes
+    ${CMAKE_SOURCE_DIR}/include/scenes/implementations
+    ${SHADERC_INCLUDE_DIRS}
+)
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        unofficial::shaderc::shaderc
+        assimp::assimp
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        assimp
+        ${SHADERC_LIBRARIES}
+    )
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    SOURCES
+    Vulkan::Vulkan
+    glm::glm
+    glfw
+    OpenSSL::Crypto
+    Freetype::Freetype
+)
