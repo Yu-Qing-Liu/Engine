@@ -2,7 +2,6 @@
 #include "engine.hpp"
 #include <algorithm>
 #include <cstring>
-#include <freetype2/freetype/freetype.h>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
