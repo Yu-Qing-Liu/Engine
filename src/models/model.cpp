@@ -4,17 +4,11 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(const string &shaderPath) {
-    compileShader(shaderPath);
-}
+Model::Model(const string &shaderPath) : shaderPath(shaderPath) {}
 
-Model::Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : vertices(vertices), indices(indices) {
-    compileShader(shaderPath);
-}
+Model::Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : shaderPath(shaderPath), vertices(vertices), indices(indices) {}
 
-Model::Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : texVertices(vertices), indices(indices) {
-    compileShader(shaderPath);
-}
+Model::Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : shaderPath(shaderPath), texVertices(vertices), indices(indices) {}
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
@@ -54,12 +48,6 @@ Model::~Model() {
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 }
 
-void Model::compileShader(const string &shaderPath) {
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
-}
-
 void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj) {
     ubo.model = model;
     ubo.view = view;
@@ -85,6 +73,7 @@ void Model::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
     shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	// Viewport and Scissor State (using dynamic states)

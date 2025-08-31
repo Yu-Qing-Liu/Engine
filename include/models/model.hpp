@@ -106,6 +106,7 @@ class Model {
 	void render(optional<UBO> ubo = std::nullopt);
 
   protected:
+	string shaderPath;
 	Engine::ShaderModules shaderProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout;

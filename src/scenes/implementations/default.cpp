@@ -51,13 +51,13 @@ Default::Default() {
 
     this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
 
-    // Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
-    // this->text = make_unique<Text>(tp);
+    Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
+    this->text = make_unique<Text>(tp);
 }
 
 void Default::renderPass() {
-    // example->render();
-    // triangle->render(ubo);
-    room->render(ubo);
-    // text->renderText(ubo, "Hello World", {0.0f, 0.0f, 0.0f}, 1.0f, {1, 1, 0, 1});
+    example->render();
+    triangle->render(persp);
+    room->render(persp);
+    text->renderText(orthographic, "Hello World", {0.0f, 0.0f, 0.0f}, 1.0f, {1, 1, 0, 1});
 }

@@ -4,6 +4,7 @@
 #include <cstring>
 #include <freetype2/freetype/freetype.h>
 #include <stdexcept>
+#include <vulkan/vulkan_core.h>
 
 Text::Text(const TextParams &textParams) : textParams(textParams), Model(Engine::shaderRootPath + "/text") {
 	if (FT_Init_FreeType(&ft)) {
@@ -36,6 +37,18 @@ Text::~Text() {
 	if (atlasSampler) {
 		vkDestroySampler(Engine::device, atlasSampler, nullptr);
 	}
+
+	for (uint32_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
+		if (frameVB[i])
+			vkDestroyBuffer(Engine::device, frameVB[i], nullptr);
+		if (frameVBMem[i])
+			vkFreeMemory(Engine::device, frameVBMem[i], nullptr);
+		if (frameIB[i])
+			vkDestroyBuffer(Engine::device, frameIB[i], nullptr);
+		if (frameIBMem[i])
+			vkFreeMemory(Engine::device, frameIBMem[i], nullptr);
+	}
+
 	if (face) {
 		FT_Done_Face(face);
 	}
@@ -70,13 +83,28 @@ void Text::bake() {
 
 	std::vector<RawGlyph> raws;
 	raws.reserve(cps.size());
+
+    // FT_Matrix flipY;
+    // flipY.xx = 0x10000;  //  1.0
+    // flipY.xy = 0;
+    // flipY.yx = 0;
+    // flipY.yy = -0x10000; // -1.0
+
+    // FT_Vector shift;
+    // shift.x = 0;
+    // shift.y = face->size->metrics.ascender;
+
+    // FT_Set_Transform(face, &flipY, &shift);
+
 	for (uint32_t cp : cps) {
-		if (FT_Load_Char(face, cp, FT_LOAD_RENDER))
+		if (FT_Load_Char(face, cp, FT_LOAD_RENDER)) {
 			continue; // skip if missing
+        }
 		FT_GlyphSlot g = face->glyph;
 		if (g->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
-			if (FT_Load_Char(face, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL))
+			if (FT_Load_Char(face, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL)) {
 				continue;
+            }
 		}
 		RawGlyph rg{};
 		rg.cp = cp;
@@ -94,8 +122,9 @@ void Text::bake() {
 		}
 		raws.push_back(std::move(rg));
 	}
-	if (raws.empty())
+	if (raws.empty()) {
 		throw std::runtime_error("Text: no glyphs baked");
+    }
 
 	// Shelf pack (height-sorted)
 	const uint32_t pad = std::max<uint32_t>(1, textParams.padding);
@@ -233,8 +262,9 @@ void Text::buildGeometryUTF8(const std::string &utf8, const glm::vec3 &origin, f
 		x += kerning(prev, uint32_t(cp)) * scale;
 		float w = g.size.x * scale, h = g.size.y * scale;
 		float x0 = x + g.bearing.x * scale;
+		float x1 = x0 + w;
 		float y0 = y - g.bearing.y * scale;
-		float x1 = x0 + w, y1 = y0 + h;
+        float y1 = y0 + h;
 		uint32_t base = uint32_t(outVerts.size());
 		outVerts.push_back({{x0, y0, z}, {g.uvMin.x, g.uvMin.y}});
 		outVerts.push_back({{x1, y0, z}, {g.uvMax.x, g.uvMin.y}});
@@ -259,6 +289,10 @@ float Text::measureUTF8(const std::string &s, float scale) const {
 		prev = uint32_t(cp);
 	}
 	return x * scale;
+}
+
+float Text::getPixelHeight() {
+    return float(textParams.pixelHeight);
 }
 
 void Text::createDescriptorSetLayout() {
@@ -350,7 +384,7 @@ void Text::createGraphicsPipeline() {
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(Engine::shaderRootPath + std::string("/text"));
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -359,7 +393,7 @@ void Text::createGraphicsPipeline() {
 
 	VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
 	rs.polygonMode = VK_POLYGON_MODE_FILL;
-	rs.cullMode = VK_CULL_MODE_BACK_BIT;
+	rs.cullMode = VK_CULL_MODE_NONE;
 	rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rs.lineWidth = 1.0f;
 
@@ -398,8 +432,9 @@ void Text::createGraphicsPipeline() {
 	pl.pSetLayouts = &descriptorSetLayout;
 	pl.pushConstantRangeCount = 1;
 	pl.pPushConstantRanges = &pc;
-	if (vkCreatePipelineLayout(Engine::device, &pl, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(Engine::device, &pl, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("Text: pipeline layout failed");
+	}
 
 	VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
 	gp.stageCount = static_cast<uint32_t>(shaderStages.size());
@@ -417,7 +452,7 @@ void Text::createGraphicsPipeline() {
 	gp.subpass = 0;
 	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &gp, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("Text: create pipeline failed");
-    }
+	}
 }
 
 // ---------- Draw one string ----------
@@ -430,50 +465,86 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const glm::vec3 &
 		return;
     }
 
-	// Upload vertex/index (simple path: recreate per call; optimize later with a persistent ring buffer)
-	// Vertex
+	const uint32_t fi = Engine::currentFrame; // slot for this in-flight frame
 	VkDeviceSize vSize = sizeof(verts[0]) * verts.size();
-	Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	void *mapped = nullptr;
-	vkMapMemory(Engine::device, stagingBufferMemory, 0, vSize, 0, &mapped);
-	std::memcpy(mapped, verts.data(), size_t(vSize));
-	vkUnmapMemory(Engine::device, stagingBufferMemory);
-	Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-	Engine::copyBuffer(stagingBuffer, vertexBuffer, vSize);
-	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
-
-	// Index
 	VkDeviceSize iSize = sizeof(idx[0]) * idx.size();
-	Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	vkMapMemory(Engine::device, stagingBufferMemory, 0, iSize, 0, &mapped);
-	std::memcpy(mapped, idx.data(), size_t(iSize));
-	vkUnmapMemory(Engine::device, stagingBufferMemory);
-	Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-	Engine::copyBuffer(stagingBuffer, indexBuffer, iSize);
-	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
 
-	// Update UBO
+	// --- (Re)create VB for this frame if needed ---
+	if (frameVB[fi] == VK_NULL_HANDLE || frameVBSize[fi] < vSize) {
+		// safe to destroy: fence for this frame should have already been waited on by the app
+		if (frameVB[fi]) {
+			vkDestroyBuffer(Engine::device, frameVB[fi], nullptr), frameVB[fi] = VK_NULL_HANDLE;
+        }
+		if (frameVBMem[fi]) {
+			vkFreeMemory(Engine::device, frameVBMem[fi], nullptr), frameVBMem[fi] = VK_NULL_HANDLE;
+        }
+		Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameVB[fi], frameVBMem[fi]);
+		frameVBSize[fi] = vSize;
+	}
+
+	// --- (Re)create IB for this frame if needed ---
+	if (frameIB[fi] == VK_NULL_HANDLE || frameIBSize[fi] < iSize) {
+		if (frameIB[fi]) {
+			vkDestroyBuffer(Engine::device, frameIB[fi], nullptr), frameIB[fi] = VK_NULL_HANDLE;
+        }
+		if (frameIBMem[fi]) {
+			vkFreeMemory(Engine::device, frameIBMem[fi], nullptr), frameIBMem[fi] = VK_NULL_HANDLE;
+        }
+		Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameIB[fi], frameIBMem[fi]);
+		frameIBSize[fi] = iSize;
+	}
+
+	// --- Upload via staging each frame (safe: Engine::endSingleTimeCommands waits queue idle) ---
+	{
+		VkBuffer staging;
+		VkDeviceMemory stagingMem;
+		Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging, stagingMem);
+
+		void *mapped = nullptr;
+		vkMapMemory(Engine::device, stagingMem, 0, vSize, 0, &mapped);
+		std::memcpy(mapped, verts.data(), size_t(vSize));
+		vkUnmapMemory(Engine::device, stagingMem);
+
+		Engine::copyBuffer(staging, frameVB[fi], vSize);
+		vkDestroyBuffer(Engine::device, staging, nullptr);
+		vkFreeMemory(Engine::device, stagingMem, nullptr);
+	}
+	{
+		VkBuffer staging;
+		VkDeviceMemory stagingMem;
+		Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging, stagingMem);
+
+		void *mapped = nullptr;
+		vkMapMemory(Engine::device, stagingMem, 0, iSize, 0, &mapped);
+		std::memcpy(mapped, idx.data(), size_t(iSize));
+		vkUnmapMemory(Engine::device, stagingMem);
+
+		Engine::copyBuffer(staging, frameIB[fi], iSize);
+		vkDestroyBuffer(Engine::device, staging, nullptr);
+		vkFreeMemory(Engine::device, stagingMem, nullptr);
+	}
+
+	// Update UBO & draw
 	setUniformBuffer(ubo.model, ubo.view, ubo.proj);
 
-	// Record draw
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
 	VkViewport vp{0.0f, 0.0f, (float)Engine::swapChainExtent.width, (float)Engine::swapChainExtent.height, 0.0f, 1.0f};
 	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &vp);
+
 	VkRect2D sc{};
 	sc.offset = {0, 0};
 	sc.extent = Engine::swapChainExtent;
 	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &sc);
 
-	VkBuffer vbs[]{vertexBuffer};
+	VkBuffer vbs[]{frameVB[fi]};
 	VkDeviceSize offs[]{0};
 	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vbs, offs);
-	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), frameIB[fi], 0, VK_INDEX_TYPE_UINT32);
 
-	// Push constant for color
 	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &color);
 
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
+
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }

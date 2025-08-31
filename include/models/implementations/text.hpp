@@ -51,6 +51,7 @@ class Text : public Model {
 
 	void renderText(const UBO &ubo, const std::string &utf8, const vec3 &origin, float scale = 1.0f, const vec4 &color = glm::vec4(1, 1, 1, 1));
 	float measureUTF8(const std::string &utf8, float scale = 1.0f) const;
+	float getPixelHeight();
 
   private:
 	struct RawGlyph {
@@ -74,6 +75,14 @@ class Text : public Model {
 	uint32_t atlasW = 0, atlasH = 0;
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+
+	std::array<VkBuffer, Engine::MAX_FRAMES_IN_FLIGHT> frameVB{};
+	std::array<VkDeviceMemory, Engine::MAX_FRAMES_IN_FLIGHT> frameVBMem{};
+	std::array<VkDeviceSize, Engine::MAX_FRAMES_IN_FLIGHT> frameVBSize{};
+
+	std::array<VkBuffer, Engine::MAX_FRAMES_IN_FLIGHT> frameIB{};
+	std::array<VkDeviceMemory, Engine::MAX_FRAMES_IN_FLIGHT> frameIBMem{};
+	std::array<VkDeviceSize, Engine::MAX_FRAMES_IN_FLIGHT> frameIBSize{};
 
 	std::unordered_map<uint32_t, GlyphMeta> glyphs;
 
