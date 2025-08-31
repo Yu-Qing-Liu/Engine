@@ -13,10 +13,10 @@
 #include <vulkan/vulkan_core.h>
 
 using namespace glm;
-using std::optional;
-using std::vector;
-using std::string;
 using std::array;
+using std::optional;
+using std::string;
+using std::vector;
 
 class Model {
   public:
@@ -97,12 +97,13 @@ class Model {
 		}
 	};
 
+	Model(const string &shaderPath);
 	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
 	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	void setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj);
-	void render(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void render(optional<UBO> ubo = std::nullopt);
 
   protected:
 	Engine::ShaderModules shaderProgram;
@@ -151,4 +152,7 @@ class Model {
 	virtual void createIndexBuffer();
 	virtual void createBindingDescriptions();
 	virtual void createGraphicsPipeline();
+
+  private:
+	void compileShader(const string &shaderPath);
 };

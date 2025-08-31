@@ -4,20 +4,16 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
+Model::Model(const string &shaderPath) {
+    compileShader(shaderPath);
+}
+
 Model::Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : vertices(vertices), indices(indices) {
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+    compileShader(shaderPath);
 }
 
 Model::Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : texVertices(vertices), indices(indices) {
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+    compileShader(shaderPath);
 }
 
 Model::~Model() {
@@ -56,6 +52,12 @@ Model::~Model() {
 
 	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
+}
+
+void Model::compileShader(const string &shaderPath) {
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
 }
 
 void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj) {
@@ -326,9 +328,9 @@ void Model::createDescriptorSets() {
     }
 }
 
-void Model::render(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
-    if (model.has_value() && view.has_value() && proj.has_value()) {
-        setUniformBuffer(model.value(), view.value(), proj.value());
+void Model::render(optional<UBO> ubo) {
+    if (ubo.has_value()) {
+        setUniformBuffer(ubo.value().model, ubo.value().view, ubo.value().proj);
     }
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
