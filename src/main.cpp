@@ -151,6 +151,7 @@ class Application {
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			Pipeline::recreateSwapChain();
+            scenes->swapChainUpdate();
 			return;
 		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("failed to acquire swap chain image!");
@@ -201,6 +202,7 @@ class Application {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 			framebufferResized = false;
 			Pipeline::recreateSwapChain();
+            scenes->swapChainUpdate();
 		} else if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image!");
 		}

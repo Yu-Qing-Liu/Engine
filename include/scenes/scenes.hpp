@@ -13,6 +13,7 @@ class Scenes {
 	~Scenes() = default;
 
 	void renderPass();
+	void swapChainUpdate();
 
   private:
 	std::unordered_map<Engine::SceneName, std::unique_ptr<Scene>> scenes;

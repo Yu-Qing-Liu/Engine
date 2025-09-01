@@ -1,8 +1,6 @@
 #pragma once
 
-#include <functional>
 #include <memory>
-#include <vector>
 using std::unique_ptr;
 
 class Scene {
@@ -15,8 +13,5 @@ class Scene {
 	virtual ~Scene() = default;
 
 	virtual void renderPass();
-	void drawFrame();
-
-  protected:
-	std::vector<std::function<void()>> frameCallbacks;
+	virtual void swapChainUpdate();
 };

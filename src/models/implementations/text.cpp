@@ -83,27 +83,27 @@ void Text::bake() {
 	std::vector<RawGlyph> raws;
 	raws.reserve(cps.size());
 
-    // FT_Matrix flipY;
-    // flipY.xx = 0x10000;  //  1.0
-    // flipY.xy = 0;
-    // flipY.yx = 0;
-    // flipY.yy = -0x10000; // -1.0
+	// FT_Matrix flipY;
+	// flipY.xx = 0x10000;  //  1.0
+	// flipY.xy = 0;
+	// flipY.yx = 0;
+	// flipY.yy = -0x10000; // -1.0
 
-    // FT_Vector shift;
-    // shift.x = 0;
-    // shift.y = face->size->metrics.ascender;
+	// FT_Vector shift;
+	// shift.x = 0;
+	// shift.y = face->size->metrics.ascender;
 
-    // FT_Set_Transform(face, &flipY, &shift);
+	// FT_Set_Transform(face, &flipY, &shift);
 
 	for (uint32_t cp : cps) {
 		if (FT_Load_Char(face, cp, FT_LOAD_RENDER)) {
 			continue; // skip if missing
-        }
+		}
 		FT_GlyphSlot g = face->glyph;
 		if (g->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY) {
 			if (FT_Load_Char(face, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL)) {
 				continue;
-            }
+			}
 		}
 		RawGlyph rg{};
 		rg.cp = cp;
@@ -123,7 +123,7 @@ void Text::bake() {
 	}
 	if (raws.empty()) {
 		throw std::runtime_error("Text: no glyphs baked");
-    }
+	}
 
 	// Shelf pack (height-sorted)
 	const uint32_t pad = std::max<uint32_t>(1, textParams.padding);
@@ -263,7 +263,7 @@ void Text::buildGeometryUTF8(const std::string &utf8, const glm::vec3 &origin, f
 		float x0 = x + g.bearing.x * scale;
 		float x1 = x0 + w;
 		float y0 = y - g.bearing.y * scale;
-        float y1 = y0 + h;
+		float y1 = y0 + h;
 		uint32_t base = uint32_t(outVerts.size());
 		outVerts.push_back({{x0, y0, z}, {g.uvMin.x, g.uvMin.y}});
 		outVerts.push_back({{x1, y0, z}, {g.uvMax.x, g.uvMin.y}});
@@ -290,9 +290,7 @@ float Text::measureUTF8(const std::string &s, float scale) const {
 	return x * scale;
 }
 
-float Text::getPixelHeight() {
-    return float(textParams.pixelHeight);
-}
+float Text::getPixelHeight() { return float(textParams.pixelHeight); }
 
 void Text::createDescriptorSetLayout() {
 	// binding 0: UBO (MVP); binding 1: atlas
@@ -455,14 +453,14 @@ void Text::createGraphicsPipeline() {
 }
 
 // ---------- Draw one string ----------
-void Text::renderText(const UBO &ubo, const std::string &utf8, const glm::vec3 &origin, float scale, const glm::vec4 &color) {
+void Text::renderText(const UBO &ubo, const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
 	// Build CPU geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
 	buildGeometryUTF8(utf8, origin, scale, verts, idx);
 	if (idx.empty()) {
 		return;
-    }
+	}
 
 	const uint32_t fi = Engine::currentFrame; // slot for this in-flight frame
 	VkDeviceSize vSize = sizeof(verts[0]) * verts.size();
@@ -473,10 +471,10 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const glm::vec3 &
 		// safe to destroy: fence for this frame should have already been waited on by the app
 		if (frameVB[fi]) {
 			vkDestroyBuffer(Engine::device, frameVB[fi], nullptr), frameVB[fi] = VK_NULL_HANDLE;
-        }
+		}
 		if (frameVBMem[fi]) {
 			vkFreeMemory(Engine::device, frameVBMem[fi], nullptr), frameVBMem[fi] = VK_NULL_HANDLE;
-        }
+		}
 		Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameVB[fi], frameVBMem[fi]);
 		frameVBSize[fi] = vSize;
 	}
@@ -485,10 +483,10 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const glm::vec3 &
 	if (frameIB[fi] == VK_NULL_HANDLE || frameIBSize[fi] < iSize) {
 		if (frameIB[fi]) {
 			vkDestroyBuffer(Engine::device, frameIB[fi], nullptr), frameIB[fi] = VK_NULL_HANDLE;
-        }
+		}
 		if (frameIBMem[fi]) {
 			vkFreeMemory(Engine::device, frameIBMem[fi], nullptr), frameIBMem[fi] = VK_NULL_HANDLE;
-        }
+		}
 		Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameIB[fi], frameIBMem[fi]);
 		frameIBSize[fi] = iSize;
 	}
@@ -546,4 +544,8 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const glm::vec3 &
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
+}
+
+void Text::renderText(const UBO &ubo, const std::string &utf8, float scale, const vec4 &color) {
+    renderText(ubo, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color);
 }

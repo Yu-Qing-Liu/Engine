@@ -16,6 +16,7 @@ class Default : public Scene {
 	~Default() = default;
 
 	void renderPass() override;
+    void swapChainUpdate() override;
 
   private:
     Model::UBO persp {

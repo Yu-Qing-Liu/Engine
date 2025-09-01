@@ -13,7 +13,6 @@ if(WIN32)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SHADERC REQUIRED shaderc)
-    pkg_check_modules(Freetype REQUIRED)
 endif()
 
 find_package(Vulkan REQUIRED)
