@@ -31,6 +31,11 @@ class Model {
 		mat4 proj;
 	};
 
+    struct ScreenParams {
+        VkViewport viewport{};
+        VkRect2D scissor{};
+    };
+
 	struct Vertex {
 		vec3 pos;
 		vec4 color;
@@ -97,15 +102,18 @@ class Model {
 		}
 	};
 
+
 	Model(const string &shaderPath);
 	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
 	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	virtual ~Model();
 
-	void setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj);
-	void render(optional<UBO> ubo = std::nullopt);
+    void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void render(const UBO &ubo, const ScreenParams &screenParams);
 
   protected:
+	optional<UBO> ubo = std::nullopt;
+
 	string shaderPath;
 	Engine::ShaderModules shaderProgram;
 
@@ -136,8 +144,6 @@ class Model {
 	vector<VkDeviceMemory> uniformBuffersMemory;
 	vector<void *> uniformBuffersMapped;
 
-	UBO ubo{};
-
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
 	VkBuffer vertexBuffer;
@@ -154,6 +160,5 @@ class Model {
 	virtual void createBindingDescriptions();
 	virtual void createGraphicsPipeline();
 
-  private:
-	void compileShader(const string &shaderPath);
+	void setUniformBuffer();
 };

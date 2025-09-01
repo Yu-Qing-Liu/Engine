@@ -48,12 +48,24 @@ Model::~Model() {
 	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 }
 
-void Model::setUniformBuffer(const mat4 &model, const mat4 &view, const mat4 &proj) {
-    ubo.model = model;
-    ubo.view = view;
-    ubo.proj = proj;
-    ubo.proj[1][1] *= -1;
-    memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+void Model::setUniformBuffer() {
+    memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo.value(), sizeof(ubo.value()));
+}
+
+void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
+    if (!ubo.has_value()) {
+        return;
+    }
+    if (model.has_value()) {
+        ubo->model = model.value();
+    }
+    if (view.has_value()) {
+        ubo->view = view.value();
+    }
+    if (proj.has_value()) {
+        ubo->proj = proj.value();
+        ubo.value().proj[1][1] *= -1;
+    }
 }
 
 void Model::createBindingDescriptions() {
@@ -317,25 +329,19 @@ void Model::createDescriptorSets() {
     }
 }
 
-void Model::render(optional<UBO> ubo) {
-    if (ubo.has_value()) {
-        setUniformBuffer(ubo.value().model, ubo.value().view, ubo.value().proj);
+void Model::render(const UBO &ubo, const ScreenParams &screenParams) {
+    if (!this->ubo.has_value()) {
+        this->ubo = ubo;
+        this->ubo.value().proj[1][1] *= -1;
     }
+
+    setUniformBuffer();
+
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-	VkViewport viewport{};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = (float)Engine::swapChainExtent.width;
-	viewport.height = (float)Engine::swapChainExtent.height;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &viewport);
+	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
 
-	VkRect2D scissor{};
-	scissor.offset = {0, 0};
-	scissor.extent = Engine::swapChainExtent;
-	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &scissor);
+	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &screenParams.scissor);
 
 	VkBuffer vertexBuffers[] = {vertexBuffer};
 	VkDeviceSize offsets[] = {0};

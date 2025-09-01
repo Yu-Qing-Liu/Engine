@@ -453,7 +453,7 @@ void Text::createGraphicsPipeline() {
 }
 
 // ---------- Draw one string ----------
-void Text::renderText(const UBO &ubo, const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
+void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
 	// Build CPU geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
@@ -522,17 +522,20 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const vec3 &origi
 	}
 
 	// Update UBO & draw
-	setUniformBuffer(ubo.model, ubo.view, ubo.proj);
+    if (!this->ubo.has_value()) {
+        this->ubo = ubo;
+        this->ubo.value().proj[1][1] *= -1;
+    }
+	setUniformBuffer();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-	VkViewport vp{0.0f, 0.0f, (float)Engine::swapChainExtent.width, (float)Engine::swapChainExtent.height, 0.0f, 1.0f};
-	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &vp);
+	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
 
 	VkRect2D sc{};
 	sc.offset = {0, 0};
 	sc.extent = Engine::swapChainExtent;
-	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &sc);
+	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &screenParams.scissor);
 
 	VkBuffer vbs[]{frameVB[fi]};
 	VkDeviceSize offs[]{0};
@@ -546,6 +549,6 @@ void Text::renderText(const UBO &ubo, const std::string &utf8, const vec3 &origi
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }
 
-void Text::renderText(const UBO &ubo, const std::string &utf8, float scale, const vec4 &color) {
-    renderText(ubo, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color);
+void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, float scale, const vec4 &color) {
+    renderText(ubo, screenParams, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color);
 }

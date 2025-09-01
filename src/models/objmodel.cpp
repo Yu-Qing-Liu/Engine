@@ -7,6 +7,21 @@ OBJModel::OBJModel(const std::string &objPath) : objPath(objPath) {
     loadModel();
 }
 
+void OBJModel::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
+    if (!ubo.has_value()) {
+        return;
+    }
+    if (model.has_value()) {
+        ubo->model = model.value();
+    }
+    if (view.has_value()) {
+        ubo->view = view.value();
+    }
+    if (proj.has_value()) {
+        ubo->proj = proj.value();
+    }
+}
+
 void OBJModel::loadModel() {
     Assimp::Importer import;
     const aiScene *scene = import.ReadFile(objPath, aiProcess_Triangulate | aiProcess_FlipUVs);
@@ -137,9 +152,13 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
     }
 }
 
-void OBJModel::render(optional<Model::UBO> ubo) {
+void OBJModel::render(const Model::UBO &ubo, const Model::ScreenParams &screenParams) {
+    if (!this->ubo.has_value()) {
+        this->ubo = ubo;
+    }
     for (const auto &m : meshes) {
-        m->render(ubo);
+        m->render(ubo, screenParams);
+        m->updateUniformBuffer(this->ubo->model, this->ubo->view, this->ubo->proj);
     }
 }
 

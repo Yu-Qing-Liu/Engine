@@ -1,15 +1,34 @@
 #include "scenes.hpp"
 #include "default.hpp"
-#include "engine.hpp"
 
 Scenes::Scenes() {
-    scenes.emplace(Engine::DEFAULT, std::make_unique<Default>());
+    SceneEntry defaultScene = {
+        make_unique<Default>(*this),
+        true
+    };
+    scenes.emplace(defaultScene.scene->getName(), std::move(defaultScene));
+}
+
+void Scenes::showScene(const string &sceneName) {
+    scenes[sceneName].show = true;
+}
+
+void Scenes::hideScene(const string &sceneName) {
+    scenes[sceneName].show = false;
 }
 
 void Scenes::renderPass() {
-    scenes[Engine::currentScene]->renderPass();
+    for (const auto &sc : scenes) {
+        if (sc.second.show) {
+            sc.second.scene->renderPass();
+        }
+    }
 }
 
 void Scenes::swapChainUpdate() {
-    scenes[Engine::currentScene]->swapChainUpdate();
+    for (const auto &sc : scenes) {
+        if (sc.second.show) {
+            sc.second.scene->swapChainUpdate();
+        }
+    }
 }

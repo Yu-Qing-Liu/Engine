@@ -67,12 +67,6 @@ inline VkImage depthImage;
 inline VkDeviceMemory depthImageMemory;
 inline VkImageView depthImageView;
 
-enum SceneName {
-	DEFAULT,
-};
-
-inline SceneName currentScene = DEFAULT;
-
 inline void createDirectory(const std::string &path) {
 	if (!exists(path)) {
 		try {
