@@ -31,10 +31,10 @@ class Model {
 		mat4 proj;
 	};
 
-    struct ScreenParams {
-        VkViewport viewport{};
-        VkRect2D scissor{};
-    };
+	struct ScreenParams {
+		VkViewport viewport{};
+		VkRect2D scissor{};
+	};
 
 	struct Vertex {
 		vec3 pos;
@@ -102,14 +102,13 @@ class Model {
 		}
 	};
 
-
 	Model(const string &shaderPath);
 	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
 	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	virtual ~Model();
 
-    void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void render(const UBO &ubo, const ScreenParams &screenParams);
+	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	virtual void render(const UBO &ubo, const ScreenParams &screenParams);
 
   protected:
 	optional<UBO> ubo = std::nullopt;

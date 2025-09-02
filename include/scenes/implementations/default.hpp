@@ -29,6 +29,7 @@ class Default : public Scene {
 
 	unique_ptr<Model> triangle;
 	unique_ptr<Model> example;
+	unique_ptr<Model> particles;
 
 	unique_ptr<OBJModel> room;
 	unique_ptr<Text> text;

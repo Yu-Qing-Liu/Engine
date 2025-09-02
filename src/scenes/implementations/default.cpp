@@ -1,6 +1,7 @@
 #include "default.hpp"
 #include "engine.hpp"
 #include "objmodel.hpp"
+#include "particles.hpp"
 #include "texture.hpp"
 #include "polygon.hpp"
 #include "scenes.hpp"
@@ -47,6 +48,8 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
+    this->particles = make_unique<Particles>(1000, screenParams.viewport.height, screenParams.viewport.width);
+
     this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
@@ -77,4 +80,6 @@ void Default::renderPass() {
     room->updateUniformBuffer(rotate(mat4(1.0f), time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
 
     text->renderText(orthographic, screenParams, "Hello World", 1.0f);
+
+    particles->render(orthographic, screenParams);
 }
