@@ -21,6 +21,10 @@ class Scenes {
 		bool show = false;
 	};
 
+	void updateComputeUniformBuffers();
+	void computePass();
+
+	void updateUniformBuffers();
 	void renderPass();
 	void swapChainUpdate();
 

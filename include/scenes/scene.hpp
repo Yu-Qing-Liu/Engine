@@ -15,7 +15,12 @@ class Scene {
 	virtual ~Scene() = default;
 
 	virtual const std::string getName() const = 0;
+	virtual void updateScreenParams() = 0;
 
+	virtual void updateComputeUniformBuffers();
+	virtual void computePass();
+
+	virtual void updateUniformBuffers();
 	virtual void renderPass();
 	virtual void swapChainUpdate();
 

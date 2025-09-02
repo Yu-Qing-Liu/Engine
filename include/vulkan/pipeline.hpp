@@ -38,10 +38,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 namespace Pipeline {
 
 struct QueueFamilyIndices {
-	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> graphicsAndComputeFamily;
 	std::optional<uint32_t> presentFamily;
 
-	bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
+	bool isComplete() { return graphicsAndComputeFamily.has_value() && presentFamily.has_value(); }
 };
 
 struct SwapChainSupportDetails {
@@ -182,7 +182,7 @@ inline QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
 	int i = 0;
 	for (const auto &queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
+			indices.graphicsAndComputeFamily = i;
 		}
 
 		VkBool32 presentSupport = false;
@@ -286,7 +286,7 @@ inline void createLogicalDevice() {
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -323,7 +323,8 @@ inline void createLogicalDevice() {
 		throw std::runtime_error("failed to create logical device!");
 	}
 
-	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+	vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &graphicsQueue);
+	vkGetDeviceQueue(device, indices.graphicsAndComputeFamily.value(), 0, &computeQueue);
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
@@ -387,9 +388,9 @@ inline void createSwapChain() {
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-	uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+	uint32_t queueFamilyIndices[] = {indices.graphicsAndComputeFamily.value(), indices.presentFamily.value()};
 
-	if (indices.graphicsFamily != indices.presentFamily) {
+	if (indices.graphicsAndComputeFamily != indices.presentFamily) {
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -438,13 +439,21 @@ inline void cleanupSyncObjects() {
 	for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 	}
+	for (size_t i = 0; i < computeFinishedSemaphores.size(); i++) {
+		vkDestroySemaphore(device, computeFinishedSemaphores[i], nullptr);
+	}
 	for (size_t i = 0; i < inFlightFences.size(); i++) {
 		vkDestroyFence(device, inFlightFences[i], nullptr);
+	}
+	for (size_t i = 0; i < computeInFlightFences.size(); i++) {
+		vkDestroyFence(device, computeInFlightFences[i], nullptr);
 	}
 
 	imageAvailableSemaphores.clear();
 	renderFinishedSemaphores.clear();
+    computeFinishedSemaphores.clear();
 	inFlightFences.clear();
+    computeInFlightFences.clear();
 }
 
 inline void createImageViews() {
@@ -564,7 +573,7 @@ inline void createCommandPool() {
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsAndComputeFamily.value();
 
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create command pool!");
@@ -585,14 +594,26 @@ inline void createCommandBuffers() {
 	}
 }
 
+inline void createComputeCommandBuffers() {
+	computeCommandBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = Engine::commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t)computeCommandBuffers.size();
+
+	if (vkAllocateCommandBuffers(Engine::device, &allocInfo, computeCommandBuffers.data()) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate compute command buffers!");
+	}
+}
+
 inline void createSyncObjects() {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	// renderFinishedSemaphores will be sized based on swapchain images
+	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	computeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	// Resize renderFinishedSemaphores based on the actual number of swapchain images
-	// This is safe because createSwapChain() which populates swapChainImages is called before createSyncObjects()
-	renderFinishedSemaphores.resize(swapChainImages.size());
+	computeInFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -602,15 +623,11 @@ inline void createSyncObjects() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create synchronization objects for a frame (imageAvailable/inFlightFence)!");
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create graphics synchronization objects for a frame!");
 		}
-	}
-
-	// Create renderFinishedSemaphores, one for each swapchain image
-	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create render finished semaphores!");
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create compute synchronization objects for a frame!");
 		}
 	}
 }

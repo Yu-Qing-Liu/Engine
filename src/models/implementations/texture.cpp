@@ -1,5 +1,6 @@
 #include "texture.hpp"
 #include <stdexcept>
+#include <vulkan/vulkan_core.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
@@ -37,11 +38,18 @@ Texture::Texture(const aiTexture &embeddedTex, const vector<TexVertex> &vertices
 }
 
 Texture::~Texture() {
-	vkDestroyImage(Engine::device, textureImage, nullptr);
-	vkFreeMemory(Engine::device, textureImageMemory, nullptr);
-
-	vkDestroySampler(Engine::device, textureSampler, nullptr);
-	vkDestroyImageView(Engine::device, textureImageView, nullptr);
+    if (textureImage != VK_NULL_HANDLE) {
+        vkDestroyImage(Engine::device, textureImage, nullptr);
+    }
+    if (textureImageMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(Engine::device, textureImageMemory, nullptr);
+    }
+    if (textureSampler != VK_NULL_HANDLE) {
+        vkDestroySampler(Engine::device, textureSampler, nullptr);
+    }
+    if (textureImageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(Engine::device, textureImageView, nullptr);
+    }
 }
 
 void Texture::createDescriptorSetLayout() {

@@ -22,6 +22,13 @@ void OBJModel::updateUniformBuffer(optional<mat4> model, optional<mat4> view, op
     }
 }
 
+void OBJModel::updateUniformBuffer(const Model::UBO &ubo) {
+    if (!this->ubo.has_value()) {
+        return;
+    }
+    this->ubo = ubo;
+}
+
 void OBJModel::loadModel() {
     Assimp::Importer import;
     const aiScene *scene = import.ReadFile(objPath, aiProcess_Triangulate | aiProcess_FlipUVs);

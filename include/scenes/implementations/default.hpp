@@ -17,6 +17,12 @@ class Default : public Scene {
 
 	const std::string getName() const override { return "Default"; }
 
+	void updateScreenParams() override;
+
+	void updateComputeUniformBuffers() override;
+	void computePass() override;
+
+	void updateUniformBuffers() override;
 	void renderPass() override;
 	void swapChainUpdate() override;
 

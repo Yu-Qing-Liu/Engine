@@ -38,14 +38,18 @@ Text::~Text() {
 	}
 
 	for (uint32_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
-		if (frameVB[i])
+		if (frameVB[i]) {
 			vkDestroyBuffer(Engine::device, frameVB[i], nullptr);
-		if (frameVBMem[i])
+		}
+		if (frameVBMem[i]) {
 			vkFreeMemory(Engine::device, frameVBMem[i], nullptr);
-		if (frameIB[i])
+		}
+		if (frameIB[i]) {
 			vkDestroyBuffer(Engine::device, frameIB[i], nullptr);
-		if (frameIBMem[i])
+		}
+		if (frameIBMem[i]) {
 			vkFreeMemory(Engine::device, frameIBMem[i], nullptr);
+		}
 	}
 
 	if (face) {
@@ -522,11 +526,10 @@ void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const st
 	}
 
 	// Update UBO & draw
-    if (!this->ubo.has_value()) {
-        this->ubo = ubo;
-        this->ubo.value().proj[1][1] *= -1;
-    }
-	setUniformBuffer();
+	if (!this->ubo.has_value()) {
+		this->ubo = ubo;
+		this->ubo.value().proj[1][1] *= -1;
+	}
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
@@ -549,6 +552,4 @@ void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const st
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }
 
-void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, float scale, const vec4 &color) {
-    renderText(ubo, screenParams, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color);
-}
+void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, float scale, const vec4 &color) { renderText(ubo, screenParams, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color); }

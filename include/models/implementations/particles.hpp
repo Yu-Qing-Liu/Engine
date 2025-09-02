@@ -5,12 +5,12 @@
 
 class Particles : public Model {
   public:
-	Particles(uint32_t particleCount, uint32_t height, uint32_t width);
+	Particles(uint32_t particleCount, uint32_t width, uint32_t height);
 	Particles(Particles &&) = default;
 	Particles(const Particles &) = delete;
 	Particles &operator=(Particles &&) = delete;
 	Particles &operator=(const Particles &) = delete;
-	~Particles() = default;
+	~Particles() override;
 
 	struct Particle {
 		vec2 position;
@@ -47,6 +47,8 @@ class Particles : public Model {
 		float deltatime = 1.0f;
 	};
 
+	void updateComputeUniformBuffer() override;
+	void compute() override;
 	void render(const UBO &ubo, const ScreenParams &screenParams) override;
 
   protected:
@@ -54,20 +56,20 @@ class Particles : public Model {
 	uint32_t height;
 	uint32_t width;
 
-	VkDescriptorSetLayout computeDescriptorSetLayout;
-	VkPipelineLayout computePipelineLayout;
-	VkPipeline computePipeline;
+	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+	VkPipeline computePipeline = VK_NULL_HANDLE;
 
 	vector<VkBuffer> shaderStorageBuffers;
 	vector<VkDeviceMemory> shaderStorageBuffersMemory;
 	vector<VkDescriptorSet> computeDescriptorSets;
-	vector<VkCommandBuffer> computeCommandBuffers;
 
 	void createComputeDescriptorSetLayout();
 	void createBindingDescriptions() override;
+	void createGraphicsPipeline() override;
 	void createComputePipeline();
 	void createShaderStorageBuffers();
+	void createUniformBuffers() override;
 	void createDescriptorPool() override;
 	void createComputeDescriptorSets();
-	void createComputeCommandBuffers();
 };

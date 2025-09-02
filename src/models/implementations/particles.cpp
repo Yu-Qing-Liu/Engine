@@ -4,16 +4,38 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(uint32_t particleCount, uint32_t height, uint32_t width) : particleCount(particleCount), height(height), width(width), Model(Engine::shaderRootPath + "/particle") {
+Particles::Particles(uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(Engine::shaderRootPath + "/particle") {
 	createComputeDescriptorSetLayout();
-	createBindingDescriptions();
-	createGraphicsPipeline();
-	createComputePipeline();
 	createShaderStorageBuffers();
 	createUniformBuffers();
 	createDescriptorPool();
 	createComputeDescriptorSets();
-	createComputeCommandBuffers();
+	createBindingDescriptions();
+	createGraphicsPipeline();
+	createComputePipeline();
+}
+
+Particles::~Particles() {
+	if (computePipeline != VK_NULL_HANDLE) {
+		vkDestroyPipeline(Engine::device, computePipeline, nullptr);
+	}
+	if (computePipelineLayout != VK_NULL_HANDLE) {
+		vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
+	}
+	if (computeDescriptorSetLayout != VK_NULL_HANDLE) {
+		vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
+	}
+
+	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
+		if (shaderStorageBuffers[i] != VK_NULL_HANDLE) {
+			vkDestroyBuffer(Engine::device, shaderStorageBuffers[i], nullptr);
+			shaderStorageBuffers[i] = VK_NULL_HANDLE;
+		}
+		if (shaderStorageBuffersMemory[i] != VK_NULL_HANDLE) {
+			vkFreeMemory(Engine::device, shaderStorageBuffersMemory[i], nullptr);
+			shaderStorageBuffersMemory[i] = VK_NULL_HANDLE;
+		}
+	}
 }
 
 void Particles::createComputeDescriptorSetLayout() {
@@ -52,6 +74,106 @@ void Particles::createBindingDescriptions() {
 	attributeDescriptions = vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
+void Particles::createGraphicsPipeline() {
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+	VkPipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.scissorCount = 1;
+
+	VkPipelineRasterizationStateCreateInfo rasterizer{};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE;
+	rasterizer.rasterizerDiscardEnable = VK_FALSE;
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.lineWidth = 1.0f;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizer.depthBiasEnable = VK_FALSE;
+
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil{};
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.depthTestEnable = VK_FALSE;
+	depthStencil.depthWriteEnable = VK_FALSE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencil.depthBoundsTestEnable = VK_FALSE;
+	depthStencil.stencilTestEnable = VK_FALSE;
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+
+	VkPipelineColorBlendStateCreateInfo colorBlending{};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
+
+	std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	VkPipelineDynamicStateCreateInfo dynamicState{};
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0;
+	pipelineLayoutInfo.pSetLayouts = nullptr;
+
+	if (vkCreatePipelineLayout(Engine::device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create pipeline layout!");
+	}
+
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages.data();
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = &dynamicState;
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = Engine::renderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.pDepthStencilState = &depthStencil;
+
+	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
+	}
+}
+
 void Particles::createComputePipeline() {
 	VkShaderModule computeShaderModule = shaderProgram.computeShader;
 
@@ -78,8 +200,6 @@ void Particles::createComputePipeline() {
 	if (vkCreateComputePipelines(Engine::device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &computePipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create compute pipeline!");
 	}
-
-	vkDestroyShaderModule(Engine::device, computeShaderModule, nullptr);
 }
 
 void Particles::createShaderStorageBuffers() {
@@ -121,6 +241,19 @@ void Particles::createShaderStorageBuffers() {
 
 	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
 	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+}
+
+void Particles::createUniformBuffers() {
+	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+	uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+		vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+	}
 }
 
 void Particles::createDescriptorPool() {
@@ -200,18 +333,18 @@ void Particles::createComputeDescriptorSets() {
 	}
 }
 
-void Particles::createComputeCommandBuffers() {
-	computeCommandBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+void Particles::updateComputeUniformBuffer() {
+	UniformBufferObject ubo{};
+	ubo.deltatime = Engine::lastFrameTime * 2.0f;
+	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+}
 
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = Engine::commandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = (uint32_t)computeCommandBuffers.size();
+void Particles::compute() {
+	vkCmdBindPipeline(Engine::currentComputeCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
-	if (vkAllocateCommandBuffers(Engine::device, &allocInfo, computeCommandBuffers.data()) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate compute command buffers!");
-	}
+	vkCmdBindDescriptorSets(Engine::currentComputeCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSets[Engine::currentFrame], 0, nullptr);
+
+	vkCmdDispatch(Engine::currentComputeCommandBuffer(), particleCount / 256, 1, 1);
 }
 
 void Particles::render(const UBO &ubo, const ScreenParams &screenParams) {
@@ -222,7 +355,7 @@ void Particles::render(const UBO &ubo, const ScreenParams &screenParams) {
 	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &screenParams.scissor);
 
 	VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, &shaderStorageBuffers[Engine::currentFrame], offsets);
+	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, &shaderStorageBuffers[Engine::currentFrame], offsets);
 
-    vkCmdDraw(Engine::currentCommandBuffer(), particleCount, 1, 0, 0);
+	vkCmdDraw(Engine::currentCommandBuffer(), particleCount, 1, 0, 0);
 }
