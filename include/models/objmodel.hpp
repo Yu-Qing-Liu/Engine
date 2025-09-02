@@ -6,8 +6,8 @@
 #include <optional>
 #include <vulkan/vulkan_core.h>
 
-using std::unique_ptr;
 using std::make_unique;
+using std::unique_ptr;
 
 class OBJModel {
   public:
@@ -21,7 +21,8 @@ class OBJModel {
 	const string objPath;
 	string directory;
 
-    void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void updateUniformBuffer(const Model::UBO &ubo);
 	void render(const Model::UBO &ubo, const Model::ScreenParams &screenParams);
 
   private:

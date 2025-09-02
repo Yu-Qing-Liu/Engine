@@ -38,6 +38,8 @@ inline Compiler compiler;
 inline CompileOptions options;
 
 inline VkQueue graphicsQueue;
+inline VkQueue computeQueue;
+inline VkQueue presentQueue;
 
 inline VkDevice device;
 inline VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -52,20 +54,26 @@ inline std::vector<VkImageView> swapChainImageViews;
 inline std::vector<VkImage> swapChainImages;
 
 inline std::vector<VkCommandBuffer> commandBuffers;
+inline std::vector<VkCommandBuffer> computeCommandBuffers;
 inline uint32_t currentFrame = 0;
-
-inline VkQueue presentQueue;
 
 inline VkSwapchainKHR swapChain;
 inline std::vector<VkFramebuffer> swapChainFramebuffers;
 
 inline std::vector<VkSemaphore> imageAvailableSemaphores;
 inline std::vector<VkSemaphore> renderFinishedSemaphores;
+inline std::vector<VkSemaphore> computeFinishedSemaphores;
 inline std::vector<VkFence> inFlightFences;
+inline std::vector<VkFence> computeInFlightFences;
 
 inline VkImage depthImage;
 inline VkDeviceMemory depthImageMemory;
 inline VkImageView depthImageView;
+
+inline float startTime = 0.0f;
+inline float lastFrameTime = 0.0f;
+inline double lastTime = 0.0f;
+inline float time = 0.0f;
 
 inline void createDirectory(const std::string &path) {
 	if (!exists(path)) {
@@ -110,6 +118,8 @@ struct ShaderBinaries {
 inline std::unordered_map<std::string, shaderc_shader_kind> shaderExtensions = {{".vert", shaderc_glsl_vertex_shader}, {".tesc", shaderc_glsl_tess_control_shader}, {".tese", shaderc_glsl_tess_evaluation_shader}, {".geom", shaderc_glsl_geometry_shader}, {".frag", shaderc_glsl_fragment_shader}, {".comp", shaderc_glsl_compute_shader}};
 
 inline VkCommandBuffer currentCommandBuffer() { return commandBuffers[currentFrame]; }
+
+inline VkCommandBuffer currentComputeCommandBuffer() { return computeCommandBuffers[currentFrame]; }
 
 inline std::string readFile(const std::string &filePath) {
 	std::ifstream shader_file(filePath);

@@ -2,6 +2,7 @@
 #include "pipeline.hpp"
 #include "scenes.hpp"
 
+#include <GLFW/glfw3.h>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -34,6 +35,9 @@ class Application {
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 		glfwSetWindowUserPointer(window, this);
 		glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+		lastTime = glfwGetTime();
+		startTime = glfwGetTime();
 	}
 
 	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
@@ -54,6 +58,7 @@ class Application {
 		Pipeline::createFramebuffers();
 		Pipeline::createCommandPool();
 		Pipeline::createCommandBuffers();
+		Pipeline::createComputeCommandBuffers();
 		Pipeline::createSyncObjects();
 		scenes = std::make_unique<Scenes>();
 	}
@@ -62,6 +67,10 @@ class Application {
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
 			drawFrame();
+			double currentTime = glfwGetTime();
+			lastFrameTime = (currentTime - lastTime) * 1000.0;
+			Engine::time = currentTime - startTime;
+			lastTime = currentTime;
 		}
 
 		vkDeviceWaitIdle(device);
@@ -72,21 +81,7 @@ class Application {
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
 		// Destroy synchronization objects
-		// Iterate based on the actual current sizes of the vectors
-		for (size_t i = 0; i < imageAvailableSemaphores.size(); i++) {
-			vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-		}
-		for (size_t i = 0; i < renderFinishedSemaphores.size(); i++) {
-			vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-		}
-		for (size_t i = 0; i < inFlightFences.size(); i++) {
-			vkDestroyFence(device, inFlightFences[i], nullptr);
-		}
-
-		// Optional: clear vectors if desired, though the Application object is being destroyed.
-		// imageAvailableSemaphores.clear();
-		// renderFinishedSemaphores.clear();
-		// inFlightFences.clear();
+        Pipeline::cleanupSyncObjects();
 
 		vkDestroyCommandPool(device, commandPool, nullptr);
 
@@ -104,6 +99,21 @@ class Application {
 		glfwDestroyWindow(window);
 
 		glfwTerminate();
+	}
+
+	void recordComputeCommandBuffer(VkCommandBuffer commandBuffer) {
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording compute command buffer!");
+		}
+
+		scenes->computePass();
+
+		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+			throw std::runtime_error("failed to record compute command buffer!");
+		}
 	}
 
 	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -144,6 +154,29 @@ class Application {
 	}
 
 	void drawFrame() {
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		// Compute submission
+		vkWaitForFences(device, 1, &computeInFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+
+		scenes->updateComputeUniformBuffers();
+
+		vkResetFences(device, 1, &computeInFlightFences[currentFrame]);
+
+		vkResetCommandBuffer(computeCommandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
+		recordComputeCommandBuffer(computeCommandBuffers[currentFrame]);
+
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &computeCommandBuffers[currentFrame];
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &computeFinishedSemaphores[currentFrame];
+
+		if (vkQueueSubmit(computeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to submit compute command buffer!");
+		};
+
+		// Graphics submission
 		vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 		uint32_t imageIndex;
@@ -151,33 +184,31 @@ class Application {
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			Pipeline::recreateSwapChain();
-            scenes->swapChainUpdate();
+			scenes->swapChainUpdate();
 			return;
 		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
+
+		scenes->updateUniformBuffers();
 
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
 		vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
 
-		VkSubmitInfo submitInfo{};
+		submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-		VkSemaphore waitSemaphores[] = {imageAvailableSemaphores[currentFrame]};
-		VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-		submitInfo.waitSemaphoreCount = 1;
+		VkSemaphore waitSemaphores[] = {computeFinishedSemaphores[currentFrame], imageAvailableSemaphores[currentFrame]};
+		VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+		submitInfo.waitSemaphoreCount = 2;
 		submitInfo.pWaitSemaphores = waitSemaphores;
 		submitInfo.pWaitDstStageMask = waitStages;
-
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
-
-		// Use the semaphore corresponding to the acquired swapchain image
-		VkSemaphore signalSemaphores[] = {renderFinishedSemaphores[imageIndex]};
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = signalSemaphores;
+		submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
 
 		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
@@ -189,7 +220,7 @@ class Application {
 		// Present will wait on the semaphore that was signaled by vkQueueSubmit,
 		// which is now renderFinishedSemaphores[imageIndex]
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = signalSemaphores;
+		presentInfo.pWaitSemaphores = &renderFinishedSemaphores[currentFrame];
 
 		VkSwapchainKHR swapChains[] = {swapChain};
 		presentInfo.swapchainCount = 1;
@@ -202,7 +233,7 @@ class Application {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 			framebufferResized = false;
 			Pipeline::recreateSwapChain();
-            scenes->swapChainUpdate();
+			scenes->swapChainUpdate();
 		} else if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image!");
 		}

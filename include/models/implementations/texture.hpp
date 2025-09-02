@@ -18,10 +18,10 @@ class Texture : public Model {
 	string texturePath;
 	aiTexture embeddedTex;
 
-	VkImage textureImage;
-	VkImageView textureImageView;
-	VkSampler textureSampler;
-	VkDeviceMemory textureImageMemory;
+	VkImage textureImage = VK_NULL_HANDLE;
+	VkImageView textureImageView = VK_NULL_HANDLE;
+	VkSampler textureSampler = VK_NULL_HANDLE;
+	VkDeviceMemory textureImageMemory = VK_NULL_HANDLE;
 
 	VkImageCreateInfo imageInfo{};
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};

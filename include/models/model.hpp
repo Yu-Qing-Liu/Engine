@@ -31,10 +31,10 @@ class Model {
 		mat4 proj;
 	};
 
-    struct ScreenParams {
-        VkViewport viewport{};
-        VkRect2D scissor{};
-    };
+	struct ScreenParams {
+		VkViewport viewport{};
+		VkRect2D scissor{};
+	};
 
 	struct Vertex {
 		vec3 pos;
@@ -102,14 +102,17 @@ class Model {
 		}
 	};
 
-
 	Model(const string &shaderPath);
 	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
 	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	virtual ~Model();
 
-    void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void render(const UBO &ubo, const ScreenParams &screenParams);
+	virtual void updateComputeUniformBuffer();
+	virtual void compute();
+
+	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
+	void updateUniformBuffer(const UBO &ubo);
+	virtual void render(const UBO &ubo, const ScreenParams &screenParams);
 
   protected:
 	optional<UBO> ubo = std::nullopt;
@@ -117,10 +120,10 @@ class Model {
 	string shaderPath;
 	Engine::ShaderModules shaderProgram;
 
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
-	VkDescriptorPool descriptorPool;
+	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
 	vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
@@ -144,12 +147,12 @@ class Model {
 	vector<VkDeviceMemory> uniformBuffersMemory;
 	vector<void *> uniformBuffersMapped;
 
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
+	VkBuffer stagingBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
+	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+	VkBuffer indexBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
 
 	virtual void createDescriptorSetLayout();
 	virtual void createUniformBuffers();
@@ -159,6 +162,4 @@ class Model {
 	virtual void createIndexBuffer();
 	virtual void createBindingDescriptions();
 	virtual void createGraphicsPipeline();
-
-	void setUniformBuffer();
 };

@@ -31,26 +31,43 @@ Model::~Model() {
 	}
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
-		vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
+        if (uniformBuffers[i] != VK_NULL_HANDLE) {
+            vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
+        }
+        if (uniformBuffersMemory[i] != VK_NULL_HANDLE) {
+            vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
+        }
 	}
 
-	vkDestroyBuffer(Engine::device, vertexBuffer, nullptr);
-	vkFreeMemory(Engine::device, vertexBufferMemory, nullptr);
-
-	vkDestroyBuffer(Engine::device, indexBuffer, nullptr);
-	vkFreeMemory(Engine::device, indexBufferMemory, nullptr);
-
-    vkDestroyDescriptorPool(Engine::device, descriptorPool, nullptr);
-	vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
-
-	vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
+    if (vertexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(Engine::device, vertexBuffer, nullptr);
+    }
+    if (vertexBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(Engine::device, vertexBufferMemory, nullptr);
+    }
+    if (indexBuffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(Engine::device, indexBuffer, nullptr);
+    }
+    if (indexBufferMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(Engine::device, indexBufferMemory, nullptr);
+    }
+    if (descriptorPool != VK_NULL_HANDLE) {
+        vkDestroyDescriptorPool(Engine::device, descriptorPool, nullptr);
+    }
+    if (descriptorSetLayout != VK_NULL_HANDLE) {
+        vkDestroyDescriptorSetLayout(Engine::device, descriptorSetLayout, nullptr);
+    }
+    if (graphicsPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(Engine::device, graphicsPipeline, nullptr);
+    }
+    if (pipelineLayout != VK_NULL_HANDLE) {
+        vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
+    }
 }
 
-void Model::setUniformBuffer() {
-    memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo.value(), sizeof(ubo.value()));
-}
+void Model::updateComputeUniformBuffer() {}
+
+void Model::compute() {}
 
 void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
     if (!ubo.has_value()) {
@@ -66,6 +83,16 @@ void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optio
         ubo->proj = proj.value();
         ubo.value().proj[1][1] *= -1;
     }
+    memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo.value(), sizeof(ubo.value()));
+}
+
+void Model::updateUniformBuffer(const UBO &ubo) {
+    if (!this->ubo.has_value()) {
+        return;
+    }
+    this->ubo = ubo;
+    this->ubo.value().proj[1][1] *= -1;
+    memcpy(uniformBuffersMapped[Engine::currentFrame], &this->ubo.value(), sizeof(this->ubo.value()));
 }
 
 void Model::createBindingDescriptions() {
@@ -334,8 +361,6 @@ void Model::render(const UBO &ubo, const ScreenParams &screenParams) {
         this->ubo = ubo;
         this->ubo.value().proj[1][1] *= -1;
     }
-
-    setUniformBuffer();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 

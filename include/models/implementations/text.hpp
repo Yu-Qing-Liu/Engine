@@ -11,7 +11,7 @@ class Text : public Model {
 	Text(const Text &) = delete;
 	Text &operator=(Text &&) = delete;
 	Text &operator=(const Text &) = delete;
-	~Text();
+	~Text() override;
 
 	struct TextParams {
 		string fontPath;

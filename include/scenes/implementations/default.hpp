@@ -17,6 +17,12 @@ class Default : public Scene {
 
 	const std::string getName() const override { return "Default"; }
 
+	void updateScreenParams() override;
+
+	void updateComputeUniformBuffers() override;
+	void computePass() override;
+
+	void updateUniformBuffers() override;
 	void renderPass() override;
 	void swapChainUpdate() override;
 
@@ -29,6 +35,7 @@ class Default : public Scene {
 
 	unique_ptr<Model> triangle;
 	unique_ptr<Model> example;
+	unique_ptr<Model> particles;
 
 	unique_ptr<OBJModel> room;
 	unique_ptr<Text> text;
