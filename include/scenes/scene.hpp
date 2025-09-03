@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 using std::unique_ptr;
 
 class Scenes;
