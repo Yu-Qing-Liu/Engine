@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <string>
+#include "model.hpp"
 using std::unique_ptr;
 
 class Scenes;
@@ -16,7 +16,7 @@ class Scene {
 	virtual ~Scene() = default;
 
 	virtual const std::string getName() const = 0;
-	virtual void updateScreenParams() = 0;
+	virtual void updateScreenParams();
 
 	virtual void updateComputeUniformBuffers();
 	virtual void computePass();
@@ -27,4 +27,5 @@ class Scene {
 
   protected:
 	Scenes &scenes;
+	Model::ScreenParams screenParams;
 };

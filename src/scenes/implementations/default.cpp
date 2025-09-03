@@ -9,8 +9,6 @@
 #include <optional>
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
-    updateScreenParams();
-
     this->triangle = make_unique<Polygon>(
         std::vector<Model::Vertex> {
             {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
@@ -52,12 +50,12 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 void Default::updateScreenParams() {
     screenParams.viewport.x        = 0.0f;
     screenParams.viewport.y        = 0.0f;
-    screenParams.viewport.width    = (float) Engine::swapChainExtent.width;
-    screenParams.viewport.height   = (float) Engine::swapChainExtent.height;
+    screenParams.viewport.width    = (float) 800;
+    screenParams.viewport.height   = (float) 800;
     screenParams.viewport.minDepth = 0.0f;
     screenParams.viewport.maxDepth = 1.0f;
     screenParams.scissor.offset = {0, 0};
-    screenParams.scissor.extent = Engine::swapChainExtent;
+    screenParams.scissor.extent = {800, 800};
 }
 
 void Default::updateComputeUniformBuffers() {
