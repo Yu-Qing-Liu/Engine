@@ -12,6 +12,7 @@
 #include <vector>
 
 using namespace Engine;
+using namespace Pipeline;
 
 class Application {
   public:
@@ -81,7 +82,7 @@ class Application {
 		vkDestroyRenderPass(device, renderPass, nullptr);
 
 		// Destroy synchronization objects
-        Pipeline::cleanupSyncObjects();
+		Pipeline::cleanupSyncObjects();
 
 		vkDestroyCommandPool(device, commandPool, nullptr);
 
@@ -190,9 +191,14 @@ class Application {
 			throw std::runtime_error("failed to acquire swap chain image!");
 		}
 
+		if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+			vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+		}
+
 		scenes->updateUniformBuffers();
 
 		vkResetFences(device, 1, &inFlightFences[currentFrame]);
+		imagesInFlight[imageIndex] = inFlightFences[currentFrame];
 
 		vkResetCommandBuffer(commandBuffers[currentFrame], /*VkCommandBufferResetFlagBits*/ 0);
 		recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
@@ -207,8 +213,10 @@ class Application {
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+
+		VkSemaphore signalSemaphores[] = {renderFinishedSemaphoresPerImage[imageIndex]};
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
+		submitInfo.pSignalSemaphores = signalSemaphores;
 
 		if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to submit draw command buffer!");
@@ -217,15 +225,14 @@ class Application {
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-		// Present will wait on the semaphore that was signaled by vkQueueSubmit,
-		// which is now renderFinishedSemaphores[imageIndex]
+        // Present must wait on the *per-image* semaphore signaled by the graphics submit
+        VkSemaphore presentWaitSemaphores[] = { renderFinishedSemaphoresPerImage[imageIndex] };
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &renderFinishedSemaphores[currentFrame];
+		presentInfo.pWaitSemaphores = presentWaitSemaphores;
 
 		VkSwapchainKHR swapChains[] = {swapChain};
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = swapChains;
-
 		presentInfo.pImageIndices = &imageIndex;
 
 		result = vkQueuePresentKHR(presentQueue, &presentInfo);

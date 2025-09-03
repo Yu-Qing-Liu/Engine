@@ -37,6 +37,14 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 
 namespace Pipeline {
 
+inline std::vector<VkSemaphore> imageAvailableSemaphores;
+inline std::vector<VkSemaphore> renderFinishedSemaphores;
+inline std::vector<VkSemaphore> computeFinishedSemaphores;
+inline std::vector<VkSemaphore> renderFinishedSemaphoresPerImage;
+inline std::vector<VkFence> inFlightFences;
+inline std::vector<VkFence> computeInFlightFences;
+inline std::vector<VkFence> imagesInFlight;
+
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicsAndComputeFamily;
 	std::optional<uint32_t> presentFamily;
@@ -442,6 +450,13 @@ inline void cleanupSyncObjects() {
 	for (size_t i = 0; i < computeFinishedSemaphores.size(); i++) {
 		vkDestroySemaphore(device, computeFinishedSemaphores[i], nullptr);
 	}
+	// Clean up per-image sync from any previous swapchain ---
+	for (VkSemaphore& s : renderFinishedSemaphoresPerImage) {
+	    if (s != VK_NULL_HANDLE) {
+	        vkDestroySemaphore(device, s, nullptr);
+	        s = VK_NULL_HANDLE;
+	    }
+	}
 	for (size_t i = 0; i < inFlightFences.size(); i++) {
 		vkDestroyFence(device, inFlightFences[i], nullptr);
 	}
@@ -451,9 +466,11 @@ inline void cleanupSyncObjects() {
 
 	imageAvailableSemaphores.clear();
 	renderFinishedSemaphores.clear();
-    computeFinishedSemaphores.clear();
+	computeFinishedSemaphores.clear();
+    renderFinishedSemaphoresPerImage.clear();
 	inFlightFences.clear();
-    computeInFlightFences.clear();
+	computeInFlightFences.clear();
+    imagesInFlight.clear();
 }
 
 inline void createImageViews() {
@@ -609,11 +626,17 @@ inline void createComputeCommandBuffers() {
 }
 
 inline void createSyncObjects() {
+	// Ensure per-frame containers are sized ---
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	computeFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 	computeInFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+	// Size per-image containers to the *current swapchain image count* ---
+	const size_t imageCount = swapChainImages.size();
+	renderFinishedSemaphoresPerImage.resize(imageCount, VK_NULL_HANDLE);
+	imagesInFlight.resize(imageCount, VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -622,13 +645,44 @@ inline void createSyncObjects() {
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+	// Create/ensure per-frame objects exist ---
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS || vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create graphics synchronization objects for a frame!");
+		if (imageAvailableSemaphores[i] == VK_NULL_HANDLE) {
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create imageAvailable semaphore!");
+			}
 		}
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphores[i]) != VK_SUCCESS || vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create compute synchronization objects for a frame!");
+		if (renderFinishedSemaphores[i] == VK_NULL_HANDLE) {
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create (legacy) renderFinished semaphore!");
+			}
 		}
+		if (inFlightFences[i] == VK_NULL_HANDLE) {
+			if (vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create inFlight fence!");
+			}
+		}
+		if (computeFinishedSemaphores[i] == VK_NULL_HANDLE) {
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &computeFinishedSemaphores[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create computeFinished semaphore!");
+			}
+		}
+		if (computeInFlightFences[i] == VK_NULL_HANDLE) {
+			if (vkCreateFence(device, &fenceInfo, nullptr, &computeInFlightFences[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create computeInFlight fence!");
+			}
+		}
+	}
+
+	// Create per-image render-finished semaphores (used for present waits) ---
+	for (size_t i = 0; i < imageCount; i++) {
+		if (renderFinishedSemaphoresPerImage[i] == VK_NULL_HANDLE) {
+			if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphoresPerImage[i]) != VK_SUCCESS) {
+				throw std::runtime_error("failed to create per-image renderFinished semaphore!");
+			}
+		}
+		// imagesInFlight[i] must start as VK_NULL_HANDLE so drawFrame() can wait on a prior owner if needed
+		imagesInFlight[i] = VK_NULL_HANDLE;
 	}
 }
 

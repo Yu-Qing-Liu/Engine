@@ -1,12 +1,16 @@
 #include "scenes.hpp"
 #include "default.hpp"
+#include "raytracing.hpp"
 
 Scenes::Scenes() {
-    SceneEntry defaultScene = {
+    scenes[Default::getName()] = {
         make_unique<Default>(*this),
+        false
+    };
+    scenes[RayTracing::getName()] = {
+        make_unique<RayTracing>(*this),
         true
     };
-    scenes.emplace(defaultScene.scene->getName(), std::move(defaultScene));
 }
 
 void Scenes::showScene(const string &sceneName) {

@@ -60,12 +60,6 @@ inline uint32_t currentFrame = 0;
 inline VkSwapchainKHR swapChain;
 inline std::vector<VkFramebuffer> swapChainFramebuffers;
 
-inline std::vector<VkSemaphore> imageAvailableSemaphores;
-inline std::vector<VkSemaphore> renderFinishedSemaphores;
-inline std::vector<VkSemaphore> computeFinishedSemaphores;
-inline std::vector<VkFence> inFlightFences;
-inline std::vector<VkFence> computeInFlightFences;
-
 inline VkImage depthImage;
 inline VkDeviceMemory depthImageMemory;
 inline VkImageView depthImageView;
