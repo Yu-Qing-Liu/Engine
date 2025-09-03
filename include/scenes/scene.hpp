@@ -15,7 +15,6 @@ class Scene {
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene() = default;
 
-	virtual const std::string getName() const = 0;
 	virtual void updateScreenParams();
 
 	virtual void updateComputeUniformBuffers();

@@ -3,18 +3,17 @@
 #include "engine.hpp"
 #include "objmodel.hpp"
 #include "scene.hpp"
-#include "text.hpp"
 
-class Default : public Scene {
+class RayTracing : public Scene {
   public:
-	Default(Scenes &scenes);
-	Default(Default &&) = default;
-	Default(const Default &) = delete;
-	Default &operator=(Default &&) = delete;
-	Default &operator=(const Default &) = delete;
-	~Default() = default;
+	RayTracing(Scenes &scenes);
+	RayTracing(RayTracing &&) = default;
+	RayTracing(const RayTracing &) = delete;
+	RayTracing &operator=(RayTracing &&) = delete;
+	RayTracing &operator=(const RayTracing &) = delete;
+	~RayTracing() = default;
 
-	static const std::string getName() { return "Default"; }
+	static const std::string getName() { return "RayTracing"; }
 
 	void updateScreenParams() override;
 
@@ -30,10 +29,5 @@ class Default : public Scene {
 
 	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-	unique_ptr<Model> triangle;
-	unique_ptr<Model> example;
-	unique_ptr<Model> particles;
-
-	unique_ptr<OBJModel> room;
-	unique_ptr<Text> text;
+	unique_ptr<Model> cube;
 };
