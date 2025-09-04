@@ -42,6 +42,9 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
     this->particles = make_unique<Particles>(8192, screenParams.viewport.width, screenParams.viewport.height);
 
     this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
+    this->room->setOnHover([]() {
+        std::cout << "Room Hit " << Engine::time << std::endl;
+    });
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
     this->text = make_unique<Text>(tp);
@@ -59,10 +62,12 @@ void Default::updateScreenParams() {
 }
 
 void Default::updateComputeUniformBuffers() {
+    room->updateComputeUniformBuffer();
     particles->updateComputeUniformBuffer();
 }
 
 void Default::computePass() {
+    room->compute();
     particles->compute();
 }
 

@@ -7,6 +7,12 @@ OBJModel::OBJModel(const std::string &objPath) : objPath(objPath) {
     loadModel();
 }
 
+void OBJModel::updateComputeUniformBuffer() {
+    for (const auto &m : meshes) {
+        m->updateComputeUniformBuffer();
+    }
+}
+
 void OBJModel::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
     if (!ubo.has_value()) {
         return;
@@ -19,6 +25,9 @@ void OBJModel::updateUniformBuffer(optional<mat4> model, optional<mat4> view, op
     }
     if (proj.has_value()) {
         ubo->proj = proj.value();
+    }
+    for (const auto &m : meshes) {
+        m->updateUniformBuffer(ubo->model, ubo->view, ubo->proj);
     }
 }
 
@@ -165,13 +174,18 @@ void OBJModel::setOnHover(const std::function<void()> &callback) {
     }
 }
 
+void OBJModel::compute() {
+    for (const auto &m : meshes) {
+        m->compute();
+    }
+}
+
 void OBJModel::render(const Model::UBO &ubo, const Model::ScreenParams &screenParams) {
     if (!this->ubo.has_value()) {
         this->ubo = ubo;
     }
     for (const auto &m : meshes) {
         m->render(ubo, screenParams);
-        m->updateUniformBuffer(this->ubo->model, this->ubo->view, this->ubo->proj);
     }
 }
 

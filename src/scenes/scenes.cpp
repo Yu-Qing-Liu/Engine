@@ -5,11 +5,11 @@
 Scenes::Scenes() {
     scenes[Default::getName()] = {
         make_unique<Default>(*this),
-        false
+        true
     };
     scenes[RayTracing::getName()] = {
         make_unique<RayTracing>(*this),
-        true
+        false
     };
 }
 
