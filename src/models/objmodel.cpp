@@ -159,6 +159,12 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
     }
 }
 
+void OBJModel::setOnHover(const std::function<void()> &callback) {
+    for (const auto &m : meshes) {
+        m->setOnHover(callback);
+    }
+}
+
 void OBJModel::render(const Model::UBO &ubo, const Model::ScreenParams &screenParams) {
     if (!this->ubo.has_value()) {
         this->ubo = ubo;

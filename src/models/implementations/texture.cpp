@@ -19,6 +19,11 @@ Texture::Texture(const string &texturePath, const vector<TexVertex> &vertices, c
 	createIndexBuffer();
 	createBindingDescriptions();
 	createGraphicsPipeline();
+
+    createComputeDescriptorSetLayout();
+    createShaderStorageBuffers();
+    createComputeDescriptorSets();
+    createComputePipeline();
 }
 
 Texture::Texture(const aiTexture &embeddedTex, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : embeddedTex(embeddedTex), Model(Engine::shaderRootPath + "/texture", vertices, indices) {
@@ -35,6 +40,11 @@ Texture::Texture(const aiTexture &embeddedTex, const vector<TexVertex> &vertices
 	createIndexBuffer();
 	createBindingDescriptions();
 	createGraphicsPipeline();
+
+    createComputeDescriptorSetLayout();
+    createShaderStorageBuffers();
+    createComputeDescriptorSets();
+    createComputePipeline();
 }
 
 Texture::~Texture() {

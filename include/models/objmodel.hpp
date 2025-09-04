@@ -21,6 +21,8 @@ class OBJModel {
 	const string objPath;
 	string directory;
 
+	void setOnHover(const std::function<void()> &callback);
+
 	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 	void updateUniformBuffer(const Model::UBO &ubo);
 	void render(const Model::UBO &ubo, const Model::ScreenParams &screenParams);
