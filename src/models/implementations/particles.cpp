@@ -16,16 +16,6 @@ Particles::Particles(uint32_t particleCount, uint32_t width, uint32_t height) : 
 }
 
 Particles::~Particles() {
-	if (computePipeline != VK_NULL_HANDLE) {
-		vkDestroyPipeline(Engine::device, computePipeline, nullptr);
-	}
-	if (computePipelineLayout != VK_NULL_HANDLE) {
-		vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
-	}
-	if (computeDescriptorSetLayout != VK_NULL_HANDLE) {
-		vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
-	}
-
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
 		if (shaderStorageBuffers[i] != VK_NULL_HANDLE) {
 			vkDestroyBuffer(Engine::device, shaderStorageBuffers[i], nullptr);

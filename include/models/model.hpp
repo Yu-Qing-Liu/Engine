@@ -37,75 +37,8 @@ class Model {
 		VkRect2D scissor{};
 	};
 
-	struct Vertex {
-		vec3 pos;
-		vec4 color;
-
-		static VkVertexInputBindingDescription getBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription{};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return bindingDescription;
-		}
-
-		static array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-			return attributeDescriptions;
-		}
-	};
-
-	struct TexVertex {
-		vec3 pos;
-		vec4 color;
-		vec2 texCoord;
-
-		static VkVertexInputBindingDescription getBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription{};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(TexVertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return bindingDescription;
-		}
-
-		static array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-			array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(TexVertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(TexVertex, color);
-
-			attributeDescriptions[2].binding = 0;
-			attributeDescriptions[2].location = 2;
-			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-			attributeDescriptions[2].offset = offsetof(TexVertex, texCoord);
-
-			return attributeDescriptions;
-		}
-	};
-
 	Model(const string &shaderPath);
-	Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
-	Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
+	Model(const string &shaderPath, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -118,8 +51,9 @@ class Model {
 		int isOrtho = 0;			// 0=perspective, 1=orthographic
 	};
 
-	void setPickingFromViewportPx(float px, float py, const VkViewport &vp, bool isOrtho = false);
+	void setPickingFromViewportPx(float px, float py, const VkViewport &vp);
 	void setPickingEnabled(bool v) { pickingEnabled = v; }
+	void setPickingOrtho(bool isOrtho) { pickParams.isOrtho = isOrtho; }
 
 	virtual void updateComputeUniformBuffer();
 	virtual void compute();
@@ -190,11 +124,11 @@ class Model {
 	};
 
 	// GPU resources (compute)
-	VkDescriptorSetLayout computeDSL = VK_NULL_HANDLE;
-	VkPipelineLayout computePL = VK_NULL_HANDLE;
-	VkPipeline computePipe = VK_NULL_HANDLE;
+	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+	VkPipeline computePipeline = VK_NULL_HANDLE;
 	VkDescriptorPool computePool = VK_NULL_HANDLE;
-	VkDescriptorSet computeDS = VK_NULL_HANDLE;
+	VkDescriptorSet computeDescriptorSet = VK_NULL_HANDLE;
 
 	VkBuffer nodesBuf = VK_NULL_HANDLE;
 	VkDeviceMemory nodesMem = VK_NULL_HANDLE;
@@ -218,7 +152,7 @@ class Model {
 	std::vector<vec3> posGPU;
 
 	// Build & upload
-	void buildBVH(); // CPU BVH builder
+	virtual void buildBVH(); // CPU BVH builder
 	AABB triAabb(const vec3 &a, const vec3 &b, const vec3 &c) const;
 	int buildNode(std::vector<BuildTri> &tris, int begin, int end, int depth, std::vector<BuildNode> &out);
 
@@ -254,8 +188,6 @@ class Model {
 	VkDescriptorPoolCreateInfo poolInfo{};
 	VkDescriptorSetAllocateInfo allocInfo{};
 
-	vector<Vertex> vertices;
-	vector<TexVertex> texVertices;
 	vector<uint16_t> indices;
 	vector<VkBuffer> uniformBuffers;
 	vector<VkDeviceMemory> uniformBuffersMemory;
@@ -279,8 +211,35 @@ class Model {
 	virtual void createDescriptorSets();
 	virtual void createVertexBuffer();
 	virtual void createIndexBuffer();
-	virtual void createBindingDescriptions();
+	virtual void createBindingDescriptions() = 0;
 	virtual void createGraphicsPipeline();
+
+	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
+		VkDeviceSize bufferSize;
+		if (!vertices.empty()) {
+			bufferSize = sizeof(vertices[0]) * vertices.size();
+		} else {
+			throw std::runtime_error("No vertices specified for Vertex Buffer");
+		}
+
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+		void *data;
+		vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
+		if (!vertices.empty()) {
+			memcpy(data, vertices.data(), (size_t)bufferSize);
+		} else {
+			throw std::runtime_error("No vertices specified for Vertex Buffer");
+		}
+		vkUnmapMemory(Engine::device, stagingBufferMemory);
+
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+		Engine::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+		vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
+		vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+	}
 
   private:
 	AABB merge(const AABB &a, const AABB &b);

@@ -56,10 +56,6 @@ class Particles : public Model {
 	uint32_t height;
 	uint32_t width;
 
-	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
-	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
-	VkPipeline computePipeline = VK_NULL_HANDLE;
-
 	vector<VkBuffer> shaderStorageBuffers;
 	vector<VkDeviceMemory> shaderStorageBuffersMemory;
 	vector<VkDescriptorSet> computeDescriptorSets;

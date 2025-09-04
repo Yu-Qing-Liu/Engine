@@ -3,15 +3,11 @@
 #include <algorithm>
 #include <cstring>
 #include <functional>
-#include <iostream>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
 Model::Model(const string &shaderPath) : shaderPath(shaderPath) {}
-
-Model::Model(const string &shaderPath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : shaderPath(shaderPath), vertices(vertices), indices(indices) {}
-
-Model::Model(const string &shaderPath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices) : shaderPath(shaderPath), texVertices(vertices), indices(indices) {}
+Model::Model(const string &shaderPath, const vector<uint16_t> &indices) : shaderPath(shaderPath), indices(indices) {}
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
@@ -67,17 +63,17 @@ Model::~Model() {
 		vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 	}
 
-	if (computePipe != VK_NULL_HANDLE) {
-		vkDestroyPipeline(Engine::device, computePipe, nullptr);
+	if (computePipeline != VK_NULL_HANDLE) {
+		vkDestroyPipeline(Engine::device, computePipeline, nullptr);
 	}
-	if (computePL != VK_NULL_HANDLE) {
-		vkDestroyPipelineLayout(Engine::device, computePL, nullptr);
+	if (computePipelineLayout != VK_NULL_HANDLE) {
+		vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
 	}
 	if (computePool != VK_NULL_HANDLE) {
 		vkDestroyDescriptorPool(Engine::device, computePool, nullptr);
 	}
-	if (computeDSL != VK_NULL_HANDLE) {
-		vkDestroyDescriptorSetLayout(Engine::device, computeDSL, nullptr);
+	if (computeDescriptorSetLayout != VK_NULL_HANDLE) {
+		vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
 	}
 
 	auto D = [&](VkBuffer &b, VkDeviceMemory &m) {
@@ -130,35 +126,31 @@ void Model::updateUniformBuffer(const UBO &ubo) {
 	memcpy(uniformBuffersMapped[Engine::currentFrame], &this->ubo.value(), sizeof(this->ubo.value()));
 }
 
-void Model::updateScreenParams(const ScreenParams &screenParams) {
-    this->screenParams = screenParams;
-}
+void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
 
 /*
  *  Compute setup
  * */
 
-void Model::setPickingFromViewportPx(float px, float py, const VkViewport& vp, bool isOrtho) {
-    // Handle possible negative-height viewports (legal in Vulkan).
-    const float w = vp.width;
-    const float hAbs = std::abs(vp.height);
+void Model::setPickingFromViewportPx(float px, float py, const VkViewport &vp) {
+	// Handle possible negative-height viewports (legal in Vulkan).
+	const float w = vp.width;
+	const float hAbs = std::abs(vp.height);
 
-    // Convert pixel -> viewport-local pixels (y respecting sign of height)
-    const float xLocal = (px - vp.x) + 0.5f;
-    const float yLocal = (vp.height >= 0.0f)
-                       ? (py - vp.y) + 0.5f          // origin at vp.y (top-left style)
-                       : (vp.y - py) + 0.5f;        // flipped viewport
+	// Convert pixel -> viewport-local pixels (y respecting sign of height)
+	const float xLocal = (px - vp.x) + 0.5f;
+	const float yLocal = (vp.height >= 0.0f) ? (py - vp.y) + 0.5f  // origin at vp.y (top-left style)
+											 : (vp.y - py) + 0.5f; // flipped viewport
 
-    // Normalize -> [0,1]
-    const float sx = xLocal / w;
-    const float sy = yLocal / hAbs;
+	// Normalize -> [0,1]
+	const float sx = xLocal / w;
+	const float sy = yLocal / hAbs;
 
-    // Map to NDC [-1,1] with +Y up (since you already flip proj[1][1]*=-1)
-    const float ndcX = sx * 2.0f - 1.0f;
-    const float ndcY = 1.0f - sy * 2.0f;
+	// Map to NDC [-1,1] with +Y up (since you already flip proj[1][1]*=-1)
+	const float ndcX = sx * 2.0f - 1.0f;
+	const float ndcY = sy * 2.0f - 1.0f;
 
-    pickParams.mouseNdc = { ndcX, ndcY };
-    pickParams.isOrtho  = isOrtho ? 1 : 0;
+	pickParams.mouseNdc = {ndcX, ndcY};
 }
 
 Model::AABB Model::merge(const AABB &a, const AABB &b) { return {glm::min(a.bmin, b.bmin), glm::max(a.bmax, b.bmax)}; }
@@ -200,111 +192,28 @@ int Model::buildNode(std::vector<BuildTri> &tris, int begin, int end, int depth,
 	return (int)out.size() - 1;
 }
 
-void Model::buildBVH() {
-	// Gather positions and triangles from current mesh
-	posGPU.clear();
-	triGPU.clear();
-	if (!vertices.empty()) {
-		posGPU.reserve(vertices.size());
-		for (auto &v : vertices)
-			posGPU.push_back(v.pos);
-	} else if (!texVertices.empty()) {
-		posGPU.reserve(texVertices.size());
-		for (auto &v : texVertices)
-			posGPU.push_back(v.pos);
-	} else {
-		throw std::runtime_error("BVH build: no vertices");
-	}
-
-	std::vector<BuildTri> tris;
-	tris.reserve(indices.size() / 3);
-	for (size_t t = 0; t < indices.size(); t += 3) {
-		uint32_t i0 = indices[t + 0], i1 = indices[t + 1], i2 = indices[t + 2];
-		const vec3 &A = posGPU[i0];
-		const vec3 &B = posGPU[i1];
-		const vec3 &C = posGPU[i2];
-		BuildTri bt;
-		bt.i0 = i0;
-		bt.i1 = i1;
-		bt.i2 = i2;
-		bt.b = triAabb(A, B, C);
-		bt.centroid = (A + B + C) * (1.0f / 3.0f);
-		tris.push_back(bt);
-
-		triGPU.push_back({i0, i1, i2, 0});
-	}
-
-	// Build tree into BuildNode list (temporary)
-	std::vector<BuildNode> tmp;
-	tmp.reserve(tris.size() * 2);
-	int root = buildNode(tris, 0, (int)tris.size(), 0, tmp);
-
-	// Rebuild GPU triangles in the final order used by leaves
-	triGPU.clear();
-	triGPU.reserve(tris.size());
-	for (const auto &t : tris) {
-		triGPU.push_back({t.i0, t.i1, t.i2, 0u});
-	}
-
-	// Flatten to GPU nodes (depth-first, implicit right=left+1 for internal nodes)
-	bvhNodes.clear();
-	bvhNodes.resize(tmp.size());
-	// Map temp indices to linear DFS order
-	std::vector<int> map(tmp.size(), -1);
-	std::function<void(int, int &)> dfs = [&](int ni, int &outIdx) {
-		int my = outIdx++;
-		map[ni] = my;
-		if (tmp[ni].triCount == 0) {
-			dfs(tmp[ni].left, outIdx);
-			dfs(tmp[ni].right, outIdx);
-		}
-	};
-	int counter = 0;
-	dfs(root, counter);
-
-	// Fill nodes in DFS order
-	std::function<void(int)> emit = [&](int ni) {
-		int me = map[ni];
-		const BuildNode &n = tmp[ni];
-		BVHNodeGPU gn;
-		gn.bmin = vec4(n.b.bmin, 0.0f);
-		gn.bmax = vec4(n.b.bmax, 0.0f);
-
-		if (n.triCount == 0) {
-			gn.leftFirst = map[n.left];
-			gn.rightOrCount = (uint32_t(map[n.right]) | 0x80000000u); // INTERNAL
-			bvhNodes[me] = gn;
-			emit(n.left);
-			emit(n.right);
-		} else {
-			gn.leftFirst = n.firstTri;
-			gn.rightOrCount = n.triCount; // leaf => count, no high bit
-			bvhNodes[me] = gn;
-		}
-	};
-	emit(root);
-}
+void Model::buildBVH() {}
 
 void Model::updateComputeUniformBuffer() {
 	if (!pickingEnabled || !ubo.has_value()) {
 		return;
 	}
 
-    // Cursor in WINDOW coords
-    double cx, cy;
-    glfwGetCursorPos(Engine::window, &cx, &cy);
+	// Cursor in WINDOW coords
+	double cx, cy;
+	glfwGetCursorPos(Engine::window, &cx, &cy);
 
-    // Convert to FRAMEBUFFER pixels (HiDPI aware)
-    int fbw, fbh, ww, wh;
-    glfwGetFramebufferSize(Engine::window, &fbw, &fbh);
-    glfwGetWindowSize(Engine::window, &ww, &wh);
-    const float sx = ww ? (float)fbw / (float)ww : 1.0f;
-    const float sy = wh ? (float)fbh / (float)wh : 1.0f;
+	// Convert to FRAMEBUFFER pixels (HiDPI aware)
+	int fbw, fbh, ww, wh;
+	glfwGetFramebufferSize(Engine::window, &fbw, &fbh);
+	glfwGetWindowSize(Engine::window, &ww, &wh);
+	const float sx = ww ? (float)fbw / (float)ww : 1.0f;
+	const float sy = wh ? (float)fbh / (float)wh : 1.0f;
 
-    const float mousePx = (float)cx * sx;
-    const float mousePy = (float)cy * sy;
+	const float mousePx = (float)cx * sx;
+	const float mousePy = (float)cy * sy;
 
-    setPickingFromViewportPx(mousePx, mousePy, screenParams.value().viewport, /*isOrtho=*/false);
+	setPickingFromViewportPx(mousePx, mousePy, screenParams.value().viewport);
 
 	mat4 invVP = inverse(ubo->proj * ubo->view);
 	mat4 invV = inverse(ubo->view);
@@ -332,9 +241,9 @@ void Model::updateComputeUniformBuffer() {
 
 	if (hitMapped && hitMapped->hit) {
 		// std::cout << "Polygon hit" << std::endl;
-        if (onHover) {
-            onHover();
-        }
+		if (onHover) {
+			onHover();
+		}
 		// Reset so we only print once per hit
 		hitMapped->hit = 0;
 	}
@@ -369,7 +278,7 @@ void Model::createComputeDescriptorSetLayout() {
 	ci.bindingCount = 5;
 	ci.pBindings = b;
 
-	if (vkCreateDescriptorSetLayout(Engine::device, &ci, nullptr, &computeDSL) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(Engine::device, &ci, nullptr, &computeDescriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("compute DSL failed");
 
 	// Small pool for one set
@@ -450,9 +359,9 @@ void Model::createComputeDescriptorSets() {
 	VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
 	ai.descriptorPool = computePool;
 	ai.descriptorSetCount = 1;
-	ai.pSetLayouts = &computeDSL;
+	ai.pSetLayouts = &computeDescriptorSetLayout;
 
-	if (vkAllocateDescriptorSets(Engine::device, &ai, &computeDS) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(Engine::device, &ai, &computeDescriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("compute DS alloc failed");
 
 	VkDescriptorBufferInfo nb{nodesBuf, 0, VK_WHOLE_SIZE};
@@ -464,7 +373,7 @@ void Model::createComputeDescriptorSets() {
 	std::array<VkWriteDescriptorSet, 5> w{};
 	auto W = [&](int i, uint32_t binding, VkDescriptorType t, const VkDescriptorBufferInfo *bi) {
 		w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		w[i].dstSet = computeDS;
+		w[i].dstSet = computeDescriptorSet;
 		w[i].dstBinding = binding;
 		w[i].descriptorType = t;
 		w[i].descriptorCount = 1;
@@ -489,16 +398,16 @@ void Model::createComputePipeline() {
 	// Pipeline layout (compute-only set layout)
 	VkPipelineLayoutCreateInfo pli{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 	pli.setLayoutCount = 1;
-	pli.pSetLayouts = &computeDSL;
-	if (vkCreatePipelineLayout(Engine::device, &pli, nullptr, &computePL) != VK_SUCCESS) {
+	pli.pSetLayouts = &computeDescriptorSetLayout;
+	if (vkCreatePipelineLayout(Engine::device, &pli, nullptr, &computePipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("compute pipeline layout failed");
 	}
 
 	VkComputePipelineCreateInfo ci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
 	ci.stage = Engine::createShaderStageInfo(shaderProgram.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
-	ci.layout = computePL;
+	ci.layout = computePipelineLayout;
 
-	if (vkCreateComputePipelines(Engine::device, VK_NULL_HANDLE, 1, &ci, nullptr, &computePipe) != VK_SUCCESS) {
+	if (vkCreateComputePipelines(Engine::device, VK_NULL_HANDLE, 1, &ci, nullptr, &computePipeline) != VK_SUCCESS) {
 		throw std::runtime_error("compute pipeline failed");
 	}
 }
@@ -509,8 +418,8 @@ void Model::compute() {
 	}
 
 	VkCommandBuffer cmd = Engine::currentComputeCommandBuffer();
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipe);
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePL, 0, 1, &computeDS, 0, nullptr);
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSet, 0, nullptr);
 	vkCmdDispatch(cmd, 1, 1, 1);
 
 	// Make the write to hitBuf visible to the host when the queue completes
@@ -540,36 +449,7 @@ void Model::createDescriptorSetLayout() {
 	}
 }
 
-void Model::createVertexBuffer() {
-	VkDeviceSize bufferSize;
-	if (!vertices.empty()) {
-		bufferSize = sizeof(vertices[0]) * vertices.size();
-	} else if (!texVertices.empty()) {
-		bufferSize = sizeof(texVertices[0]) * texVertices.size();
-	} else {
-		throw std::runtime_error("No vertices specified for Vertex Buffer");
-	}
-
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-	void *data;
-	vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	if (!vertices.empty()) {
-		memcpy(data, vertices.data(), (size_t)bufferSize);
-	} else if (!texVertices.empty()) {
-		memcpy(data, texVertices.data(), (size_t)bufferSize);
-	} else {
-		throw std::runtime_error("No vertices specified for Vertex Buffer");
-	}
-	vkUnmapMemory(Engine::device, stagingBufferMemory);
-
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-	Engine::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
-
-	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
-}
+void Model::createVertexBuffer() {}
 
 void Model::createIndexBuffer() {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
@@ -646,12 +526,6 @@ void Model::createDescriptorSets() {
 
 		vkUpdateDescriptorSets(Engine::device, 1, &descriptorWrite, 0, nullptr);
 	}
-}
-
-void Model::createBindingDescriptions() {
-	bindingDescription = Vertex::getBindingDescription();
-	auto attrs = Vertex::getAttributeDescriptions();
-	attributeDescriptions = vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
 void Model::createGraphicsPipeline() {
@@ -766,9 +640,9 @@ void Model::render(const UBO &ubo, const ScreenParams &screenParams) {
 		this->ubo = ubo;
 		this->ubo.value().proj[1][1] *= -1;
 	}
-    if (!this->screenParams.has_value()) {
-        this->screenParams = screenParams;
-    }
+	if (!this->screenParams.has_value()) {
+		this->screenParams = screenParams;
+	}
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
