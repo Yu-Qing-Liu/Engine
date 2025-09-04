@@ -10,7 +10,7 @@
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
     this->triangle = make_unique<Polygon>(
-        std::vector<Model::Vertex> {
+        std::vector<Polygon::Vertex> {
             {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
             {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
             {{0.433f, -0.25f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
@@ -22,7 +22,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 
     this->example = make_unique<Texture>(
         Engine::textureRootPath + "/example/example.png", 
-        std::vector<Model::TexVertex> {
+        std::vector<Texture::Vertex> {
             {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
             {{1.0f, -0.5f, 0.25f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
             {{1.0f, 0.5f, 0.25f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},

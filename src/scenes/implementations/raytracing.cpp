@@ -9,7 +9,7 @@
 
 RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     this->cube = make_unique<Polygon>(
-        std::vector<Model::Vertex>{
+        std::vector<Polygon::Vertex>{
             // idx, position                 // color (RGBA)
             /*0*/ {{-0.5f, -0.5f, -0.5f},     {1.0f, 0.0f, 0.0f, 1.0f}}, // LBB
             /*1*/ {{ 0.5f, -0.5f, -0.5f},     {0.0f, 1.0f, 0.0f, 1.0f}}, // RBB

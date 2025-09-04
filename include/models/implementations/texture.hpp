@@ -6,13 +6,63 @@
 
 class Texture : public Model {
   public:
-	Texture(const string &texturePath, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
-	Texture(const aiTexture &embeddedTex, const vector<TexVertex> &vertices, const vector<uint16_t> &indices);
 	Texture(Texture &&) = default;
 	Texture(const Texture &) = delete;
 	Texture &operator=(Texture &&) = delete;
 	Texture &operator=(const Texture &) = delete;
 	~Texture() override;
+
+	struct Vertex {
+		vec3 pos;
+		vec4 color;
+		vec2 texCoord;
+
+		static VkVertexInputBindingDescription getBindingDescription() {
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		static array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+			return attributeDescriptions;
+		}
+	};
+
+	Texture(const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
+	Texture(const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
+
+  protected:
+	void buildBVH() override;
+
+	void createTextureImageFromFile();
+	void createTextureImageFromEmbedded();
+	void createTextureImageView();
+	void createTextureSampler();
+
+	void createDescriptorSetLayout() override;
+	void createDescriptorPool() override;
+	void createDescriptorSets() override;
+	void createBindingDescriptions() override;
 
   private:
 	string texturePath;
@@ -26,13 +76,5 @@ class Texture : public Model {
 	VkImageCreateInfo imageInfo{};
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 
-	void createTextureImageFromFile();
-	void createTextureImageFromEmbedded();
-	void createTextureImageView();
-	void createTextureSampler();
-
-	void createDescriptorSetLayout() override;
-	void createDescriptorPool() override;
-	void createDescriptorSets() override;
-	void createBindingDescriptions() override;
+	vector<Vertex> vertices;
 };

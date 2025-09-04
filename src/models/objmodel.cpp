@@ -67,7 +67,7 @@ void OBJModel::processNode(aiNode * node, const aiScene * scene) {
 std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene) {
     // -------- With texture coordinates --------
     if (mesh->HasTextureCoords(0)) {
-        std::vector<Model::TexVertex> vertices;
+        std::vector<Texture::Vertex> vertices;
         std::vector<uint16_t> indices;
 
         // vertices
@@ -126,7 +126,7 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
         }
 
         // If we got here, no material texture found return a polygon model
-        std::vector<Model::Vertex> polyVerts;
+        std::vector<Polygon::Vertex> polyVerts;
         polyVerts.reserve(vertices.size());
         for (const auto& v : vertices) polyVerts.push_back({v.pos, v.color});
         return std::make_unique<Polygon>(polyVerts, indices);
@@ -134,7 +134,7 @@ std::unique_ptr<Model> OBJModel::processMesh(aiMesh* mesh, const aiScene* scene)
 
     // -------- No texture coordinates → plain colored mesh --------
     {
-        std::vector<Model::Vertex> vertices;
+        std::vector<Polygon::Vertex> vertices;
         std::vector<uint16_t> indices;
 
         // vertices
