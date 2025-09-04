@@ -64,12 +64,12 @@ class Particles : public Model {
 	vector<VkDeviceMemory> shaderStorageBuffersMemory;
 	vector<VkDescriptorSet> computeDescriptorSets;
 
-	void createComputeDescriptorSetLayout();
+	void createComputeDescriptorSetLayout() override;
 	void createBindingDescriptions() override;
 	void createGraphicsPipeline() override;
-	void createComputePipeline();
-	void createShaderStorageBuffers();
+	void createComputePipeline() override;
+	void createShaderStorageBuffers() override;
 	void createUniformBuffers() override;
 	void createDescriptorPool() override;
-	void createComputeDescriptorSets();
+	void createComputeDescriptorSets() override;
 };
