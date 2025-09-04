@@ -12,4 +12,9 @@ Polygon::Polygon(const vector<Vertex> &vertices, const vector<uint16_t> &indices
 	createIndexBuffer();
 	createBindingDescriptions();
 	createGraphicsPipeline();
+
+    createComputeDescriptorSetLayout();
+    createShaderStorageBuffers();
+    createComputeDescriptorSets();
+    createComputePipeline();
 }

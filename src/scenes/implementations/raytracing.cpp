@@ -3,6 +3,7 @@
 #include "objmodel.hpp"
 #include "polygon.hpp"
 #include "scenes.hpp"
+#include <GLFW/glfw3.h>
 #include <memory>
 #include <optional>
 
@@ -34,6 +35,9 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
             0, 1, 5,   5, 4, 0,
         }
     );
+    this->cube->setOnHover([]() {
+        std::cout << "Polygon hit " << Engine::time << std::endl;
+    });
 }
 
 void RayTracing::updateScreenParams() {
@@ -48,11 +52,11 @@ void RayTracing::updateScreenParams() {
 }
 
 void RayTracing::updateComputeUniformBuffers() {
-
+    cube->updateComputeUniformBuffer();
 }
 
 void RayTracing::computePass() {
-
+    cube->compute();
 }
 
 void RayTracing::updateUniformBuffers() {
@@ -63,6 +67,7 @@ void RayTracing::swapChainUpdate() {
     updateScreenParams();
 
     cube->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
+    cube->updateScreenParams(screenParams);
 }
 
 void RayTracing::renderPass() {
