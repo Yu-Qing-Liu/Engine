@@ -132,7 +132,7 @@ void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenP
  *  Compute setup
  * */
 
-void Model::setPickingFromViewportPx(float px, float py, const VkViewport &vp, bool isOrtho) {
+void Model::setPickingFromViewportPx(float px, float py, const VkViewport &vp) {
 	// Handle possible negative-height viewports (legal in Vulkan).
 	const float w = vp.width;
 	const float hAbs = std::abs(vp.height);
@@ -151,7 +151,6 @@ void Model::setPickingFromViewportPx(float px, float py, const VkViewport &vp, b
 	const float ndcY = sy * 2.0f - 1.0f;
 
 	pickParams.mouseNdc = {ndcX, ndcY};
-	pickParams.isOrtho = isOrtho ? 1 : 0;
 }
 
 Model::AABB Model::merge(const AABB &a, const AABB &b) { return {glm::min(a.bmin, b.bmin), glm::max(a.bmax, b.bmax)}; }
@@ -214,7 +213,7 @@ void Model::updateComputeUniformBuffer() {
 	const float mousePx = (float)cx * sx;
 	const float mousePy = (float)cy * sy;
 
-	setPickingFromViewportPx(mousePx, mousePy, screenParams.value().viewport, pickParams.isOrtho);
+	setPickingFromViewportPx(mousePx, mousePy, screenParams.value().viewport);
 
 	mat4 invVP = inverse(ubo->proj * ubo->view);
 	mat4 invV = inverse(ubo->view);

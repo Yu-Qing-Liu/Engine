@@ -51,8 +51,9 @@ class Model {
 		int isOrtho = 0;			// 0=perspective, 1=orthographic
 	};
 
-	void setPickingFromViewportPx(float px, float py, const VkViewport &vp, bool isOrtho = false);
+	void setPickingFromViewportPx(float px, float py, const VkViewport &vp);
 	void setPickingEnabled(bool v) { pickingEnabled = v; }
+	void setPickingOrtho(bool isOrtho) { pickParams.isOrtho = isOrtho; }
 
 	virtual void updateComputeUniformBuffer();
 	virtual void compute();
@@ -215,7 +216,6 @@ class Model {
 
 	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
 		VkDeviceSize bufferSize;
-        std::cout << vertices.size() << std::endl;
 		if (!vertices.empty()) {
 			bufferSize = sizeof(vertices[0]) * vertices.size();
 		} else {
