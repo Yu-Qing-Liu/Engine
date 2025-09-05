@@ -15,7 +15,10 @@ class Scene {
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene() = default;
 
-	vector<Model*> models;
+	vector<Model *> models;
+
+	void updateRayTraceUniformBuffers();
+	void rayTraces();
 
 	virtual void updateScreenParams();
 

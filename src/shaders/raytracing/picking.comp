@@ -29,7 +29,7 @@ layout(std430, set=0, binding=4) buffer OutBuf {
     uint  hit;     // debug/hit code
     uint  primId;  // payload A
     float t;       // payload B
-    uint  _pad;
+    float rayLen;  // ray length
     vec4 hitPos;   // xyz intersection
 } outHit;
 
@@ -188,11 +188,22 @@ void main(){
     }
 
     if (bestPrim != 0xFFFFFFFFu) {
-        outHit.hit = 1u;
+        outHit.hit    = 1u;
         outHit.primId = bestPrim;
-        outHit.t = bestT;
-        vec3 hitPos = rA.o + bestT * rA.d;
-        outHit.hitPos = vec4(hitPos, 1.0);
+        outHit.t      = bestT;
+
+        // model-space hit
+        vec3 hitPosM = rA.o + bestT * rA.d;
+
+        // build model matrix once (inverse of invModel)
+        mat4 model = inverse(u.invModel);
+
+        // world-space hit & length from camera
+        vec3 hitPosW = (model * vec4(hitPosM, 1.0)).xyz;
+        outHit.hitPos = vec4(hitPosW, 1.0);
+
+        vec3 cam = u.camPos;           // already world-space
+        outHit.rayLen = length(cam - hitPosW);
     } else {
         outHit.hit = 0u;
     }

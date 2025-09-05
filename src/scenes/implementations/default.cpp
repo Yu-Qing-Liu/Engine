@@ -44,6 +44,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
     this->particles = make_unique<Particles>(*this, 8192, screenParams.viewport.width, screenParams.viewport.height);
 
     this->room = make_unique<OBJModel>(*this, Engine::modelRootPath + "/example/example.obj");
+    this->room->setRayTraceEnabled(true);
     this->room->setOnHover([]() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     });
@@ -63,23 +64,6 @@ void Default::updateScreenParams() {
     screenParams.scissor.extent = {800, 800};
 }
 
-void Default::updateComputeUniformBuffers() {
-    room->updateComputeUniformBuffer();
-    // particles->updateComputeUniformBuffer();
-}
-
-void Default::computePass() {
-    room->compute();
-    // particles->compute();
-}
-
-void Default::updateUniformBuffers() {
-    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    text->updateUniformBuffer();
-}
-
 void Default::swapChainUpdate() {
     example->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     triangle->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
@@ -91,11 +75,26 @@ void Default::swapChainUpdate() {
     );
 }
 
+void Default::updateComputeUniformBuffers() {
+    particles->updateRayTraceUniformBuffer();
+}
+
+void Default::computePass() {
+    particles->rayTrace();
+}
+
+void Default::updateUniformBuffers() {
+    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    text->updateUniformBuffer();
+}
+
 void Default::renderPass() {
     example->render(persp, screenParams);
     triangle->render(persp, screenParams);
     room->render(persp, screenParams);
     text->renderText(orthographic, screenParams, "Hello World", 1.0f);
 
-    // particles->render(orthographic, screenParams);
+    particles->render(orthographic, screenParams);
 }
