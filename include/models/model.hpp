@@ -171,7 +171,9 @@ class Model {
 	optional<ScreenParams> screenParams = std::nullopt;
 
 	string shaderPath;
+    string rayTracingShaderPath = Engine::shaderRootPath + "/raytracing";
 	Engine::ShaderModules shaderProgram;
+    Engine::ShaderModules rayTracingProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;

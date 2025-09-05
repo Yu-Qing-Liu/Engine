@@ -47,7 +47,7 @@ class Text : public Model {
 		vec2 uvMax;		  // [0..1]
 	};
 
-	Text(const TextParams &params);
+	Text(Scene &scene, const TextParams &params);
 
 	void renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, const vec3 &origin, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
 	void renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));

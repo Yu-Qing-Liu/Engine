@@ -41,15 +41,15 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
-    this->particles = make_unique<Particles>(8192, screenParams.viewport.width, screenParams.viewport.height);
+    this->particles = make_unique<Particles>(*this, 8192, screenParams.viewport.width, screenParams.viewport.height);
 
-    this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
+    this->room = make_unique<OBJModel>(*this, Engine::modelRootPath + "/example/example.obj");
     this->room->setOnHover([]() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     });
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
-    this->text = make_unique<Text>(tp);
+    this->text = make_unique<Text>(*this, tp);
 }
 
 void Default::updateScreenParams() {
@@ -65,12 +65,12 @@ void Default::updateScreenParams() {
 
 void Default::updateComputeUniformBuffers() {
     room->updateComputeUniformBuffer();
-    particles->updateComputeUniformBuffer();
+    // particles->updateComputeUniformBuffer();
 }
 
 void Default::computePass() {
     room->compute();
-    particles->compute();
+    // particles->compute();
 }
 
 void Default::updateUniformBuffers() {
@@ -97,5 +97,5 @@ void Default::renderPass() {
     room->render(persp, screenParams);
     text->renderText(orthographic, screenParams, "Hello World", 1.0f);
 
-    particles->render(orthographic, screenParams);
+    // particles->render(orthographic, screenParams);
 }

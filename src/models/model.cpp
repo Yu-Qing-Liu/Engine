@@ -34,6 +34,11 @@ Model::~Model() {
 		vkDestroyShaderModule(Engine::device, shaderProgram.vertexShader, nullptr);
 	}
 
+    if (rayTracingProgram.computeShader != VK_NULL_HANDLE) {
+        vkDestroyShaderModule(Engine::device, rayTracingProgram.computeShader, nullptr);
+        rayTracingProgram.computeShader = VK_NULL_HANDLE;
+    }
+
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		if (uniformBuffers[i] != VK_NULL_HANDLE) {
 			vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
@@ -394,8 +399,8 @@ void Model::createComputeDescriptorSets() {
 }
 
 void Model::createComputePipeline() {
-	// shaderProgram.computeShader should be created by Engine::compileShaderProgram(shaderPath)
-	if (shaderProgram.computeShader == VK_NULL_HANDLE) {
+	rayTracingProgram = Engine::compileShaderProgram(rayTracingShaderPath);
+	if (rayTracingProgram.computeShader == VK_NULL_HANDLE) {
 		// Fallback: try compiling/loading here if your Engine doesn't do it.
 		throw std::runtime_error("compute shader missing (expect picking.comp)!");
 	}
@@ -409,7 +414,7 @@ void Model::createComputePipeline() {
 	}
 
 	VkComputePipelineCreateInfo ci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-	ci.stage = Engine::createShaderStageInfo(shaderProgram.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
+	ci.stage = Engine::createShaderStageInfo(rayTracingProgram.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
 	ci.layout = computePipelineLayout;
 
 	if (vkCreateComputePipelines(Engine::device, VK_NULL_HANDLE, 1, &ci, nullptr, &computePipeline) != VK_SUCCESS) {
@@ -442,7 +447,7 @@ void Model::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
 
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
