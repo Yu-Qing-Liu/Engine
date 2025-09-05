@@ -5,11 +5,11 @@
 Scenes::Scenes() {
     scenes[Default::getName()] = {
         make_unique<Default>(*this),
-        true
+        false
     };
     scenes[RayTracing::getName()] = {
         make_unique<RayTracing>(*this),
-        false
+        true
     };
 }
 
@@ -24,6 +24,7 @@ void Scenes::hideScene(const string &sceneName) {
 void Scenes::updateComputeUniformBuffers() {
     for (const auto &sc : scenes) {
         if (sc.second.show) {
+            sc.second.scene->updateRayTraceUniformBuffers();
             sc.second.scene->updateComputeUniformBuffers();
         }
     }
@@ -32,6 +33,7 @@ void Scenes::updateComputeUniformBuffers() {
 void Scenes::computePass() {
     for (const auto &sc : scenes) {
         if (sc.second.show) {
+            sc.second.scene->rayTraces();
             sc.second.scene->computePass();
         }
     }
@@ -56,6 +58,7 @@ void Scenes::renderPass() {
 void Scenes::swapChainUpdate() {
     for (const auto &sc : scenes) {
         if (sc.second.show) {
+            sc.second.scene->updateScreenParams();
             sc.second.scene->swapChainUpdate();
         }
     }

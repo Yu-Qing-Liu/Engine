@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(const TextParams &textParams) : textParams(textParams), Model(Engine::shaderRootPath + "/text") {
+Text::Text(Scene &scene, const TextParams &textParams) : textParams(textParams), Model(scene, Engine::shaderRootPath + "/text") {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}

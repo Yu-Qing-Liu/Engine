@@ -19,6 +19,8 @@ using std::optional;
 using std::string;
 using std::vector;
 
+class Scene;
+
 class Model {
   public:
 	Model(Model &&) = default;
@@ -37,8 +39,8 @@ class Model {
 		VkRect2D scissor{};
 	};
 
-	Model(const string &shaderPath);
-	Model(const string &shaderPath, const vector<uint16_t> &indices);
+	Model(Scene &scene, const string &shaderPath);
+	Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -51,9 +53,23 @@ class Model {
 		int isOrtho = 0;			// 0=perspective, 1=orthographic
 	};
 
-	void setPickingFromViewportPx(float px, float py, const VkViewport &vp);
-	void setPickingEnabled(bool v) { pickingEnabled = v; }
-	void setPickingOrtho(bool isOrtho) { pickParams.isOrtho = isOrtho; }
+	bool rayTracingEnabled = false;
+	bool mouseIsOver = false;
+
+	optional<UBO> ubo = std::nullopt;
+	optional<ScreenParams> screenParams = std::nullopt;
+
+	optional<vec3> hitPos;
+	optional<float> rayLength;
+
+	std::function<void()> onHover;
+
+	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
+	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
+	void setRayTraceOrtho(bool isOrtho) { pickParams.isOrtho = isOrtho; }
+
+	void updateRayTraceUniformBuffer();
+	void rayTrace();
 
 	virtual void updateComputeUniformBuffer();
 	virtual void compute();
@@ -70,6 +86,8 @@ class Model {
 	virtual void render(const UBO &ubo, const ScreenParams &screenParams);
 
   protected:
+	Scene &scene;
+
 	/*
 	 *  Compute setup
 	 * */
@@ -101,7 +119,8 @@ class Model {
 		uint32_t hit;
 		uint32_t primId;
 		float t;
-		uint32_t _pad;
+		float rayLen;
+		vec4 hitPos;
 	};
 
 	// CPU-side BVH build helpers
@@ -143,7 +162,6 @@ class Model {
 
 	void *pickUBOMapped = nullptr;
 	HitOutCPU *hitMapped = nullptr;
-	bool pickingEnabled = true;
 	PickingParams pickParams{};
 
 	// CPU copies (once, unless geometry changes)
@@ -156,17 +174,14 @@ class Model {
 	AABB triAabb(const vec3 &a, const vec3 &b, const vec3 &c) const;
 	int buildNode(std::vector<BuildTri> &tris, int begin, int end, int depth, std::vector<BuildNode> &out);
 
-	std::function<void()> onHover;
-
 	/*
 	 *  Graphics setup
 	 * */
 
-	optional<UBO> ubo = std::nullopt;
-	optional<ScreenParams> screenParams = std::nullopt;
-
 	string shaderPath;
+	string rayTracingShaderPath = Engine::shaderRootPath + "/raytracing";
 	Engine::ShaderModules shaderProgram;
+	Engine::ShaderModules rayTracingProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;

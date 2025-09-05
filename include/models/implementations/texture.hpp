@@ -48,8 +48,8 @@ class Texture : public Model {
 		}
 	};
 
-	Texture(const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
-	Texture(const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
+	Texture(Scene &scene, const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
+	Texture(Scene &scene, const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices);
 
   protected:
 	void buildBVH() override;

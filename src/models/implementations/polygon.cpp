@@ -3,7 +3,7 @@
 #include <cstring>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(const vector<Vertex> &vertices, const vector<uint16_t> &indices) : vertices(vertices), Model(Engine::shaderRootPath + "/polygon", indices) {
+Polygon::Polygon(Scene &scene, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : vertices(vertices), Model(scene, Engine::shaderRootPath + "/polygon", indices) {
 	createDescriptorSetLayout();
 	createUniformBuffers();
 	createDescriptorPool();

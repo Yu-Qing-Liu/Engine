@@ -1,13 +1,14 @@
 #include "model.hpp"
 #include "engine.hpp"
+#include "scene.hpp"
 #include <algorithm>
 #include <cstring>
 #include <functional>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(const string &shaderPath) : shaderPath(shaderPath) {}
-Model::Model(const string &shaderPath, const vector<uint16_t> &indices) : shaderPath(shaderPath), indices(indices) {}
+Model::Model(Scene &scene, const string &shaderPath) : scene(scene), shaderPath(shaderPath) { scene.models.emplace_back(this); }
+Model::Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), shaderPath(shaderPath), indices(indices) { scene.models.emplace_back(this); }
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
@@ -27,6 +28,11 @@ Model::~Model() {
 	}
 	if (shaderProgram.vertexShader != VK_NULL_HANDLE) {
 		vkDestroyShaderModule(Engine::device, shaderProgram.vertexShader, nullptr);
+	}
+
+	if (rayTracingProgram.computeShader != VK_NULL_HANDLE) {
+		vkDestroyShaderModule(Engine::device, rayTracingProgram.computeShader, nullptr);
+		rayTracingProgram.computeShader = VK_NULL_HANDLE;
 	}
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
@@ -132,7 +138,7 @@ void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenP
  *  Compute setup
  * */
 
-void Model::setPickingFromViewportPx(float px, float py, const VkViewport &vp) {
+void Model::setRayTraceFromViewportPx(float px, float py, const VkViewport &vp) {
 	// Handle possible negative-height viewports (legal in Vulkan).
 	const float w = vp.width;
 	const float hAbs = std::abs(vp.height);
@@ -194,8 +200,12 @@ int Model::buildNode(std::vector<BuildTri> &tris, int begin, int end, int depth,
 
 void Model::buildBVH() {}
 
-void Model::updateComputeUniformBuffer() {
-	if (!pickingEnabled || !ubo.has_value()) {
+void Model::updateComputeUniformBuffer() {}
+
+void Model::compute() {}
+
+void Model::updateRayTraceUniformBuffer() {
+	if (!rayTracingEnabled || !ubo.has_value()) {
 		return;
 	}
 
@@ -213,7 +223,7 @@ void Model::updateComputeUniformBuffer() {
 	const float mousePx = (float)cx * sx;
 	const float mousePy = (float)cy * sy;
 
-	setPickingFromViewportPx(mousePx, mousePy, screenParams.value().viewport);
+	setRayTraceFromViewportPx(mousePx, mousePy, screenParams.value().viewport);
 
 	mat4 invVP = inverse(ubo->proj * ubo->view);
 	mat4 invV = inverse(ubo->view);
@@ -240,12 +250,13 @@ void Model::updateComputeUniformBuffer() {
 	// }
 
 	if (hitMapped && hitMapped->hit) {
-		// std::cout << "Polygon hit" << std::endl;
-		if (onHover) {
-			onHover();
-		}
-		// Reset so we only print once per hit
+		hitPos = hitMapped->hitPos;
+		rayLength = hitMapped->rayLen;
 		hitMapped->hit = 0;
+	} else {
+		hitPos.reset();
+		rayLength.reset();
+		mouseIsOver = false;
 	}
 }
 
@@ -389,8 +400,8 @@ void Model::createComputeDescriptorSets() {
 }
 
 void Model::createComputePipeline() {
-	// shaderProgram.computeShader should be created by Engine::compileShaderProgram(shaderPath)
-	if (shaderProgram.computeShader == VK_NULL_HANDLE) {
+	rayTracingProgram = Engine::compileShaderProgram(rayTracingShaderPath);
+	if (rayTracingProgram.computeShader == VK_NULL_HANDLE) {
 		// Fallback: try compiling/loading here if your Engine doesn't do it.
 		throw std::runtime_error("compute shader missing (expect picking.comp)!");
 	}
@@ -404,7 +415,7 @@ void Model::createComputePipeline() {
 	}
 
 	VkComputePipelineCreateInfo ci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
-	ci.stage = Engine::createShaderStageInfo(shaderProgram.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
+	ci.stage = Engine::createShaderStageInfo(rayTracingProgram.computeShader, VK_SHADER_STAGE_COMPUTE_BIT);
 	ci.layout = computePipelineLayout;
 
 	if (vkCreateComputePipelines(Engine::device, VK_NULL_HANDLE, 1, &ci, nullptr, &computePipeline) != VK_SUCCESS) {
@@ -412,8 +423,8 @@ void Model::createComputePipeline() {
 	}
 }
 
-void Model::compute() {
-	if (!pickingEnabled || !ubo.has_value()) {
+void Model::rayTrace() {
+	if (!rayTracingEnabled || !ubo.has_value()) {
 		return;
 	}
 
@@ -437,7 +448,7 @@ void Model::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
 
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -569,7 +580,7 @@ void Model::createGraphicsPipeline() {
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.stencilTestEnable = VK_FALSE;
@@ -577,7 +588,13 @@ void Model::createGraphicsPipeline() {
 	// Color Blending Attachment
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	colorBlendAttachment.blendEnable = VK_FALSE;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	// Color Blending State
 	VkPipelineColorBlendStateCreateInfo colorBlending{};

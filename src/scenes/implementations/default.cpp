@@ -10,6 +10,7 @@
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
     this->triangle = make_unique<Polygon>(
+        *this,
         std::vector<Polygon::Vertex> {
             {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
             {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
@@ -21,6 +22,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
     );
 
     this->example = make_unique<Texture>(
+        *this,
         Engine::textureRootPath + "/example/example.png", 
         std::vector<Texture::Vertex> {
             {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
@@ -39,15 +41,16 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
-    this->particles = make_unique<Particles>(8192, screenParams.viewport.width, screenParams.viewport.height);
+    this->particles = make_unique<Particles>(*this, 8192, screenParams.viewport.width, screenParams.viewport.height);
 
-    this->room = make_unique<OBJModel>(Engine::modelRootPath + "/example/example.obj");
+    this->room = make_unique<OBJModel>(*this, Engine::modelRootPath + "/example/example.obj");
+    this->room->setRayTraceEnabled(true);
     this->room->setOnHover([]() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     });
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
-    this->text = make_unique<Text>(tp);
+    this->text = make_unique<Text>(*this, tp);
 }
 
 void Default::updateScreenParams() {
@@ -61,26 +64,7 @@ void Default::updateScreenParams() {
     screenParams.scissor.extent = {800, 800};
 }
 
-void Default::updateComputeUniformBuffers() {
-    room->updateComputeUniformBuffer();
-    particles->updateComputeUniformBuffer();
-}
-
-void Default::computePass() {
-    room->compute();
-    particles->compute();
-}
-
-void Default::updateUniformBuffers() {
-    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    text->updateUniformBuffer();
-}
-
 void Default::swapChainUpdate() {
-    updateScreenParams();
-
     example->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     triangle->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     room->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
@@ -89,6 +73,21 @@ void Default::swapChainUpdate() {
         std::nullopt, 
         ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f)
     );
+}
+
+void Default::updateComputeUniformBuffers() {
+    particles->updateRayTraceUniformBuffer();
+}
+
+void Default::computePass() {
+    particles->rayTrace();
+}
+
+void Default::updateUniformBuffers() {
+    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    text->updateUniformBuffer();
 }
 
 void Default::renderPass() {
