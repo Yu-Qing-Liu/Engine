@@ -9,6 +9,7 @@
 
 RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     this->cube = make_unique<Polygon>(
+        *this,
         std::vector<Polygon::Vertex>{
             // idx, position                 // color (RGBA)
             /*0*/ {{-0.5f, -0.5f, -0.5f},     {1.0f, 0.0f, 0.0f, 1.0f}}, // LBB
@@ -64,8 +65,6 @@ void RayTracing::updateUniformBuffers() {
 }
 
 void RayTracing::swapChainUpdate() {
-    updateScreenParams();
-
     cube->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     cube->updateScreenParams(screenParams);
 }

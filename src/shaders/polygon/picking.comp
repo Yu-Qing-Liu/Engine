@@ -30,6 +30,7 @@ layout(std430, set=0, binding=4) buffer OutBuf {
     uint  primId;  // payload A
     float t;       // payload B
     uint  _pad;
+    vec4 hitPos;   // xyz intersection
 } outHit;
 
 // =============================== Utils ==================================
@@ -190,6 +191,8 @@ void main(){
         outHit.hit = 1u;
         outHit.primId = bestPrim;
         outHit.t = bestT;
+        vec3 hitPos = rA.o + bestT * rA.d;
+        outHit.hitPos = vec4(hitPos, 1.0);
     } else {
         outHit.hit = 0u;
     }

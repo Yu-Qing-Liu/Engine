@@ -19,6 +19,8 @@ using std::optional;
 using std::string;
 using std::vector;
 
+class Scene;
+
 class Model {
   public:
 	Model(Model &&) = default;
@@ -37,8 +39,8 @@ class Model {
 		VkRect2D scissor{};
 	};
 
-	Model(const string &shaderPath);
-	Model(const string &shaderPath, const vector<uint16_t> &indices);
+	Model(Scene &scene, const string &shaderPath);
+	Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -70,6 +72,8 @@ class Model {
 	virtual void render(const UBO &ubo, const ScreenParams &screenParams);
 
   protected:
+    Scene &scene;
+
 	/*
 	 *  Compute setup
 	 * */
@@ -102,6 +106,7 @@ class Model {
 		uint32_t primId;
 		float t;
 		uint32_t _pad;
+		vec4 hitPos;
 	};
 
 	// CPU-side BVH build helpers

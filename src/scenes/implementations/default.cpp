@@ -10,6 +10,7 @@
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
     this->triangle = make_unique<Polygon>(
+        *this,
         std::vector<Polygon::Vertex> {
             {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
             {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
@@ -21,6 +22,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
     );
 
     this->example = make_unique<Texture>(
+        *this,
         Engine::textureRootPath + "/example/example.png", 
         std::vector<Texture::Vertex> {
             {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
@@ -79,8 +81,6 @@ void Default::updateUniformBuffers() {
 }
 
 void Default::swapChainUpdate() {
-    updateScreenParams();
-
     example->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     triangle->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
     room->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));

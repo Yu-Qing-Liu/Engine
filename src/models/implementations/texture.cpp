@@ -5,7 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
 
-Texture::Texture(const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : texturePath(texturePath), vertices(vertices), Model(Engine::shaderRootPath + "/texture", indices) {
+Texture::Texture(Scene &scene, const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, Engine::shaderRootPath + "/texture", indices) {
 	createDescriptorSetLayout();
 
 	createTextureImageFromFile();
@@ -26,7 +26,7 @@ Texture::Texture(const string &texturePath, const vector<Vertex> &vertices, cons
     createComputePipeline();
 }
 
-Texture::Texture(const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : embeddedTex(embeddedTex), vertices(vertices), Model(Engine::shaderRootPath + "/texture", indices) {
+Texture::Texture(Scene &scene, const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : embeddedTex(embeddedTex), vertices(vertices), Model(scene, Engine::shaderRootPath + "/texture", indices) {
 	createDescriptorSetLayout();
 
 	createTextureImageFromEmbedded();

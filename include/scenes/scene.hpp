@@ -1,7 +1,7 @@
 #pragma once
 
-#include <memory>
 #include "model.hpp"
+#include <memory>
 using std::unique_ptr;
 
 class Scenes;
@@ -14,6 +14,8 @@ class Scene {
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene() = default;
+
+	vector<Model*> models;
 
 	virtual void updateScreenParams();
 

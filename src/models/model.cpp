@@ -5,9 +5,14 @@
 #include <functional>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
+#include "scene.hpp"
 
-Model::Model(const string &shaderPath) : shaderPath(shaderPath) {}
-Model::Model(const string &shaderPath, const vector<uint16_t> &indices) : shaderPath(shaderPath), indices(indices) {}
+Model::Model(Scene &scene, const string &shaderPath) : scene(scene), shaderPath(shaderPath) {
+    scene.models.emplace_back(this);
+}
+Model::Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), shaderPath(shaderPath), indices(indices) {
+    scene.models.emplace_back(this);
+}
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
