@@ -3,12 +3,17 @@
 #include "scene.hpp"
 #include <algorithm>
 #include <cstring>
-#include <functional>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene &scene, const string &shaderPath) : scene(scene), shaderPath(shaderPath) { scene.models.emplace_back(this); }
-Model::Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), shaderPath(shaderPath), indices(indices) { scene.models.emplace_back(this); }
+Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) { 
+    this->ubo.proj[1][1] *= -1;
+    scene.models.emplace_back(this); 
+}
+Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
+    this->ubo.proj[1][1] *= -1;
+    scene.models.emplace_back(this); 
+}
 
 Model::~Model() {
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
@@ -106,30 +111,26 @@ Model::~Model() {
 	D(hitBuf, hitMem);
 }
 
+void Model::copyUBO() {
+	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+}
+
 void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
-	if (!ubo.has_value()) {
-		return;
-	}
 	if (model.has_value()) {
-		ubo->model = model.value();
+		ubo.model = model.value();
 	}
 	if (view.has_value()) {
-		ubo->view = view.value();
+		ubo.view = view.value();
 	}
 	if (proj.has_value()) {
-		ubo->proj = proj.value();
-		ubo.value().proj[1][1] *= -1;
+		ubo.proj = proj.value();
+		ubo.proj[1][1] *= -1;
 	}
-	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo.value(), sizeof(ubo.value()));
 }
 
 void Model::updateUniformBuffer(const UBO &ubo) {
-	if (!this->ubo.has_value()) {
-		return;
-	}
 	this->ubo = ubo;
-	this->ubo.value().proj[1][1] *= -1;
-	memcpy(uniformBuffersMapped[Engine::currentFrame], &this->ubo.value(), sizeof(this->ubo.value()));
+	this->ubo.proj[1][1] *= -1;
 }
 
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
@@ -156,7 +157,7 @@ void Model::setRayTraceFromViewportPx(float px, float py, const VkViewport &vp) 
 	const float ndcX = sx * 2.0f - 1.0f;
 	const float ndcY = sy * 2.0f - 1.0f;
 
-	pickParams.mouseNdc = {ndcX, ndcY};
+	rayTraceParams.mouseNdc = {ndcX, ndcY};
 }
 
 Model::AABB Model::merge(const AABB &a, const AABB &b) { return {glm::min(a.bmin, b.bmin), glm::max(a.bmax, b.bmax)}; }
@@ -205,7 +206,7 @@ void Model::updateComputeUniformBuffer() {}
 void Model::compute() {}
 
 void Model::updateRayTraceUniformBuffer() {
-	if (!rayTracingEnabled || !ubo.has_value()) {
+	if (!rayTracingEnabled) {
 		return;
 	}
 
@@ -223,19 +224,19 @@ void Model::updateRayTraceUniformBuffer() {
 	const float mousePx = (float)cx * sx;
 	const float mousePy = (float)cy * sy;
 
-	setRayTraceFromViewportPx(mousePx, mousePy, screenParams.value().viewport);
+	setRayTraceFromViewportPx(mousePx, mousePy, screenParams.viewport);
 
-	mat4 invVP = inverse(ubo->proj * ubo->view);
-	mat4 invV = inverse(ubo->view);
+	mat4 invVP = inverse(ubo.proj * ubo.view);
+	mat4 invV = inverse(ubo.view);
 
 	vec3 camPos = vec3(invV[3]);
 
 	PickingUBO p{};
 	p.invViewProj = invVP;
-	p.invModel = inverse(ubo->model);
-	p.mouseNdc = pickParams.mouseNdc;
-	p.camPos = pickParams.camPos == vec3(0.0f) ? camPos : pickParams.camPos;
-	p.isOrtho = pickParams.isOrtho;
+	p.invModel = inverse(ubo.model);
+	p.mouseNdc = rayTraceParams.mouseNdc;
+	p.camPos = rayTraceParams.camPos == vec3(0.0f) ? camPos : rayTraceParams.camPos;
+	p.isOrtho = rayTraceParams.isOrtho;
 
 	std::memcpy(pickUBOMapped, &p, sizeof(PickingUBO));
 
@@ -424,7 +425,7 @@ void Model::createComputePipeline() {
 }
 
 void Model::rayTrace() {
-	if (!rayTracingEnabled || !ubo.has_value()) {
+	if (!rayTracingEnabled) {
 		return;
 	}
 
@@ -580,7 +581,7 @@ void Model::createGraphicsPipeline() {
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_FALSE;
+	depthStencil.depthWriteEnable = VK_TRUE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.stencilTestEnable = VK_FALSE;
@@ -652,14 +653,8 @@ void Model::createGraphicsPipeline() {
 	}
 }
 
-void Model::render(const UBO &ubo, const ScreenParams &screenParams) {
-	if (!this->ubo.has_value()) {
-		this->ubo = ubo;
-		this->ubo.value().proj[1][1] *= -1;
-	}
-	if (!this->screenParams.has_value()) {
-		this->screenParams = screenParams;
-	}
+void Model::render() {
+    copyUBO();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 

@@ -41,7 +41,7 @@ class Polygon : public Model {
 		}
 	};
 
-	Polygon(Scene &scene, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
+	Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
 
   protected:
 	void buildBVH() override;

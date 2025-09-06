@@ -26,8 +26,10 @@ file(GLOB MODELS       ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)
 file(GLOB MODELS_IMPL  ${CMAKE_CURRENT_SOURCE_DIR}/src/models/implementations/*.cpp)
 file(GLOB SCENES       ${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/*.cpp)
 file(GLOB SCENES_IMPL  ${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/implementations/*.cpp)
+file(GLOB UI           ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp)
+file(GLOB UI_IMPL      ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/implementations/*.cpp)
 
-add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL})
+add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL} ${UI} ${UI_IMPL})
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 
 if(WIN32)

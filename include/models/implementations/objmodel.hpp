@@ -14,7 +14,7 @@ using std::unique_ptr;
 
 class OBJModel : public Model {
   public:
-	OBJModel(Scene &scene, const string &objPath);
+	OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &objPath);
 	OBJModel(OBJModel &&) = default;
 	OBJModel(const OBJModel &) = delete;
 	OBJModel &operator=(OBJModel &&) = delete;
@@ -80,7 +80,7 @@ class OBJModel : public Model {
 		uint32_t width = 0, height = 0;
 	};
 
-	void render(const UBO &ubo, const ScreenParams &screenParams) override;
+	void render() override;
 
   protected:
 	void buildBVH() override;

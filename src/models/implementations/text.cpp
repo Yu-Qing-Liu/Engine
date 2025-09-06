@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(Scene &scene, const TextParams &textParams) : textParams(textParams), Model(scene, Engine::shaderRootPath + "/text") {
+Text::Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &textParams) : textParams(textParams), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/text") {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
@@ -457,7 +457,9 @@ void Text::createGraphicsPipeline() {
 }
 
 // ---------- Draw one string ----------
-void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
+void Text::renderText(const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
+    copyUBO();
+
 	// Build CPU geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
@@ -525,12 +527,6 @@ void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const st
 		vkFreeMemory(Engine::device, stagingMem, nullptr);
 	}
 
-	// Update UBO & draw
-	if (!this->ubo.has_value()) {
-		this->ubo = ubo;
-		this->ubo.value().proj[1][1] *= -1;
-	}
-
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
@@ -552,4 +548,4 @@ void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const st
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }
 
-void Text::renderText(const UBO &ubo, const ScreenParams &screenParams, const std::string &utf8, float scale, const vec4 &color) { renderText(ubo, screenParams, utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color); }
+void Text::renderText(const std::string &utf8, float scale, const vec4 &color) { renderText(utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color); }

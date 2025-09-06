@@ -4,7 +4,7 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(Scene &scene, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, Engine::shaderRootPath + "/particle") {
+Particles::Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/particle") {
 	createComputeDescriptorSetLayout();
 	createShaderStorageBuffers();
 	createUniformBuffers();
@@ -337,7 +337,9 @@ void Particles::compute() {
 	vkCmdDispatch(Engine::currentComputeCommandBuffer(), particleCount / 256, 1, 1);
 }
 
-void Particles::render(const UBO &ubo, const ScreenParams &screenParams) {
+void Particles::render() {
+    copyUBO();
+
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);

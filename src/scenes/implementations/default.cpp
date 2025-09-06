@@ -5,12 +5,12 @@
 #include "texture.hpp"
 #include "polygon.hpp"
 #include "scenes.hpp"
-#include <memory>
-#include <optional>
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
-    this->triangle = make_unique<Polygon>(
+    triangle = make_unique<Polygon>(
         *this,
+        persp,
+        screenParams,
         std::vector<Polygon::Vertex> {
             {{0.0f, 0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
             {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
@@ -21,8 +21,10 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
-    this->example = make_unique<Texture>(
+    example = make_unique<Texture>(
         *this,
+        persp,
+        screenParams,
         Engine::textureRootPath + "/example/example.png", 
         std::vector<Texture::Vertex> {
             {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
@@ -41,60 +43,59 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
-    this->particles = make_unique<Particles>(*this, 8192, screenParams.viewport.width, screenParams.viewport.height);
+    particles = make_unique<Particles>(*this, persp, screenParams, 1024, screenParams.viewport.width, screenParams.viewport.height);
 
-    this->room = make_unique<OBJModel>(*this, Engine::modelRootPath + "/example/example.obj");
-    this->room->setRayTraceEnabled(true);
-    this->room->setOnHover([]() {
+    room = make_unique<OBJModel>(*this, persp, screenParams, Engine::modelRootPath + "/example/example.obj");
+    room->setRayTraceEnabled(true);
+    room->setOnHover([]() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     });
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
-    this->text = make_unique<Text>(*this, tp);
+    text = make_unique<Text>(*this, orthographic, screenParams, tp);
+    text->updateUniformBuffer(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)));
 }
 
 void Default::updateScreenParams() {
     screenParams.viewport.x        = 0.0f;
     screenParams.viewport.y        = 0.0f;
-    screenParams.viewport.width    = (float) 800;
-    screenParams.viewport.height   = (float) 800;
+    screenParams.viewport.width    = (float) Engine::swapChainExtent.width / 2;
+    screenParams.viewport.height   = (float) Engine::swapChainExtent.height / 2;
     screenParams.viewport.minDepth = 0.0f;
     screenParams.viewport.maxDepth = 1.0f;
-    screenParams.scissor.offset = {0, 0};
-    screenParams.scissor.extent = {800, 800};
+    screenParams.scissor.offset = {(int32_t)screenParams.viewport.x, (int32_t)screenParams.viewport.y};
+    screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
 void Default::swapChainUpdate() {
-    example->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
-    triangle->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
-    room->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
-    text->updateUniformBuffer(
-        translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)),
-        std::nullopt, 
-        ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f)
-    );
+    persp.proj = perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f);
+    orthographic.proj = ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f);
+    particles->updateUniformBuffer(std::nullopt, std::nullopt ,persp.proj);
+    example->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+    triangle->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+    room->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+    text->updateUniformBuffer(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)), std::nullopt, orthographic.proj);
 }
 
 void Default::updateComputeUniformBuffers() {
-    particles->updateRayTraceUniformBuffer();
+    particles->updateComputeUniformBuffer();
 }
 
 void Default::computePass() {
-    particles->rayTrace();
+    particles->compute();
 }
 
 void Default::updateUniformBuffers() {
     example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
     triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
     room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
-    text->updateUniformBuffer();
 }
 
 void Default::renderPass() {
-    example->render(persp, screenParams);
-    triangle->render(persp, screenParams);
-    room->render(persp, screenParams);
-    text->renderText(orthographic, screenParams, "Hello World", 1.0f);
+    example->render();
+    triangle->render();
+    room->render();
+    text->renderText("Hello World", 1.0f);
 
-    particles->render(orthographic, screenParams);
+    particles->render();
 }

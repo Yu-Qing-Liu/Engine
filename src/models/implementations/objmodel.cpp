@@ -17,7 +17,7 @@ VkFormat OBJModel::formatFor(aiTextureType type) {
 std::string OBJModel::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
 // ---------- ctor/dtor ----------
-OBJModel::OBJModel(Scene &scene, const std::string &objPath) : objPath(objPath), Model(scene, Engine::shaderRootPath + "/objmodel") {
+OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/objmodel") {
 	loadModel();
 
 	createDescriptorSetLayout();		 // set=0
@@ -773,14 +773,8 @@ void OBJModel::createGraphicsPipeline() {
 }
 
 // ---------- render ----------
-void OBJModel::render(const UBO &ubo, const ScreenParams &screenParams) {
-	if (!this->ubo.has_value()) {
-		this->ubo = ubo;
-		this->ubo.value().proj[1][1] *= -1;
-	}
-	if (!this->screenParams.has_value()) {
-		this->screenParams = screenParams;
-	}
+void OBJModel::render() {
+    copyUBO();
 
 	VkCommandBuffer cmd = Engine::currentCommandBuffer();
 

@@ -10,6 +10,8 @@
 RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     cube1 = make_unique<Polygon>(
         *this,
+        persp,
+        screenParams,
         std::vector<Polygon::Vertex>{
             // idx, position                 // color (RGBA)
             /*0*/ {{-0.5f, -0.5f, -0.5f},     {1.0f, 0.0f, 0.0f, 1.0f}}, // LBB
@@ -43,6 +45,8 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
 
     cube2 = make_unique<Polygon>(
         *this,
+        persp,
+        screenParams,
         std::vector<Polygon::Vertex>{
             // idx, position                 // color (RGBA)
             /*0*/ {{-0.5f, -0.5f, -0.5f},     {1.0f, 0.0f, 0.0f, 0.35f}}, // LBB
@@ -76,22 +80,20 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
 }
 
 void RayTracing::updateScreenParams() {
-    screenParams.viewport.x        = 0.0f;
+    screenParams.viewport.x        = (float) Engine::swapChainExtent.width / 2;
     screenParams.viewport.y        = 0.0f;
-    screenParams.viewport.width    = (float) Engine::swapChainExtent.width;
-    screenParams.viewport.height   = (float) Engine::swapChainExtent.height;
+    screenParams.viewport.width    = (float) Engine::swapChainExtent.width / 2;
+    screenParams.viewport.height   = (float) Engine::swapChainExtent.height / 2;
     screenParams.viewport.minDepth = 0.0f;
     screenParams.viewport.maxDepth = 1.0f;
-    screenParams.scissor.offset = {0, 0};
-    screenParams.scissor.extent = Engine::swapChainExtent;
+    screenParams.scissor.offset = {(int32_t)screenParams.viewport.x, (int32_t)screenParams.viewport.y};
+    screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
 void RayTracing::swapChainUpdate() {
-    cube1->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
-    cube1->updateScreenParams(screenParams);
-
-    cube2->updateUniformBuffer(std::nullopt, std::nullopt, perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f));
-    cube2->updateScreenParams(screenParams);
+    persp.proj = perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f);
+    cube1->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+    cube2->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
 
@@ -112,6 +114,6 @@ void RayTracing::updateUniformBuffers() {
 }
 
 void RayTracing::renderPass() {
-    cube1->render(persp, screenParams);
-    cube2->render(persp, screenParams);
+    cube1->render();
+    cube2->render();
 }

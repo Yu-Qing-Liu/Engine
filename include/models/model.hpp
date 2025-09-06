@@ -39,15 +39,15 @@ class Model {
 		VkRect2D scissor{};
 	};
 
-	Model(Scene &scene, const string &shaderPath);
-	Model(Scene &scene, const string &shaderPath, const vector<uint16_t> &indices);
+	Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath);
+	Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	/*
 	 *  Compute setup
 	 * */
 
-	struct PickingParams {
+	struct RayTraceParams {
 		vec2 mouseNdc = vec2(0.0f); // in [-1, 1], y already flipped for Vulkan
 		vec3 camPos = vec3(0.0f);	// world-space camera position
 		int isOrtho = 0;			// 0=perspective, 1=orthographic
@@ -56,8 +56,8 @@ class Model {
 	bool rayTracingEnabled = false;
 	bool mouseIsOver = false;
 
-	optional<UBO> ubo = std::nullopt;
-	optional<ScreenParams> screenParams = std::nullopt;
+	UBO ubo;
+	ScreenParams &screenParams;
 
 	optional<vec3> hitPos;
 	optional<float> rayLength;
@@ -66,7 +66,7 @@ class Model {
 
 	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
 	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
-	void setRayTraceOrtho(bool isOrtho) { pickParams.isOrtho = isOrtho; }
+	void setRayTraceOrtho(bool isOrtho) { rayTraceParams.isOrtho = isOrtho; }
 
 	void updateRayTraceUniformBuffer();
 	void rayTrace();
@@ -83,7 +83,8 @@ class Model {
 	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 	void updateUniformBuffer(const UBO &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
-	virtual void render(const UBO &ubo, const ScreenParams &screenParams);
+    void copyUBO();
+	virtual void render();
 
   protected:
 	Scene &scene;
@@ -162,7 +163,7 @@ class Model {
 
 	void *pickUBOMapped = nullptr;
 	HitOutCPU *hitMapped = nullptr;
-	PickingParams pickParams{};
+	RayTraceParams rayTraceParams{};
 
 	// CPU copies (once, unless geometry changes)
 	std::vector<BVHNodeGPU> bvhNodes;

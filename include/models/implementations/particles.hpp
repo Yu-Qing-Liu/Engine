@@ -5,7 +5,7 @@
 
 class Particles : public Model {
   public:
-	Particles(Scene &scene, uint32_t particleCount, uint32_t width, uint32_t height);
+	Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height);
 	Particles(Particles &&) = default;
 	Particles(const Particles &) = delete;
 	Particles &operator=(Particles &&) = delete;
@@ -49,7 +49,7 @@ class Particles : public Model {
 
 	void updateComputeUniformBuffer() override;
 	void compute() override;
-	void render(const UBO &ubo, const ScreenParams &screenParams) override;
+	void render() override;
 
   protected:
 	uint32_t particleCount;

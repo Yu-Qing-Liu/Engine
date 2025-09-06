@@ -5,31 +5,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
 
-Texture::Texture(Scene &scene, const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, Engine::shaderRootPath + "/texture", indices) {
+Texture::Texture(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/texture", indices) {
 	createDescriptorSetLayout();
 
 	createTextureImageFromFile();
-	createTextureImageView();
-	createTextureSampler();
-
-	createUniformBuffers();
-	createDescriptorPool();
-	createDescriptorSets();
-	createVertexBuffer<Vertex>(vertices);
-	createIndexBuffer();
-	createBindingDescriptions();
-	createGraphicsPipeline();
-
-    createComputeDescriptorSetLayout();
-    createShaderStorageBuffers();
-    createComputeDescriptorSets();
-    createComputePipeline();
-}
-
-Texture::Texture(Scene &scene, const aiTexture &embeddedTex, const vector<Vertex> &vertices, const vector<uint16_t> &indices) : embeddedTex(embeddedTex), vertices(vertices), Model(scene, Engine::shaderRootPath + "/texture", indices) {
-	createDescriptorSetLayout();
-
-	createTextureImageFromEmbedded();
 	createTextureImageView();
 	createTextureSampler();
 
@@ -258,59 +237,6 @@ void Texture::createTextureImageFromFile() {
 
     Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     Engine::copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
-}
-
-void Texture::createTextureImageFromEmbedded() {
-	int texWidth = 0, texHeight = 0;
-	std::vector<unsigned char> rgba;
-
-	if (embeddedTex.mHeight == 0) {
-		// Compressed (PNG/JPEG/etc.)
-		const unsigned char *bytes = reinterpret_cast<const unsigned char *>(embeddedTex.pcData);
-		int w, h, ch;
-		stbi_uc *data = stbi_load_from_memory(bytes, embeddedTex.mWidth, &w, &h, &ch, STBI_rgb_alpha);
-		if (!data)
-			throw std::runtime_error("failed to decode embedded image!");
-		rgba.assign(data, data + (w * h * 4));
-		texWidth = w;
-		texHeight = h;
-		stbi_image_free(data);
-	} else {
-		// Uncompressed raw (aiTexel 4 bytes/texel). If colors look swapped, swap r/b below.
-		texWidth = static_cast<int>(embeddedTex.mWidth);
-		texHeight = static_cast<int>(embeddedTex.mHeight);
-		rgba.resize(texWidth * texHeight * 4);
-		for (int i = 0; i < texWidth * texHeight; ++i) {
-			rgba[i * 4 + 0] = embeddedTex.pcData[i].r; // swap with b if needed
-			rgba[i * 4 + 1] = embeddedTex.pcData[i].g;
-			rgba[i * 4 + 2] = embeddedTex.pcData[i].b; // swap with r if needed
-			rgba[i * 4 + 3] = embeddedTex.pcData[i].a;
-		}
-	}
-
-	if (rgba.empty() || texWidth <= 0 || texHeight <= 0) {
-		throw std::runtime_error("embedded texture produced no data");
-	}
-
-	VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * texHeight * 4;
-
-	Engine::createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-	void *data = nullptr;
-	vkMapMemory(Engine::device, stagingBufferMemory, 0, imageSize, 0, &data);
-	std::memcpy(data, rgba.data(), static_cast<size_t>(imageSize));
-	vkUnmapMemory(Engine::device, stagingBufferMemory);
-
-	Engine::createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-    Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    Engine::copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
     Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
