@@ -1,6 +1,8 @@
 #pragma once
 
+#include <condition_variable>
 #include <functional>
+#include <thread>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_TYPES
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -23,7 +25,7 @@ class Scene;
 
 class Model {
   public:
-	Model(Model &&) = default;
+	Model(Model &&) = delete;
 	Model(const Model &) = delete;
 	Model &operator=(Model &&) = delete;
 	Model &operator=(const Model &) = delete;
@@ -32,6 +34,13 @@ class Model {
 		mat4 model;
 		mat4 view;
 		mat4 proj;
+	};
+
+	struct Params {
+		vec4 color;
+		vec4 outlineColor;
+		float outlineWidth = 2.0f; // pixels
+		float _pad0 = 0, _pad1 = 0, _pad2 = 0;
 	};
 
 	struct ScreenParams {
@@ -54,15 +63,22 @@ class Model {
 	};
 
 	bool rayTracingEnabled = false;
-	bool mouseIsOver = false;
+	bool mouseIsOver{false};
+    bool selected{false};
 
-	UBO ubo;
+	UBO ubo{};
+	Params params{};
 	ScreenParams &screenParams;
 
 	optional<vec3> hitPos;
 	optional<float> rayLength;
 
-	std::function<void()> onHover;
+	std::function<void()> onMouseHover;
+	std::function<void()> onMouseEnter;
+	std::function<void()> onMouseExit;
+
+	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
 	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
@@ -71,10 +87,11 @@ class Model {
 	void updateRayTraceUniformBuffer();
 	void rayTrace();
 
+	void setMouseIsOver(bool over);
+	void onMouseExitEvent();
+
 	virtual void updateComputeUniformBuffer();
 	virtual void compute();
-
-	void setOnHover(const std::function<void()> &callback) { onHover = callback; }
 
 	/*
 	 *  Graphics setup
@@ -83,11 +100,13 @@ class Model {
 	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 	void updateUniformBuffer(const UBO &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
-    void copyUBO();
+	void copyUBO();
 	virtual void render();
 
   protected:
 	Scene &scene;
+
+	std::function<void(int, int, int, int)> onKeyboardKeyPress;
 
 	/*
 	 *  Compute setup
@@ -258,5 +277,9 @@ class Model {
 	}
 
   private:
+	std::mutex m;
+	std::jthread watcher;
+	std::condition_variable cv;
+
 	AABB merge(const AABB &a, const AABB &b);
 };

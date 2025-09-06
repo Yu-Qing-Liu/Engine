@@ -46,6 +46,8 @@ target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include/models/implementations
     ${CMAKE_SOURCE_DIR}/include/scenes
     ${CMAKE_SOURCE_DIR}/include/scenes/implementations
+    ${CMAKE_SOURCE_DIR}/include/ui
+    ${CMAKE_SOURCE_DIR}/include/ui/implementations
     ${SHADERC_INCLUDE_DIRS}
 )
 

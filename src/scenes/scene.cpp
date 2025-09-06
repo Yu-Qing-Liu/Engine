@@ -21,13 +21,11 @@ void Scene::updateRayTraceUniformBuffers() {
 }
 
 void Scene::rayTraces() {
-	// 1) Dispatch all
 	for (auto *m : models) {
 		if (m && m->rayTracingEnabled)
 			m->rayTrace();
 	}
 
-	// 2) Reset flags & select closest by rayLen
 	Model *closest = nullptr;
 	float bestLen = std::numeric_limits<float>::infinity();
 
@@ -35,7 +33,6 @@ void Scene::rayTraces() {
 		if (!m) {
 			continue;
         }
-		m->mouseIsOver = false;
 		if (!m->rayTracingEnabled) {
 			continue;
         }
@@ -49,13 +46,24 @@ void Scene::rayTraces() {
 		}
 	}
 
-	// 3) Mark the single winner and (optionally) fire hover
 	if (closest) {
-		closest->mouseIsOver = true;
-		if (closest->onHover) {
-			closest->onHover();
+		closest->setMouseIsOver(true);
+		if (closest->onMouseHover) {
+			closest->onMouseHover();
 		}
-	}
+	} 
+    for (auto *m : models) {
+        if (closest && m == closest) {
+            continue;
+        }
+        if (!m) {
+            continue;
+        }
+        if (!m->rayTracingEnabled) {
+            continue;
+        }
+        m->setMouseIsOver(false);
+    }
 }
 
 void Scene::updateScreenParams() {}

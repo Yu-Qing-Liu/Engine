@@ -1,18 +1,19 @@
 #include "model.hpp"
 #include "engine.hpp"
 #include "scene.hpp"
+#include "events.hpp"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) { 
-    this->ubo.proj[1][1] *= -1;
-    scene.models.emplace_back(this); 
+Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
+	this->ubo.proj[1][1] *= -1;
+	scene.models.emplace_back(this);
 }
 Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
-    this->ubo.proj[1][1] *= -1;
-    scene.models.emplace_back(this); 
+	this->ubo.proj[1][1] *= -1;
+	scene.models.emplace_back(this);
 }
 
 Model::~Model() {
@@ -111,8 +112,77 @@ Model::~Model() {
 	D(hitBuf, hitMem);
 }
 
-void Model::copyUBO() {
-	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+void Model::copyUBO() { memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
+
+
+void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
+    auto callback = [this, cb](int button, int action, int mods) {
+        if(mouseIsOver) {
+            cb(button, action, mods);
+        }
+    };
+    Events::mouseCallbacks.push_back(callback);
+}
+
+void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
+    auto callback = [this, cb](int key, int scancode, int action, int mods) {
+        if(selected) {
+            cb(key, scancode, action, mods);
+        }
+    };
+    Events::keyboardCallbacks.push_back(callback);
+}
+
+void Model::setMouseIsOver(bool over) {
+	std::function<void()> enterCb;
+	bool fireEnter = false;
+
+	{
+		std::lock_guard lk(m);
+		if (over == mouseIsOver) {
+			return; // no state change
+		}
+		// transition detection
+		fireEnter = (!mouseIsOver && over);
+		mouseIsOver = over;
+		if (!over) {
+			// wake any waiting exit-watcher
+			cv.notify_all();
+		}
+		if (fireEnter)
+			enterCb = onMouseEnter; // copy under lock
+	}
+
+	if (fireEnter) {
+		if (enterCb)
+			enterCb();
+		// Arm the watcher ONCE, at the moment we enter.
+		onMouseExitEvent();
+	}
+}
+
+void Model::onMouseExitEvent() {
+	if (!onMouseExit) {
+		return;
+	}
+
+	if (watcher.joinable()) {
+		watcher.request_stop();
+		cv.notify_all();
+	}
+
+	watcher = std::jthread([this](std::stop_token st) {
+		std::unique_lock lk(m);
+		cv.wait(lk, [this, st] { return st.stop_requested() || !mouseIsOver; });
+		if (st.stop_requested()) {
+			return;
+		}
+		auto cb = onMouseExit;
+		lk.unlock();
+		if (cb) {
+			cb();
+		}
+	});
 }
 
 void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
@@ -257,7 +327,7 @@ void Model::updateRayTraceUniformBuffer() {
 	} else {
 		hitPos.reset();
 		rayLength.reset();
-		mouseIsOver = false;
+		setMouseIsOver(false);
 	}
 }
 
@@ -654,7 +724,7 @@ void Model::createGraphicsPipeline() {
 }
 
 void Model::render() {
-    copyUBO();
+	copyUBO();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
