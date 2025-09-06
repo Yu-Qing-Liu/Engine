@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "events.hpp"
 #include "pipeline.hpp"
 #include "scenes.hpp"
 
@@ -39,6 +40,11 @@ class Application {
 
 		lastTime = glfwGetTime();
 		startTime = glfwGetTime();
+
+		glfwMakeContextCurrent(window);
+
+		glfwSetMouseButtonCallback(window, Events::handleMouseCallbacks);
+		glfwSetKeyCallback(window, Events::handleKeyboardCallbacks);
 	}
 
 	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
@@ -225,8 +231,8 @@ class Application {
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        // Present must wait on the *per-image* semaphore signaled by the graphics submit
-        VkSemaphore presentWaitSemaphores[] = { renderFinishedSemaphoresPerImage[imageIndex] };
+		// Present must wait on the *per-image* semaphore signaled by the graphics submit
+		VkSemaphore presentWaitSemaphores[] = {renderFinishedSemaphoresPerImage[imageIndex]};
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = presentWaitSemaphores;
 

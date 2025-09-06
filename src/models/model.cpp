@@ -1,6 +1,7 @@
 #include "model.hpp"
 #include "engine.hpp"
 #include "scene.hpp"
+#include "events.hpp"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -112,6 +113,25 @@ Model::~Model() {
 }
 
 void Model::copyUBO() { memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
+
+
+void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
+    auto callback = [this, cb](int button, int action, int mods) {
+        if(mouseIsOver) {
+            cb(button, action, mods);
+        }
+    };
+    Events::mouseCallbacks.push_back(callback);
+}
+
+void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
+    auto callback = [this, cb](int key, int scancode, int action, int mods) {
+        if(selected) {
+            cb(key, scancode, action, mods);
+        }
+    };
+    Events::keyboardCallbacks.push_back(callback);
+}
 
 void Model::setMouseIsOver(bool over) {
 	std::function<void()> enterCb;

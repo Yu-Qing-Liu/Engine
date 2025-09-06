@@ -64,6 +64,7 @@ class Model {
 
 	bool rayTracingEnabled = false;
 	bool mouseIsOver{false};
+    bool selected{false};
 
 	UBO ubo{};
 	Params params{};
@@ -75,6 +76,9 @@ class Model {
 	std::function<void()> onMouseHover;
 	std::function<void()> onMouseEnter;
 	std::function<void()> onMouseExit;
+
+	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
 	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
@@ -101,6 +105,8 @@ class Model {
 
   protected:
 	Scene &scene;
+
+	std::function<void(int, int, int, int)> onKeyboardKeyPress;
 
 	/*
 	 *  Compute setup
