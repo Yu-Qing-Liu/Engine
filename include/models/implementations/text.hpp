@@ -7,7 +7,7 @@
 
 class Text : public Model {
   public:
-	Text(Text &&) = default;
+	Text(Text &&) = delete;
 	Text(const Text &) = delete;
 	Text &operator=(Text &&) = delete;
 	Text &operator=(const Text &) = delete;

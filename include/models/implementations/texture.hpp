@@ -6,7 +6,7 @@
 
 class Texture : public Model {
   public:
-	Texture(Texture &&) = default;
+	Texture(Texture &&) = delete;
 	Texture(const Texture &) = delete;
 	Texture &operator=(Texture &&) = delete;
 	Texture &operator=(const Texture &) = delete;

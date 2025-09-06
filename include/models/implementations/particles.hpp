@@ -6,7 +6,7 @@
 class Particles : public Model {
   public:
 	Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height);
-	Particles(Particles &&) = default;
+	Particles(Particles &&) = delete;
 	Particles(const Particles &) = delete;
 	Particles &operator=(Particles &&) = delete;
 	Particles &operator=(const Particles &) = delete;

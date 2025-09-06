@@ -83,7 +83,7 @@ class Model {
 	void updateRayTraceUniformBuffer();
 	void rayTrace();
 
-    void setMouseIsOver(bool over);
+	void setMouseIsOver(bool over);
 	void onMouseExitEvent();
 
 	virtual void updateComputeUniformBuffer();
