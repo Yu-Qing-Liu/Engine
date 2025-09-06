@@ -47,9 +47,9 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 
     room = make_unique<OBJModel>(*this, persp, screenParams, Engine::modelRootPath + "/example/example.obj");
     room->setRayTraceEnabled(true);
-    room->setOnHover([]() {
+    room->onMouseHover = []() {
         std::cout << "Room Hit " << Engine::time << std::endl;
-    });
+    };
 
     Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
     text = make_unique<Text>(*this, orthographic, screenParams, tp);

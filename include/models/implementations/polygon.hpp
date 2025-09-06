@@ -5,18 +5,11 @@
 
 class Polygon : public Model {
   public:
-	Polygon(Polygon &&) = default;
+	Polygon(Polygon &&) = delete;
 	Polygon(const Polygon &) = delete;
 	Polygon &operator=(Polygon &&) = delete;
 	Polygon &operator=(const Polygon &) = delete;
 	~Polygon();
-
-	struct Params {
-		vec4 color;
-		vec4 outlineColor;
-		float outlineWidth = 2.0f; // pixels
-		float _pad0 = 0, _pad1 = 0, _pad2 = 0;
-	};
 
 	struct Vertex {
 		vec3 pos;
@@ -60,8 +53,6 @@ class Polygon : public Model {
 	};
 
 	Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
-
-	Params params{};
 
 	void render() override;
 
