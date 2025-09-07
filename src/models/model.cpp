@@ -171,7 +171,7 @@ void Model::onMouseExitEvent() {
 		cv.notify_all();
 	}
 
-	watcher = std::jthread([this](std::stop_token st) {
+	watcher = Platform::jthread([this](Platform::stop_token st) {
 		std::unique_lock lk(m);
 		cv.wait(lk, [this, st] { return st.stop_requested() || !mouseIsOver; });
 		if (st.stop_requested()) {
@@ -280,19 +280,8 @@ void Model::updateRayTraceUniformBuffer() {
 		return;
 	}
 
-	// Cursor in WINDOW coords
-	double cx, cy;
-	glfwGetCursorPos(Engine::window, &cx, &cy);
-
-	// Convert to FRAMEBUFFER pixels (HiDPI aware)
-	int fbw, fbh, ww, wh;
-	glfwGetFramebufferSize(Engine::window, &fbw, &fbh);
-	glfwGetWindowSize(Engine::window, &ww, &wh);
-	const float sx = ww ? (float)fbw / (float)ww : 1.0f;
-	const float sy = wh ? (float)fbh / (float)wh : 1.0f;
-
-	const float mousePx = (float)cx * sx;
-	const float mousePy = (float)cy * sy;
+    float mousePx = 0.0f, mousePy = 0.0f;
+    Platform::GetPointerInFramebufferPixels(mousePx, mousePy);
 
 	setRayTraceFromViewportPx(mousePx, mousePy, screenParams.viewport);
 

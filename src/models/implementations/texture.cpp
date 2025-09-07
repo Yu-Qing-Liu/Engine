@@ -20,25 +20,25 @@ Texture::Texture(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const
 	createBindingDescriptions();
 	createGraphicsPipeline();
 
-    createComputeDescriptorSetLayout();
-    createShaderStorageBuffers();
-    createComputeDescriptorSets();
-    createComputePipeline();
+	createComputeDescriptorSetLayout();
+	createShaderStorageBuffers();
+	createComputeDescriptorSets();
+	createComputePipeline();
 }
 
 Texture::~Texture() {
-    if (textureImage != VK_NULL_HANDLE) {
-        vkDestroyImage(Engine::device, textureImage, nullptr);
-    }
-    if (textureImageMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(Engine::device, textureImageMemory, nullptr);
-    }
-    if (textureSampler != VK_NULL_HANDLE) {
-        vkDestroySampler(Engine::device, textureSampler, nullptr);
-    }
-    if (textureImageView != VK_NULL_HANDLE) {
-        vkDestroyImageView(Engine::device, textureImageView, nullptr);
-    }
+	if (textureImage != VK_NULL_HANDLE) {
+		vkDestroyImage(Engine::device, textureImage, nullptr);
+	}
+	if (textureImageMemory != VK_NULL_HANDLE) {
+		vkFreeMemory(Engine::device, textureImageMemory, nullptr);
+	}
+	if (textureSampler != VK_NULL_HANDLE) {
+		vkDestroySampler(Engine::device, textureSampler, nullptr);
+	}
+	if (textureImageView != VK_NULL_HANDLE) {
+		vkDestroyImageView(Engine::device, textureImageView, nullptr);
+	}
 }
 
 void Texture::buildBVH() {
@@ -49,7 +49,7 @@ void Texture::buildBVH() {
 		posGPU.reserve(vertices.size());
 		for (auto &v : vertices) {
 			posGPU.push_back(v.pos);
-        }
+		}
 	} else {
 		throw std::runtime_error("BVH build: no vertices");
 	}
@@ -216,28 +216,37 @@ void Texture::createBindingDescriptions() {
 }
 
 void Texture::createTextureImageFromFile() {
-	int texWidth, texHeight, texChannels;
-	stbi_uc *pixels = stbi_load(texturePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	int texWidth = 0, texHeight = 0, texChannels = 0;
+	stbi_uc *pixels = nullptr;
 
-	VkDeviceSize imageSize = texWidth * texHeight * 4;
+	auto bytes = Assets::loadBytes(texturePath);
+	if (!bytes.empty()) {
+		pixels = stbi_load_from_memory(bytes.data(), (int)bytes.size(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	} else {
+		// last-ditch try direct path (useful on desktop/dev)
+		pixels = stbi_load(texturePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	}
 
 	if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
 	}
 
+	const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * static_cast<VkDeviceSize>(texHeight) * 4;
+
 	Engine::createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	void *data;
+
+	void *data = nullptr;
 	vkMapMemory(Engine::device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	std::memcpy(data, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(Engine::device, stagingBufferMemory);
 
 	stbi_image_free(pixels);
 
 	Engine::createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
-    Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    Engine::copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-    Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	Engine::copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	Engine::transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
 	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);

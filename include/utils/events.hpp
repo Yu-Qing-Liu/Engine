@@ -25,6 +25,9 @@ enum : int { MOUSE_BUTTON_LEFT = 0, MOUSE_BUTTON_RIGHT = 1, MOUSE_BUTTON_MIDDLE 
 inline std::vector<MouseClickCallback> mouseCallbacks{};
 inline std::vector<KeyboardCallback>   keyboardCallbacks{};
 
+inline float pointerX = 0.0f;
+inline float pointerY = 0.0f;
+
 // ---- Common dispatchers (used by both backends) ----
 inline void dispatchMouseButton(int button, int action, int mods) {
     for (const auto& cb : mouseCallbacks) cb(button, action, mods);

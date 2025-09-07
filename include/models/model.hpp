@@ -3,11 +3,13 @@
 #include <condition_variable>
 #include <functional>
 #include <thread>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_TYPES
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include "engine.hpp"
+#include "platform.hpp"
 #include "assets.hpp"
 #include <array>
 #include <glm/glm.hpp>
@@ -279,7 +281,7 @@ class Model {
 
   private:
 	std::mutex m;
-	std::jthread watcher;
+	Platform::jthread watcher;
 	std::condition_variable cv;
 
 	AABB merge(const AABB &a, const AABB &b);
