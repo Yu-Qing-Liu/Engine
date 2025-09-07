@@ -1,11 +1,14 @@
+#pragma once
+
 #include <filesystem>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <openssl/sha.h>
 #include <shaderc/shaderc.h>
 #include <shaderc/shaderc.hpp>
 #include <unordered_map>
 #include <vulkan/vulkan_core.h>
+
 #include "engine.hpp"
 
 using namespace std::filesystem;
@@ -131,6 +134,30 @@ inline void writeBinaryFile(const std::string &path, const std::vector<uint32_t>
 	}
 }
 
+inline void deleteOldBinaries(const std::filesystem::path &cache_dir, const std::string &basenameSpv) {
+	namespace fs = std::filesystem;
+	try {
+		if (!fs::exists(cache_dir))
+			return;
+		for (const auto &entry : fs::directory_iterator(cache_dir)) {
+			if (!entry.is_regular_file())
+				continue;
+			const std::string name = entry.path().filename().string();
+
+			// ends_with(basenameSpv) match
+			if (name.size() >= basenameSpv.size() && name.compare(name.size() - basenameSpv.size(), basenameSpv.size(), basenameSpv) == 0) {
+				std::error_code ec;
+				fs::remove(entry.path(), ec);
+				if (ec) {
+					std::cerr << "WARN: failed to delete old cache file " << entry.path() << " : " << ec.message() << "\n";
+				}
+			}
+		}
+	} catch (const fs::filesystem_error &e) {
+		std::cerr << "WARN: cache sweep error: " << e.what() << "\n";
+	}
+}
+
 inline std::vector<uint32_t> compileShader(const std::string &shaderPath) {
 	std::string shaderCode = readFile(shaderPath);
 	if (shaderCode.empty()) {
@@ -143,8 +170,11 @@ inline std::vector<uint32_t> compileShader(const std::string &shaderPath) {
 	std::string hash_input = extension + shaderCode;
 	std::string hash_str = computeHash(hash_input);
 
+	constexpr const char *kSep = "--";
+	const std::string basenameSpv = p.filename().string() + ".spv";
+
 	path cache_dir(shaderCachePath);
-	path cached_path = cache_dir / (hash_str + ".spv");
+	path cached_path = cache_dir / (hash_str + kSep + basenameSpv);
 
 	if (exists(cached_path)) {
 		auto cached_binary = readBinaryFile(cached_path.string());
@@ -152,6 +182,8 @@ inline std::vector<uint32_t> compileShader(const std::string &shaderPath) {
 			return cached_binary;
 		}
 	}
+
+	deleteOldBinaries(cache_dir, basenameSpv);
 
 	shaderc_shader_kind kind = getShaderKind(shaderPath);
 
