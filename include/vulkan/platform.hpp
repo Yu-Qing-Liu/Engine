@@ -3,8 +3,10 @@
 #if defined(__ANDROID__)
 #define ANDROID_VK 1
 #include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <android/native_activity.h>
+#include <android_native_app_glue.h>
 #ifndef LOG_TAG
 #define LOG_TAG "Engine"
 #endif
