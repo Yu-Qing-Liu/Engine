@@ -25,7 +25,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         *this,
         persp,
         screenParams,
-        Engine::textureRootPath + "/example/example.png", 
+        Assets::textureRootPath + "/example/example.png", 
         std::vector<Texture::Vertex> {
             {{0.0f, -0.5f, 0.25f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
             {{1.0f, -0.5f, 0.25f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
@@ -45,13 +45,13 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 
     particles = make_unique<Particles>(*this, persp, screenParams, 1024, screenParams.viewport.width, screenParams.viewport.height);
 
-    room = make_unique<OBJModel>(*this, persp, screenParams, Engine::modelRootPath + "/example/example.obj");
+    room = make_unique<OBJModel>(*this, persp, screenParams, Assets::modelRootPath + "/example/example.obj");
     room->setRayTraceEnabled(true);
     room->onMouseHover = []() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     };
 
-    Text::TextParams tp{ Engine::fontRootPath + "/arial.ttf", 48 };
+    Text::TextParams tp{ Assets::fontRootPath + "/arial.ttf", 48 };
     text = make_unique<Text>(*this, orthographic, screenParams, tp);
     text->updateUniformBuffer(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)));
 }

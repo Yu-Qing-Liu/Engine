@@ -256,7 +256,7 @@ class Application {
 };
 
 int main() {
-	initialize();
+    Assets::initialize();
 	Application app;
 	try {
 		app.run();

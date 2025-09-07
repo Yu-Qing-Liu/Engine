@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
 #include <vulkan/vulkan_core.h>
 
 #include <cstdint>

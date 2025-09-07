@@ -17,7 +17,7 @@ VkFormat OBJModel::formatFor(aiTextureType type) {
 std::string OBJModel::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
 // ---------- ctor/dtor ----------
-OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/objmodel") {
+OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/objmodel") {
 	loadModel();
 
 	createDescriptorSetLayout();		 // set=0
@@ -708,7 +708,7 @@ void OBJModel::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};

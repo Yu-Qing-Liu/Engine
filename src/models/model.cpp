@@ -471,7 +471,7 @@ void Model::createComputeDescriptorSets() {
 }
 
 void Model::createComputePipeline() {
-	rayTracingProgram = Engine::compileShaderProgram(rayTracingShaderPath);
+	rayTracingProgram = Assets::compileShaderProgram(rayTracingShaderPath);
 	if (rayTracingProgram.computeShader == VK_NULL_HANDLE) {
 		// Fallback: try compiling/loading here if your Engine doesn't do it.
 		throw std::runtime_error("compute shader missing (expect picking.comp)!");
@@ -621,7 +621,7 @@ void Model::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	// Viewport and Scissor State (using dynamic states)
