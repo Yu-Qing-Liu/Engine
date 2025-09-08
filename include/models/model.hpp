@@ -2,15 +2,14 @@
 
 #include <condition_variable>
 #include <functional>
-#include <thread>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_TYPES
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
+#include "assets.hpp"
 #include "engine.hpp"
 #include "platform.hpp"
-#include "assets.hpp"
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -42,8 +41,9 @@ class Model {
 	struct Params {
 		vec4 color;
 		vec4 outlineColor;
-		float outlineWidth = 2.0f; // pixels
-		float _pad0 = 0, _pad1 = 0, _pad2 = 0;
+		float outlineWidth = 0.0f; // pixels
+		float borderRadius = 0.0f; // pixels
+		float _pad1 = 0.0f, _pad2 = 0.0f;
 	};
 
 	struct ScreenParams {
@@ -62,7 +62,7 @@ class Model {
 	struct RayTraceParams {
 		vec2 mouseNdc = vec2(0.0f); // in [-1, 1], y already flipped for Vulkan
 		vec3 camPos = vec3(0.0f);	// world-space camera position
-		int isOrtho = 0;			// 0=perspective, 1=orthographic
+		int _pad0 = 0;
 	};
 
 	bool rayTracingEnabled = false;
@@ -85,7 +85,6 @@ class Model {
 
 	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
 	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
-	void setRayTraceOrtho(bool isOrtho) { rayTraceParams.isOrtho = isOrtho; }
 
 	void updateRayTraceUniformBuffer();
 	void rayTrace();
@@ -135,7 +134,7 @@ class Model {
 		vec2 mouseNdc;
 		vec2 _pad0;
 		vec3 camPos;
-		int isOrtho;
+		int _pad;
 	};
 
 	struct HitOutCPU {

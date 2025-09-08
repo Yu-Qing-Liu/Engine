@@ -295,7 +295,7 @@ void Model::updateRayTraceUniformBuffer() {
 	p.invModel = inverse(ubo.model);
 	p.mouseNdc = rayTraceParams.mouseNdc;
 	p.camPos = rayTraceParams.camPos == vec3(0.0f) ? camPos : rayTraceParams.camPos;
-	p.isOrtho = rayTraceParams.isOrtho;
+	p._pad = rayTraceParams._pad0;
 
 	std::memcpy(pickUBOMapped, &p, sizeof(PickingUBO));
 

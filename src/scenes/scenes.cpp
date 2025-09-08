@@ -1,6 +1,7 @@
 #include "scenes.hpp"
 #include "default.hpp"
 #include "raytracing.hpp"
+#include "buttons.hpp"
 
 Scenes::Scenes() {
     scenes[Default::getName()] = {
@@ -9,6 +10,10 @@ Scenes::Scenes() {
     };
     scenes[RayTracing::getName()] = {
         make_unique<RayTracing>(*this),
+        true
+    };
+    scenes[Buttons::getName()] = {
+        make_unique<Buttons>(*this),
         true
     };
 }
