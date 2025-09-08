@@ -4,7 +4,7 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/particle") {
+Particles::Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/particle") {
 	createComputeDescriptorSetLayout();
 	createShaderStorageBuffers();
 	createUniformBuffers();
@@ -75,7 +75,7 @@ void Particles::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -193,7 +193,7 @@ void Particles::createComputePipeline() {
 }
 
 void Particles::createShaderStorageBuffers() {
-	std::default_random_engine rndEngine((unsigned)time(nullptr));
+	std::default_random_engine rndEngine((unsigned)std::time(nullptr));
 	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
 	// Initial particle positions on a circle

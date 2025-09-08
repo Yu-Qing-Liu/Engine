@@ -45,6 +45,10 @@ class Application {
 
 		glfwSetMouseButtonCallback(window, Events::handleMouseCallbacks);
 		glfwSetKeyCallback(window, Events::handleKeyboardCallbacks);
+		glfwSetCursorPosCallback(window, [](GLFWwindow *, double x, double y) {
+			Events::pointerX = (float)x;
+			Events::pointerY = (float)y;
+		});
 	}
 
 	static void framebufferResizeCallback(GLFWwindow *window, int width, int height) {
@@ -256,7 +260,7 @@ class Application {
 };
 
 int main() {
-	initialize();
+	Assets::initialize();
 	Application app;
 	try {
 		app.run();

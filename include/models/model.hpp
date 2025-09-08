@@ -3,11 +3,14 @@
 #include <condition_variable>
 #include <functional>
 #include <thread>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_TYPES
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include "engine.hpp"
+#include "platform.hpp"
+#include "assets.hpp"
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -64,7 +67,7 @@ class Model {
 
 	bool rayTracingEnabled = false;
 	bool mouseIsOver{false};
-    bool selected{false};
+	bool selected{false};
 
 	UBO ubo{};
 	Params params{};
@@ -199,9 +202,9 @@ class Model {
 	 * */
 
 	string shaderPath;
-	string rayTracingShaderPath = Engine::shaderRootPath + "/raytracing";
-	Engine::ShaderModules shaderProgram;
-	Engine::ShaderModules rayTracingProgram;
+	string rayTracingShaderPath = Assets::shaderRootPath + "/raytracing";
+	Assets::ShaderModules shaderProgram;
+	Assets::ShaderModules rayTracingProgram;
 
 	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
@@ -278,7 +281,7 @@ class Model {
 
   private:
 	std::mutex m;
-	std::jthread watcher;
+	Platform::jthread watcher;
 	std::condition_variable cv;
 
 	AABB merge(const AABB &a, const AABB &b);

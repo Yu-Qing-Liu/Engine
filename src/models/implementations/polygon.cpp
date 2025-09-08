@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/polygon", /*indices ignored here*/ {}) {
+Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/polygon", /*indices ignored here*/ {}) {
 	// default colors
 	params.color = Colors::RED;
 	params.outlineColor = Colors::YELLOW;

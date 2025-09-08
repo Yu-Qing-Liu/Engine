@@ -17,7 +17,7 @@ VkFormat OBJModel::formatFor(aiTextureType type) {
 std::string OBJModel::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
 // ---------- ctor/dtor ----------
-OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/objmodel") {
+OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/objmodel") {
 	loadModel();
 
 	createDescriptorSetLayout();		 // set=0
@@ -147,14 +147,24 @@ void OBJModel::buildBVH() {
 // ---------- loading ----------
 void OBJModel::loadModel() {
 	Assimp::Importer import;
-	const aiScene *scene = import.ReadFile(objPath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_SortByPType);
+	unsigned flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_SortByPType;
 
+	directory = objPath.substr(0, objPath.find_last_of('/'));
+
+#if ANDROID_VK
+	import.SetIOHandler(new Platform::AAssetIOSystem(g_app->activity->assetManager, /*base=*/""));
+	std::string rel = Assets::toAssetRel(objPath);
+	if (rel.empty()) {
+		rel = std::filesystem::path(objPath).filename().string();
+    }
+	const aiScene *scene = import.ReadFile(rel.c_str(), flags);
+#else
+	const aiScene *scene = import.ReadFile(objPath.c_str(), flags);
+#endif
 	if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode) {
 		std::cout << "ERROR::ASSIMP::" << import.GetErrorString() << std::endl;
 		throw std::runtime_error("Assimp load failed");
 	}
-
-	directory = objPath.substr(0, objPath.find_last_of('/'));
 
 	size_t vCap = 0, iCap = 0;
 	for (unsigned i = 0; i < scene->mNumMeshes; ++i) {
@@ -419,9 +429,20 @@ int OBJModel::loadTextureFromAssimpString(const aiScene *scene, const std::strin
 			return it->second;
 
 		int w, h, ch;
-		stbi_uc *pixels = stbi_load(path.c_str(), &w, &h, &ch, STBI_rgb_alpha);
-		if (!pixels)
+		stbi_uc *pixels = nullptr;
+
+		auto bytes = Assets::loadBytes(path);
+		if (!bytes.empty()) {
+			pixels = stbi_load_from_memory(bytes.data(), (int)bytes.size(), &w, &h, &ch, STBI_rgb_alpha);
+		} else {
+			// last-ditch try direct path (useful on desktop/dev)
+			pixels = stbi_load(path.c_str(), &w, &h, &ch, STBI_rgb_alpha);
+		}
+
+		if (!pixels) {
+			throw std::runtime_error("assimp load texture failed");
 			return -1;
+		}
 
 		VkDeviceSize imageSize = (VkDeviceSize)w * h * 4;
 		VkBuffer stg;
@@ -708,7 +729,7 @@ void OBJModel::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
@@ -774,7 +795,7 @@ void OBJModel::createGraphicsPipeline() {
 
 // ---------- render ----------
 void OBJModel::render() {
-    copyUBO();
+	copyUBO();
 
 	VkCommandBuffer cmd = Engine::currentCommandBuffer();
 

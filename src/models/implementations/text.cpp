@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &textParams) : textParams(textParams), Model(scene, ubo, screenParams, Engine::shaderRootPath + "/text") {
+Text::Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &textParams) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/text") {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
@@ -385,7 +385,7 @@ void Text::createGraphicsPipeline() {
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	shaderProgram = Engine::compileShaderProgram(shaderPath);
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
 	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};

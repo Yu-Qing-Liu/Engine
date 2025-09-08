@@ -4,7 +4,7 @@
 #include "polygon.hpp"
 #include "scenes.hpp"
 #include "colors.hpp"
-#include <GLFW/glfw3.h>
+#include "events.hpp"
 #include <memory>
 #include <optional>
 
@@ -42,7 +42,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     cube1->params.color = Colors::RED;
     cube1->params.outlineColor = Colors::RED;
     cube1->setOnMouseClick([this](int button, int action, int mods) {
-        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1) {
+        if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
             std::cout << "Mouse 1 pressed" << std::endl;
             if (cube1->params.color == Colors::RED) {
                 cube1->params.color = Colors::GREEN;
@@ -96,7 +96,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     cube2->params.color = Colors::RED;
     cube2->params.outlineColor = Colors::RED;
     cube2->setOnMouseClick([this](int button, int action, int mods) {
-        if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1) {
+        if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
             std::cout << "Mouse 1 pressed" << std::endl;
             if (cube2->params.color == Colors::RED) {
                 cube2->params.color = Colors::GREEN;
