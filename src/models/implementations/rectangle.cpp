@@ -1,19 +1,20 @@
-#include "polygon.hpp"
+#include "rectangle.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/polygon") {
+Rectangle::Rectangle(Scene &scene, const UBO &ubo, ScreenParams &screenParams) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/rectangle") {
 	// default colors
 	params.color = Colors::RED;
 	params.outlineColor = Colors::YELLOW;
 	params.outlineWidth = 2.0f;
+    params.borderRadius = 15.0f;
 
-	std::vector<Vertex> expandedVerts;
-	std::vector<uint16_t> expandedIdx;
-	expandForOutlines(inputVertices, inputIndices, this->vertices, this->indices);
+    indices = {
+        0, 1, 2, 2, 3, 0
+    };
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
@@ -22,7 +23,7 @@ Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const
 	createDescriptorSets();
 
 	createVertexBuffer<Vertex>(this->vertices);
-	createIndexBuffer();
+    createIndexBuffer();
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
@@ -33,7 +34,7 @@ Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const
 	createComputePipeline();
 }
 
-Polygon::~Polygon() {
+Rectangle::~Rectangle() {
 	for (size_t i = 0; i < paramsBuffers.size(); ++i) {
 		if (paramsBuffersMemory[i]) {
 			if (paramsBuffersMapped[i]) {
@@ -47,121 +48,7 @@ Polygon::~Polygon() {
 	}
 }
 
-struct EdgeKey {
-	uint32_t a, b;
-	bool operator==(const EdgeKey &o) const noexcept { return a == o.a && b == o.b; }
-};
-
-struct EdgeKeyHash {
-	size_t operator()(const EdgeKey &k) const noexcept { return (size_t(k.a) << 32) ^ size_t(k.b); }
-};
-
-void Polygon::expandForOutlines(const std::vector<Vertex> &inVerts, const std::vector<uint16_t> &inIdx, std::vector<Vertex> &outVerts, std::vector<uint16_t> &outIdx) {
-	struct Edge {
-		uint32_t a, b;
-		int tri0 = -1;
-		int tri1 = -1;
-	};
-	struct EdgeKey {
-		uint32_t a, b;
-		bool operator==(const EdgeKey &o) const noexcept { return a == o.a && b == o.b; }
-	};
-	struct EdgeKeyHash {
-		size_t operator()(const EdgeKey &k) const noexcept { return (size_t(k.a) << 32) ^ size_t(k.b); }
-	};
-
-	if (inIdx.size() % 3 != 0)
-		throw std::runtime_error("indices not multiple of 3");
-
-	const int triCount = (int)inIdx.size() / 3;
-
-	// 1) Face normals
-	std::vector<glm::vec3> triN(triCount);
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-		glm::vec3 A = inVerts[i0].pos;
-		glm::vec3 B = inVerts[i1].pos;
-		glm::vec3 C = inVerts[i2].pos;
-		triN[t] = glm::normalize(glm::cross(B - A, C - A));
-	}
-
-	// 2) Edge adjacency
-	std::unordered_map<EdgeKey, Edge, EdgeKeyHash> edges;
-	edges.reserve(inIdx.size());
-	auto addEdge = [&](uint32_t u, uint32_t v, int tri) {
-		EdgeKey k{std::min(u, v), std::max(u, v)};
-		auto &e = edges[k];
-		e.a = k.a;
-		e.b = k.b;
-		if (e.tri0 == -1)
-			e.tri0 = tri;
-		else
-			e.tri1 = tri;
-	};
-
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-		addEdge(i0, i1, t);
-		addEdge(i1, i2, t);
-		addEdge(i2, i0, t);
-	}
-
-	// crease threshold (degrees -> cos)
-	const float deg = 30.0f; // tweak
-	const float creaseCos = std::cos(glm::radians(deg));
-
-	// 3) For each triangle, decide which of its three edges are "hard"
-	auto edgeIsHard = [&](uint32_t u, uint32_t v) {
-		EdgeKey k{std::min(u, v), std::max(u, v)};
-		auto it = edges.find(k);
-		if (it == edges.end())
-			return false; // shouldn't happen
-		const Edge &e = it->second;
-		if (e.tri1 == -1)
-			return true; // boundary
-		// two faces: compare normals
-		float d = glm::dot(triN[e.tri0], triN[e.tri1]);
-		return d < creaseCos;
-	};
-
-	outVerts.clear();
-	outIdx.clear();
-	outVerts.reserve(inIdx.size());
-	outIdx.reserve(inIdx.size());
-
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-
-		// mask.x corresponds to edge opposite v0 (edge i1-i2)
-		// mask.y -> opposite v1 (edge i2-i0)
-		// mask.z -> opposite v2 (edge i0-i1)
-		glm::vec3 mask(0.0f);
-		if (edgeIsHard(i1, i2))
-			mask.x = 1.0f;
-		if (edgeIsHard(i2, i0))
-			mask.y = 1.0f;
-		if (edgeIsHard(i0, i1))
-			mask.z = 1.0f;
-
-		auto makeV = [&](const Vertex &vin, glm::vec3 bary) {
-			Vertex v = vin;
-			v.bary = bary;
-			v.edgeMask = mask;
-			return v;
-		};
-
-		uint32_t base = (uint32_t)outVerts.size();
-		outVerts.push_back(makeV(inVerts[i0], {1, 0, 0}));
-		outVerts.push_back(makeV(inVerts[i1], {0, 1, 0}));
-		outVerts.push_back(makeV(inVerts[i2], {0, 0, 1}));
-
-		outIdx.push_back(uint16_t(base + 0));
-		outIdx.push_back(uint16_t(base + 1));
-		outIdx.push_back(uint16_t(base + 2));
-	}
-}
-
-void Polygon::buildBVH() {
+void Rectangle::buildBVH() {
 	// Gather positions and triangles from current mesh
 	posGPU.clear();
 	triGPU.clear();
@@ -243,13 +130,13 @@ void Polygon::buildBVH() {
 	emit(root);
 }
 
-void Polygon::createBindingDescriptions() {
+void Rectangle::createBindingDescriptions() {
 	bindingDescription = Vertex::getBindingDescription();
 	auto attrs = Vertex::getAttributeDescriptions();
 	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
-void Polygon::createDescriptorSetLayout() {
+void Rectangle::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
@@ -270,7 +157,7 @@ void Polygon::createDescriptorSetLayout() {
 	}
 }
 
-void Polygon::createDescriptorPool() {
+void Rectangle::createDescriptorPool() {
 	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSize.descriptorCount = static_cast<uint32_t>(2 * Engine::MAX_FRAMES_IN_FLIGHT);
 
@@ -284,7 +171,7 @@ void Polygon::createDescriptorPool() {
 	}
 }
 
-void Polygon::createParamsBuffer() {
+void Rectangle::createParamsBuffer() {
 	VkDeviceSize sz = sizeof(Params);
 	paramsBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 	paramsBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
@@ -296,7 +183,7 @@ void Polygon::createParamsBuffer() {
 	}
 }
 
-void Polygon::createDescriptorSets() {
+void Rectangle::createDescriptorSets() {
 	std::vector<VkDescriptorSetLayout> layouts(Engine::MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;
@@ -333,7 +220,89 @@ void Polygon::createDescriptorSets() {
 	}
 }
 
-void Polygon::render() {
+void Rectangle::createGraphicsPipeline() {
+	inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	vertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	shaderProgram = Assets::compileShaderProgram(shaderPath);
+	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
+
+	VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
+	vp.viewportCount = 1;
+	vp.scissorCount = 1;
+
+	VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+	rs.polygonMode = VK_POLYGON_MODE_FILL;
+	rs.cullMode = VK_CULL_MODE_NONE;
+	rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rs.lineWidth = 1.0f;
+
+	VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
+	ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineDepthStencilStateCreateInfo ds{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
+	ds.depthTestEnable = VK_TRUE;
+	ds.depthWriteEnable = VK_FALSE;
+	ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+	VkPipelineColorBlendAttachmentState cbAtt{};
+	cbAtt.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	cbAtt.blendEnable = VK_TRUE;
+	cbAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	cbAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	cbAtt.colorBlendOp = VK_BLEND_OP_ADD;
+	cbAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	cbAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	cbAtt.alphaBlendOp = VK_BLEND_OP_ADD;
+	VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
+	cb.attachmentCount = 1;
+	cb.pAttachments = &cbAtt;
+
+	std::vector<VkDynamicState> dyn{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	VkPipelineDynamicStateCreateInfo dynInfo{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
+	dynInfo.dynamicStateCount = static_cast<uint32_t>(dyn.size());
+	dynInfo.pDynamicStates = dyn.data();
+
+	VkPushConstantRange pc{};
+	pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pc.offset = 0;
+	pc.size = sizeof(glm::vec4);
+	VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+	pl.setLayoutCount = 1;
+	pl.pSetLayouts = &descriptorSetLayout;
+	pl.pushConstantRangeCount = 1;
+	pl.pPushConstantRanges = &pc;
+	if (vkCreatePipelineLayout(Engine::device, &pl, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Text: pipeline layout failed");
+	}
+
+	VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
+	gp.stageCount = static_cast<uint32_t>(shaderStages.size());
+	gp.pStages = shaderStages.data();
+	gp.pVertexInputState = &vertexInputInfo;
+	gp.pInputAssemblyState = &inputAssembly;
+	gp.pViewportState = &vp;
+	gp.pRasterizationState = &rs;
+	gp.pMultisampleState = &ms;
+	gp.pDepthStencilState = &ds;
+	gp.pColorBlendState = &cb;
+	gp.pDynamicState = &dynInfo;
+	gp.layout = pipelineLayout;
+	gp.renderPass = Engine::renderPass;
+	gp.subpass = 0;
+	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &gp, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("Text: create pipeline failed");
+	}
+}
+
+void Rectangle::render() {
 	// Update per-frame data
 	std::memcpy(paramsBuffersMapped[Engine::currentFrame], &params, sizeof(params));
     Model::render();
