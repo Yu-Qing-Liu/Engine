@@ -4,7 +4,8 @@
 
 using UBO = Model::UBO;
 using ScreenParams = Model::ScreenParams;
-using std::unique_ptr;
+using std::make_shared;
+using std::shared_ptr;
 
 class Widget {
   public:
@@ -29,6 +30,5 @@ class Widget {
 	const UBO &ubo;
 	ScreenParams &screenParams;
 
-  private:
-	vector<unique_ptr<Model>> components;
+	vector<shared_ptr<Model>> components;
 };
