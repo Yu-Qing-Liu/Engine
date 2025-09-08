@@ -10,7 +10,6 @@
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
     button = make_unique<Rectangle>(*this, orthographic, screenParams);
-    button->setRayTraceOrtho(true);
     button->setRayTraceEnabled(true);
     button->params.outlineColor = Colors::RED;
     button->onMouseEnter = [this]() {
