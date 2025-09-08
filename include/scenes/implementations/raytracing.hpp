@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine.hpp"
-#include "objmodel.hpp"
+#include "polygon.hpp"
 #include "scene.hpp"
 
 class RayTracing : public Scene {
@@ -29,6 +29,6 @@ class RayTracing : public Scene {
 
 	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-	unique_ptr<Model> cube1;
-	unique_ptr<Model> cube2;
+	unique_ptr<Polygon> cube1;
+	unique_ptr<Polygon> cube2;
 };

@@ -15,6 +15,14 @@ class Rectangle : public Model {
 
 	void render() override;
 
+	struct Params {
+		vec4 color;
+		vec4 outlineColor;
+		float outlineWidth = 0.0f; // pixels
+		float borderRadius = 0.0f; // pixels
+		float _pad1 = 0.0f, _pad2 = 0.0f;
+	};
+
 	struct Vertex {
 		vec3 pos;
 
@@ -38,6 +46,8 @@ class Rectangle : public Model {
 			return attributeDescriptions;
 		}
 	};
+
+	Params params{};
 
   protected:
 	void buildBVH() override;
