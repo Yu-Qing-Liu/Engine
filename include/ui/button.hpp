@@ -1,38 +1,42 @@
-#include "text.hpp"
-#include "rectangle.hpp"
+#pragma once
 
-using std::make_unique;
-using std::pair;
-using std::unique_ptr;
-using UBO = Model::UBO;
-using ScreenParams = Model::ScreenParams;
+#include "rectangle.hpp"
+#include "text.hpp"
+#include <memory>
+#include <optional>
 
 class Button {
   public:
-	Button(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t fontSize);
-	Button(Button &&) = delete;
-	Button(const Button &) = delete;
-	Button &operator=(Button &&) = delete;
-	Button &operator=(const Button &) = delete;
-	~Button() = default;
+	struct StyleParams {
+		glm::vec2 center{0.0f};		  // button center in screen pixels
+		glm::vec2 dim{200.0f, 64.0f}; // button size in pixels (W,H)
 
-	vec4 bgColor;
+		glm::vec4 bgColor{1.0f, 1.0f, 1.0f, 1.0f};		// white fill
+		glm::vec4 outlineColor{0.0f, 0.0f, 0.0f, 1.0f}; // black outline
+		float outlineWidth{1.0f};						// px
+		float borderRadius{12.0f};						// px
 
-	vec2 btnCenter;
-	vec2 dim;
+		std::optional<std::string> text;	// label
+		std::optional<glm::vec4> textColor; // label color
 
-	string text;
-	vec2 textCenter;
-	vec4 textColor;
+		glm::vec2 iconCenter{0.0f};		  // optional icon center
+		std::optional<glm::vec3> iconDim; // optional icon scale (x,y,1)
+	};
 
-	vec2 iconCenter;
-	vec3 iconDim;
-	unique_ptr<Model> icon;
+	Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, uint32_t fontSize);
 
-	void setParams();
+	void updateUniformBuffers(const Model::UBO &ubo);
+	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
+
 	void render();
 
-  private:
-	unique_ptr<Rectangle> container;
-	unique_ptr<Text> textModel;
+	// models
+	std::unique_ptr<Rectangle> rectangle;
+	std::unique_ptr<Text> textModel;
+	std::unique_ptr<Model> icon;
+
+	// state
+	std::string label{"Click me!"};
+	glm::vec4 labelColor{0.0f, 0.0f, 0.0f, 1.0f}; // black
 };
+;
