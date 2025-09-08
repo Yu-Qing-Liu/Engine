@@ -66,6 +66,13 @@ class Polygon : public Model {
 	void createParamsBuffer();
 
   private:
+	struct SubmeshRanges {
+		uint32_t fillCount = 0;
+		uint32_t shellFillFirst = 0, shellFillCount = 0;
+		uint32_t shellStrokeFirst = 0, shellStrokeCount = 0;
+	};
+	SubmeshRanges submesh;
+
 	// original input (pos/color only is fine; bary will be rebuilt)
 	std::vector<Vertex> inputVertices;
 	std::vector<uint16_t> inputIndices;
