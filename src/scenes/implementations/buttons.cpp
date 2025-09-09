@@ -1,10 +1,30 @@
 #include "buttons.hpp"
 #include "engine.hpp"
 #include "scenes.hpp"
-#include <memory>
+#include "colors.hpp"
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
     button = make_unique<Button>(*this, orthographic, screenParams, 24); 
+    button->setOnMouseClick([this](int button, int action, int mods) {
+        if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+            std::cout << "Mouse 1 pressed" << std::endl;
+            if (this->button->rectangle->params.color == Colors::WHITE) {
+                this->button->rectangle->params.color = Colors::GREEN;
+                this->button->rectangle->params.outlineColor = Colors::GREEN;
+            } else {
+                this->button->rectangle->params.color = Colors::WHITE;
+                this->button->rectangle->params.outlineColor = Colors::WHITE;
+            }
+        }
+    });
+    button->setOnMouseEnter([this]() {
+        std::cout << "Mouse Entered" << std::endl;
+        button->rectangle->params.outlineColor = Colors::YELLOW;
+    });
+    button->setOnMouseExit([this]() {
+        std::cout << "Mouse Exited" << std::endl;
+        button->rectangle->params.outlineColor = button->rectangle->params.color;
+    });
 }
 
 void Buttons::updateScreenParams() {

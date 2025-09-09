@@ -4,12 +4,13 @@
 Button::Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, uint32_t fontSize) {
 	Text::TextParams tp{Assets::fontRootPath + "/arial.ttf", fontSize};
 	rectangle = std::make_unique<Rectangle>(scene, ubo, screenParams);
+	rectangle->setRayTraceEnabled(true);
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, tp);
 }
 
 void Button::updateUniformBuffers(const Model::UBO &ubo) {
-    rectangle->updateUniformBuffer(ubo);
-    textModel->updateUniformBuffer(ubo);
+	rectangle->updateUniformBuffer(ubo);
+	textModel->updateUniformBuffer(ubo);
 }
 
 void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model>> iconIn) {
@@ -25,10 +26,10 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 	// TEXT
 	if (p.text) {
 		label = *p.text;
-    }
+	}
 	if (p.textColor) {
 		labelColor = *p.textColor;
-    }
+	}
 
 	// Put text at same center as the rect. Text::renderText scales by font size,
 	// so we only need a translate here.
@@ -45,10 +46,16 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 	}
 }
 
+void Button::setOnMouseHover(std::function<void()> cb) { rectangle->onMouseHover = cb; }
+void Button::setOnMouseEnter(std::function<void()> cb) { rectangle->onMouseEnter = cb; }
+void Button::setOnMouseExit(std::function<void()> cb) { rectangle->onMouseExit = cb; }
+void Button::setOnMouseClick(std::function<void(int, int, int)> cb) { rectangle->setOnMouseClick(cb); }
+void Button::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) { rectangle->setOnKeyboardKeyPress(cb); }
+
 void Button::render() {
 	rectangle->render();
 	textModel->renderText(label, 1.0f, labelColor);
 	if (icon) {
 		icon->render();
-    }
+	}
 }

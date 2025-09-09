@@ -7,6 +7,11 @@
 
 class Button {
   public:
+	Button(Button &&) = delete;
+	Button(const Button &) = delete;
+	Button &operator=(Button &&) = delete;
+	Button &operator=(const Button &) = delete;
+
 	struct StyleParams {
 		glm::vec2 center{0.0f};		  // button center in screen pixels
 		glm::vec2 dim{200.0f, 64.0f}; // button size in pixels (W,H)
@@ -24,11 +29,20 @@ class Button {
 	};
 
 	Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, uint32_t fontSize);
+	~Button() = default;
 
 	void updateUniformBuffers(const Model::UBO &ubo);
 	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
 
 	void render();
+
+	// callbacks
+	void setOnMouseHover(std::function<void()> cb);
+	void setOnMouseEnter(std::function<void()> cb);
+	void setOnMouseExit(std::function<void()> cb);
+
+	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	// models
 	std::unique_ptr<Rectangle> rectangle;
@@ -39,4 +53,3 @@ class Button {
 	std::string label{"Click me!"};
 	glm::vec4 labelColor{0.0f, 0.0f, 0.0f, 1.0f}; // black
 };
-;
