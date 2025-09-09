@@ -548,4 +548,4 @@ void Text::renderText(const std::string &utf8, const vec3 &origin, float scale, 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }
 
-void Text::renderText(const std::string &utf8, float scale, const vec4 &color) { renderText(utf8, {-measureUTF8(utf8) / 2.0f, -getPixelHeight() * scale / 2.0f, 0.0f}, scale, color); }
+void Text::renderText(const std::string &utf8, float scale, const vec4 &color) { renderText(utf8, {-measureUTF8(utf8) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, color); }

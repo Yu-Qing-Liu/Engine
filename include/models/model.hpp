@@ -38,14 +38,6 @@ class Model {
 		mat4 proj;
 	};
 
-	struct Params {
-		vec4 color;
-		vec4 outlineColor;
-		float outlineWidth = 0.0f; // pixels
-		float borderRadius = 0.0f; // pixels
-		float _pad1 = 0.0f, _pad2 = 0.0f;
-	};
-
 	struct ScreenParams {
 		VkViewport viewport{};
 		VkRect2D scissor{};
@@ -70,7 +62,6 @@ class Model {
 	bool selected{false};
 
 	UBO ubo{};
-	Params params{};
 	ScreenParams &screenParams;
 
 	optional<vec3> hitPos;
