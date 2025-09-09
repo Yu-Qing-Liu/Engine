@@ -326,6 +326,8 @@ void android_main(android_app *app) {
 			timeout = 0;
 		}
 
+        Events::pumpDeferred();
+
 		if (state.animating && state.ready && device != VK_NULL_HANDLE && surface != VK_NULL_HANDLE) {
 			auto now = clock::now();
 			double t = std::chrono::duration<double>(now - t0).count();
