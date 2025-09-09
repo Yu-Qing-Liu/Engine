@@ -463,7 +463,7 @@ void Model::createComputePipeline() {
 	rayTracingProgram = Assets::compileShaderProgram(rayTracingShaderPath);
 	if (rayTracingProgram.computeShader == VK_NULL_HANDLE) {
 		// Fallback: try compiling/loading here if your Engine doesn't do it.
-		throw std::runtime_error("compute shader missing (expect picking.comp)!");
+		throw std::runtime_error("compute shader missing (expect raytracing.comp)!");
 	}
 
 	// Pipeline layout (compute-only set layout)

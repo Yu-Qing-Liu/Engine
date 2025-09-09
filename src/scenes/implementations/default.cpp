@@ -70,9 +70,9 @@ void Default::updateScreenParams() {
 void Default::swapChainUpdate() {
     persp.proj = perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f);
     orthographic.proj = ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f);
+    triangle->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
     particles->updateUniformBuffer(std::nullopt, std::nullopt ,persp.proj);
     example->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
-    triangle->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
     room->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
     text->updateUniformBuffer(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)), std::nullopt, orthographic.proj);
 }
@@ -86,14 +86,14 @@ void Default::computePass() {
 }
 
 void Default::updateUniformBuffers() {
-    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
     triangle->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
+    example->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
     room->updateUniformBuffer(rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f)));
 }
 
 void Default::renderPass() {
-    example->render();
     triangle->render();
+    example->render();
     room->render();
     text->renderText("Hello World", 1.0f);
 

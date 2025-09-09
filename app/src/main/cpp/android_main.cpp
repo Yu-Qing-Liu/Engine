@@ -298,6 +298,8 @@ static void handle_cmd(android_app *app, int32_t cmd) {
 
 // --- Entry point for NativeActivity ---
 void android_main(android_app *app) {
+	app_dummy();
+
 	AppState state{};
 	app->userData = &state;
 	app->onAppCmd = handle_cmd;
