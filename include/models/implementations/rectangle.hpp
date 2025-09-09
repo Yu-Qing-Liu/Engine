@@ -55,7 +55,7 @@ class Rectangle : public Model {
 	void createBindingDescriptions() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
-	void createGraphicsPipeline() override;
+	void setupGraphicsPipeline() override;
 
 	void createParamsBuffer();
 

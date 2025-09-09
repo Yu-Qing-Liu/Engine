@@ -2,14 +2,14 @@ plugins { id("com.android.application") }
 
 android {
     namespace = "com.example.engine"
-    compileSdk = 34
+    ndkVersion = "29.0.14033849"
+    compileSdk = 36
+
 
     defaultConfig {
         applicationId = "com.example.engine"
         minSdk = 26
         targetSdk = 34
-
-        ndk { abiFilters += listOf("arm64-v8a") }
 
         externalNativeBuild {
             cmake {

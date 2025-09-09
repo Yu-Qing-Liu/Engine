@@ -718,79 +718,12 @@ void OBJModel::createIndexBuffer() {
 	vkFreeMemory(Engine::device, stgMem, nullptr);
 }
 
-void OBJModel::createGraphicsPipeline() {
-	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
+void OBJModel::setupGraphicsPipeline() {
+	colorBlendAttachment.blendEnable = VK_FALSE;
 
-	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)attributeDescriptions.size();
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
-	shaderProgram = Assets::compileShaderProgram(shaderPath);
-	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-	VkPipelineViewportStateCreateInfo viewportState{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-	viewportState.viewportCount = 1;
-	viewportState.scissorCount = 1;
-
-	VkPipelineRasterizationStateCreateInfo rasterizer{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rasterizer.lineWidth = 1.0f;
-
-	VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-	ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineDepthStencilStateCreateInfo depth{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-	depth.depthTestEnable = VK_TRUE;
-	depth.depthWriteEnable = VK_TRUE;
-	depth.depthCompareOp = VK_COMPARE_OP_LESS;
-
-	VkPipelineColorBlendAttachmentState cba{};
-	cba.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	cba.blendEnable = VK_FALSE;
-
-	VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-	cb.attachmentCount = 1;
-	cb.pAttachments = &cba;
-
-	std::vector<VkDynamicState> dyn = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-	VkPipelineDynamicStateCreateInfo ds{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-	ds.dynamicStateCount = (uint32_t)dyn.size();
-	ds.pDynamicStates = dyn.data();
-
-	std::array<VkDescriptorSetLayout, 2> setLayouts{descriptorSetLayout, materialDSL};
-
-	VkPipelineLayoutCreateInfo pli{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-	pli.setLayoutCount = (uint32_t)setLayouts.size();
-	pli.pSetLayouts = setLayouts.data();
-
-	if (vkCreatePipelineLayout(Engine::device, &pli, nullptr, &pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("OBJModel: pipeline layout failed");
-	}
-
-	VkGraphicsPipelineCreateInfo pi{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-	pi.stageCount = (uint32_t)shaderStages.size();
-	pi.pStages = shaderStages.data();
-	pi.pVertexInputState = &vertexInputInfo;
-	pi.pInputAssemblyState = &inputAssembly;
-	pi.pViewportState = &viewportState;
-	pi.pRasterizationState = &rasterizer;
-	pi.pMultisampleState = &ms;
-	pi.pDepthStencilState = &depth;
-	pi.pColorBlendState = &cb;
-	pi.pDynamicState = &ds;
-	pi.layout = pipelineLayout;
-	pi.renderPass = Engine::renderPass;
-	pi.subpass = 0;
-
-	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &pi, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-		throw std::runtime_error("OBJModel: pipeline create failed");
-	}
+    setLayouts = { descriptorSetLayout, materialDSL };
+	pipelineLayoutInfo.setLayoutCount = (uint32_t)setLayouts.size();
+	pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 }
 
 // ---------- render ----------
@@ -806,7 +739,7 @@ void OBJModel::render() {
 	VkBuffer vbs[] = {vertexBuffer};
 	VkDeviceSize offs[] = {0};
 	vkCmdBindVertexBuffers(cmd, 0, 1, vbs, offs);
-	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
 	// set=0 UBO (per-frame)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);

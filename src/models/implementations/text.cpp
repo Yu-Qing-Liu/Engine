@@ -374,86 +374,18 @@ void Text::createBindingDescriptions() {
 	attributeDescriptions = std::vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
-void Text::createGraphicsPipeline() {
-	inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	inputAssembly.primitiveRestartEnable = VK_FALSE;
+void Text::setupGraphicsPipeline() {
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
-	vertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+	depthStencil.depthWriteEnable = VK_FALSE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-	shaderProgram = Assets::compileShaderProgram(shaderPath);
-	shaderStages = {Engine::createShaderStageInfo(shaderProgram.vertexShader, VK_SHADER_STAGE_VERTEX_BIT), Engine::createShaderStageInfo(shaderProgram.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)};
-
-	VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
-	vp.viewportCount = 1;
-	vp.scissorCount = 1;
-
-	VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
-	rs.polygonMode = VK_POLYGON_MODE_FILL;
-	rs.cullMode = VK_CULL_MODE_NONE;
-	rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	rs.lineWidth = 1.0f;
-
-	VkPipelineMultisampleStateCreateInfo ms{VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
-	ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	VkPipelineDepthStencilStateCreateInfo ds{VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO};
-	ds.depthTestEnable = VK_TRUE;
-	ds.depthWriteEnable = VK_FALSE;
-	ds.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-	VkPipelineColorBlendAttachmentState cbAtt{};
-	cbAtt.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	cbAtt.blendEnable = VK_TRUE;
-	cbAtt.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	cbAtt.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	cbAtt.colorBlendOp = VK_BLEND_OP_ADD;
-	cbAtt.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	cbAtt.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	cbAtt.alphaBlendOp = VK_BLEND_OP_ADD;
-	VkPipelineColorBlendStateCreateInfo cb{VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO};
-	cb.attachmentCount = 1;
-	cb.pAttachments = &cbAtt;
-
-	std::vector<VkDynamicState> dyn{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-	VkPipelineDynamicStateCreateInfo dynInfo{VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO};
-	dynInfo.dynamicStateCount = static_cast<uint32_t>(dyn.size());
-	dynInfo.pDynamicStates = dyn.data();
-
-	VkPushConstantRange pc{};
 	pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	pc.offset = 0;
 	pc.size = sizeof(glm::vec4);
-	VkPipelineLayoutCreateInfo pl{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-	pl.setLayoutCount = 1;
-	pl.pSetLayouts = &descriptorSetLayout;
-	pl.pushConstantRangeCount = 1;
-	pl.pPushConstantRanges = &pc;
-	if (vkCreatePipelineLayout(Engine::device, &pl, nullptr, &pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("Text: pipeline layout failed");
-	}
 
-	VkGraphicsPipelineCreateInfo gp{VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
-	gp.stageCount = static_cast<uint32_t>(shaderStages.size());
-	gp.pStages = shaderStages.data();
-	gp.pVertexInputState = &vertexInputInfo;
-	gp.pInputAssemblyState = &inputAssembly;
-	gp.pViewportState = &vp;
-	gp.pRasterizationState = &rs;
-	gp.pMultisampleState = &ms;
-	gp.pDepthStencilState = &ds;
-	gp.pColorBlendState = &cb;
-	gp.pDynamicState = &dynInfo;
-	gp.layout = pipelineLayout;
-	gp.renderPass = Engine::renderPass;
-	gp.subpass = 0;
-	if (vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &gp, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-		throw std::runtime_error("Text: create pipeline failed");
-	}
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &pc;
 }
 
 // ---------- Draw one string ----------

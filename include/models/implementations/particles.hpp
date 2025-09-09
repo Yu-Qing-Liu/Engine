@@ -62,10 +62,10 @@ class Particles : public Model {
 
 	void createComputeDescriptorSetLayout() override;
 	void createBindingDescriptions() override;
-	void createGraphicsPipeline() override;
 	void createComputePipeline() override;
 	void createShaderStorageBuffers() override;
 	void createUniformBuffers() override;
 	void createDescriptorPool() override;
 	void createComputeDescriptorSets() override;
+	void setupGraphicsPipeline() override;
 };

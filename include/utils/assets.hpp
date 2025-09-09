@@ -3,7 +3,10 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <optional>
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 
@@ -15,6 +18,7 @@ using namespace shaderc;
 #else
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
+#include <android/log.h>
 #include <android_native_app_glue.h>
 #endif
 
@@ -28,20 +32,27 @@ namespace Assets {
 namespace fs = std::filesystem;
 using namespace Engine;
 
-// ===================== Centralized repo paths (Option A) =====================
-// Desktop reads/writes here directly. Android uses these only as APK assets;
-// at runtime it reads from <files>/... after hydration.
+#if ANDROID_VK
+#define LOG_TAG_ASSETS "Assets"
+#define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG_ASSETS, __VA_ARGS__)
+#define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG_ASSETS, __VA_ARGS__)
+#define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG_ASSETS, __VA_ARGS__)
+inline bool endsWith(const std::string &s, const std::string &suffix) {
+	if (s.size() < suffix.size())
+		return false;
+	return std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
+}
+#endif
+
+// ===================== Centralized repo paths =====================
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/shaders";
 inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/textures";
 inline std::string modelRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/meshes";
 inline std::string fontRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/fonts";
 
 #if ANDROID_VK
-// On Android we *read* from <files>/... (set at runtime). We still ship
-// SPIR-V in assets/spirv, but at runtime we hydrate <files>/shaders.
-inline std::string shaderCachePath; // set to "<files>/shaders" at runtime
+inline std::string shaderCachePath; // runtime set to "<files>/shaders"
 #else
-// On desktop we *write* compiled SPIR-V into assets/spirv (so APK picks it up).
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/spirv";
 #endif
 
@@ -57,11 +68,6 @@ inline void ensureDir(const std::string &p) {
 	std::error_code ec;
 	fs::create_directories(p, ec);
 }
-
-inline std::string texturePath(const std::string &rel) { return joinPath(textureRootPath, rel); }
-inline std::string meshPath(const std::string &rel) { return joinPath(modelRootPath, rel); }
-inline std::string fontPath(const std::string &rel) { return joinPath(fontRootPath, rel); }
-
 inline bool fileExists(const std::string &p) {
 	std::error_code ec;
 	return fs::exists(p, ec) && fs::is_regular_file(p, ec);
@@ -80,6 +86,10 @@ inline std::vector<uint32_t> readBinaryFileU32(const std::string &path) {
 	std::memcpy(out.data(), bytes.data(), bytes.size());
 	return out;
 }
+
+inline std::string texturePath(const std::string &rel) { return joinPath(textureRootPath, rel); }
+inline std::string meshPath(const std::string &rel) { return joinPath(modelRootPath, rel); }
+inline std::string fontPath(const std::string &rel) { return joinPath(fontRootPath, rel); }
 
 inline std::unordered_map<std::string, int> shaderExtensions = {{".vert", 0}, {".tesc", 1}, {".tese", 2}, {".geom", 3}, {".frag", 4}, {".comp", 5}};
 
@@ -101,21 +111,17 @@ struct ShaderBinaries {
 };
 
 inline std::string toAssetRel(const std::string &p) {
-	// Known asset roots we ship
 	static const char *roots[] = {"/meshes/", "/textures/", "/fonts/", "/spirv/", "/shaders/", "meshes/", "textures/", "fonts/", "spirv/", "shaders/"};
 	for (auto r : roots) {
 		if (auto pos = p.find(r); pos != std::string::npos) {
-			// Drop a leading slash if present
 			return (r[0] == '/') ? p.substr(pos + 1) : p.substr(pos);
 		}
 	}
-	// If it's already relative (no leading slash), just return it
 	if (!p.empty() && p.front() != '/')
 		return p;
-	return {}; // not mappable
+	return {};
 }
 
-// Read bytes from FS if present; else (on Android) try the APK assets with a derived relative path.
 inline std::vector<uint8_t> loadBytes(const std::string &absOrRel) {
 	// 1) Filesystem
 	auto fsBytes = readAllBytes(absOrRel);
@@ -125,18 +131,18 @@ inline std::vector<uint8_t> loadBytes(const std::string &absOrRel) {
 #if ANDROID_VK
 	// 2) APK assets fallback
 	if (!g_app || !g_app->activity || !g_app->activity->assetManager) {
-		LOGE("LoadBytes: AssetManager not available");
+		ALOGE("LoadBytes: AssetManager not available");
 		return {};
 	}
 	std::string rel = toAssetRel(absOrRel);
 	if (rel.empty()) {
-		LOGE("LoadBytes: cannot map to asset-relative path: %s", absOrRel.c_str());
+		ALOGE("LoadBytes: cannot map to asset-relative path: %s", absOrRel.c_str());
 		return {};
 	}
 
 	AAsset *a = AAssetManager_open(g_app->activity->assetManager, rel.c_str(), AASSET_MODE_STREAMING);
 	if (!a) {
-		LOGE("LoadBytes: AAssetManager_open failed for %s", rel.c_str());
+		ALOGE("LoadBytes: AAssetManager_open failed for %s", rel.c_str());
 		return {};
 	}
 	const off_t len = AAsset_getLength(a);
@@ -145,7 +151,7 @@ inline std::vector<uint8_t> loadBytes(const std::string &absOrRel) {
 	int rd = AAsset_read(a, out.data(), static_cast<size_t>(len));
 	AAsset_close(a);
 	if (rd <= 0) {
-		LOGE("LoadBytes: read failed for %s", rel.c_str());
+		ALOGE("LoadBytes: read failed for %s", rel.c_str());
 		return {};
 	}
 	out.resize(static_cast<size_t>(rd));
@@ -155,7 +161,7 @@ inline std::vector<uint8_t> loadBytes(const std::string &absOrRel) {
 #endif
 }
 
-// ===================== Desktop: compile & cache into assets/spirv =====================
+// ===================== Desktop: compile & cache =====================
 #if !ANDROID_VK
 inline Compiler compiler;
 inline CompileOptions options;
@@ -173,7 +179,7 @@ inline std::string computeHash(const std::string &input) {
 	SHA1(reinterpret_cast<const unsigned char *>(input.data()), input.size(), hash);
 	std::stringstream ss;
 	for (int i = 0; i < SHA_DIGEST_LENGTH; ++i)
-		ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+		ss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
 	return ss.str();
 }
 inline void writeBinaryFile(const std::string &path, const std::vector<uint32_t> &data) {
@@ -181,7 +187,7 @@ inline void writeBinaryFile(const std::string &path, const std::vector<uint32_t>
 	fs::create_directories(fs::path(path).parent_path(), ec);
 	std::ofstream file(path, std::ios::binary);
 	if (!file.is_open()) {
-		std::cerr << "Failed to write cache file: " << path << std::endl;
+		std::cerr << "Failed to write: " << path << std::endl;
 		return;
 	}
 	file.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(uint32_t));
@@ -208,17 +214,16 @@ inline std::vector<uint32_t> compileShader(const std::string &shaderPath) {
 		return {};
 	fs::path p(shaderPath);
 	const std::string ext = p.extension().string();
-	const auto it = shaderExtensions.find(ext);
+	auto it = shaderExtensions.find(ext);
 	if (it == shaderExtensions.end()) {
 		std::cerr << "Unsupported shader ext: " << ext << "\n";
 		return {};
 	}
 
 	const std::string hash_str = computeHash(ext + shaderCode);
-	constexpr const char *kSep = "--";
 	const std::string basenameSpv = p.filename().string() + ".spv";
-	const fs::path cache_dir(shaderCachePath); // = assets/spirv
-	const fs::path cached_path = cache_dir / (hash_str + kSep + basenameSpv);
+	const fs::path cache_dir(shaderCachePath);
+	const fs::path cached_path = cache_dir / (hash_str + "--" + basenameSpv);
 
 	if (fileExists(cached_path.string())) {
 		auto cached_binary = readBinaryFileU32(cached_path.string());
@@ -257,21 +262,50 @@ inline std::vector<uint32_t> compileShader(const std::string &shaderPath) {
 	}
 
 	std::vector<uint32_t> spirv(result.cbegin(), result.cend());
-	writeBinaryFile(cached_path.string(), spirv); // write into assets/spirv
+	writeBinaryFile(cached_path.string(), spirv);
 	return spirv;
 }
 
 #else
-// ===================== Android: hydrate <files> from APK assets, then select-only =====================
+// ===================== Android: hydrate <files> then select/scan =====================
 
-// Set <files>/... roots (prefer external if available for easier inspection).
+// Remove a path if it's a directory (leftover from earlier buggy copies)
+inline void removeIfDirectory(const std::string &path) {
+	std::error_code ec;
+	if (fs::is_directory(path, ec)) {
+		ALOGW("removeIfDirectory: removing stale directory at file path %s", path.c_str());
+		fs::remove_all(path, ec);
+		if (ec) {
+			ALOGE("removeIfDirectory: remove_all failed for %s (%d)", path.c_str(), (int)ec.value());
+		}
+	}
+}
+
+// Write file, healing old bad dirs that block fopen
+inline bool writeWholeFile(const std::string &path, const void *data, size_t size) {
+	ensureDir(fs::path(path).parent_path().string());
+	removeIfDirectory(path); // heal: if a dir exists where a file should be, delete it
+	FILE *f = fopen(path.c_str(), "wb");
+	if (!f) {
+		ALOGE("writeWholeFile: fopen failed for %s", path.c_str());
+		return false;
+	}
+	size_t w = fwrite(data, 1, size, f);
+	fclose(f);
+	if (w != size) {
+		ALOGE("writeWholeFile: short write for %s (%zu/%zu)", path.c_str(), w, size);
+		return false;
+	}
+	return true;
+}
+
+// Set <files>/... roots
 inline void setResourceDirectories(android_app *app, bool preferExternal = true) {
 	const char *ext = app->activity->externalDataPath;
 	const char *in = app->activity->internalDataPath;
 	const char *base = (preferExternal && ext && *ext) ? ext : in;
 
-	shaderCachePath = joinPath(base, "shaders"); // SPIR-V destination
-	// These are the *runtime* read roots:
+	shaderCachePath = joinPath(base, "shaders"); // runtime SPIR-V location
 	modelRootPath = joinPath(base, "meshes");
 	fontRootPath = joinPath(base, "fonts");
 	textureRootPath = joinPath(base, "textures");
@@ -280,9 +314,11 @@ inline void setResourceDirectories(android_app *app, bool preferExternal = true)
 	ensureDir(modelRootPath);
 	ensureDir(fontRootPath);
 	ensureDir(textureRootPath);
+
+	ALOGI("Resource dirs: shaders=%s meshes=%s fonts=%s textures=%s", shaderCachePath.c_str(), modelRootPath.c_str(), fontRootPath.c_str(), textureRootPath.c_str());
 }
 
-// Recursively copy a directory from APK assets to a filesystem folder (skip if same size exists).
+// Recursively copy an APK "directory" to filesystem (file-first).
 inline void copyAssetDir(android_app *app, const std::string &srcSubdir, const std::string &dstDir) {
 	AAssetManager *mgr = app->activity->assetManager;
 	ensureDir(dstDir);
@@ -292,24 +328,32 @@ inline void copyAssetDir(android_app *app, const std::string &srcSubdir, const s
 		AAssetDir *dir = AAssetManager_openDir(mgr, sub.c_str());
 		if (!dir)
 			return;
+
 		const char *name = nullptr;
 		while ((name = AAssetDir_getNextFileName(dir)) != nullptr) {
-			std::string child = sub.empty() ? name : (sub + "/" + name);
-			// Try open as file:
-			AAssetDir *d = AAssetManager_openDir(mgr, child.c_str());
-			if (d) {
-				// it's a dir
-				AAssetDir_close(d);
-				std::string outSub = joinPath(out, name);
-				ensureDir(outSub);
-				rec(child, outSub);
+			const std::string childRel = sub.empty() ? name : (sub + "/" + name);
+
+			// FILE FIRST: try opening as file
+			if (AAsset *a = AAssetManager_open(mgr, childRel.c_str(), AASSET_MODE_STREAMING)) {
+				const off_t len = AAsset_getLength(a);
+				std::vector<uint8_t> buf((size_t)len);
+				int rd = AAsset_read(a, buf.data(), (size_t)len);
+				AAsset_close(a);
+				if (rd > 0) {
+					buf.resize((size_t)rd);
+					const std::string outPath = joinPath(out, name);
+					// heal stale dir if present
+					writeWholeFile(outPath, buf.data(), buf.size());
+				} else {
+					ALOGW("copyAssetDir: read failed for %s", childRel.c_str());
+				}
 				continue;
 			}
-			// Otherwise try file
-			if (AAsset *a = AAssetManager_open(mgr, child.c_str(), AASSET_MODE_STREAMING)) {
-				// ... copy file as you already do ...
-				AAsset_close(a);
-			}
+
+			// Otherwise treat as a subdirectory and recurse
+			const std::string outSub = joinPath(out, name);
+			ensureDir(outSub);
+			rec(childRel, outSub);
 		}
 		AAssetDir_close(dir);
 	};
@@ -317,20 +361,18 @@ inline void copyAssetDir(android_app *app, const std::string &srcSubdir, const s
 	rec(srcSubdir, dstDir);
 }
 
-// One-shot init used by android_main.cpp
 inline void initializeAndroid(android_app *app) {
-	// Point runtime to <files>/...
+	// Prefer internal on emulator to avoid storage issues
 	setResourceDirectories(app, /*preferExternal=*/false);
 
-	// Hydrate <files> from APK assets (smart: copy only if needed)
-	// NOTE: assets/spirv (in APK) → <files>/shaders (runtime)
+	// Hydrate runtime copies (now file-first; won't create dirs named like files)
 	copyAssetDir(app, "spirv", shaderCachePath);
 	copyAssetDir(app, "meshes", modelRootPath);
 	copyAssetDir(app, "textures", textureRootPath);
 	copyAssetDir(app, "fonts", fontRootPath);
 }
 
-// Android load: pick exact "<files>/shaders/<basename>.spv" or newest "*<basename>.spv"
+// Android load: pick exact "<files>/shaders/<basename>.spv" OR newest "*<basename>.spv"
 inline std::optional<fs::path> selectCachedBinaryPath(const fs::path &cache_dir, const std::string &basenameSpv) {
 	std::error_code ec;
 	fs::path exact = cache_dir / basenameSpv;
@@ -348,7 +390,7 @@ inline std::optional<fs::path> selectCachedBinaryPath(const fs::path &cache_dir,
 		if (!entry.is_regular_file())
 			continue;
 		const std::string name = entry.path().filename().string();
-		if (name.size() >= basenameSpv.size() && name.compare(name.size() - basenameSpv.size(), basenameSpv.size(), basenameSpv) == 0) {
+		if (endsWith(name, basenameSpv)) {
 			auto t = fs::last_write_time(entry.path(), ec);
 			if (!ec && (!best || t > bestTime)) {
 				best = entry.path();
@@ -359,17 +401,66 @@ inline std::optional<fs::path> selectCachedBinaryPath(const fs::path &cache_dir,
 	return best;
 }
 
+// Scan APK assets/spirv for "*--<basename>.spv" and return raw bytes
+inline std::vector<uint8_t> loadSpvFromApkBySuffix(const std::string &basenameSpv) {
+	if (!g_app || !g_app->activity || !g_app->activity->assetManager)
+		return {};
+	AAssetManager *mgr = g_app->activity->assetManager;
+
+	AAssetDir *dir = AAssetManager_openDir(mgr, "spirv");
+	if (!dir)
+		return {};
+
+	std::vector<uint8_t> out;
+	const char *name = nullptr;
+	while ((name = AAssetDir_getNextFileName(dir)) != nullptr) {
+		// Names look like "<hash>--<basename>.spv"; we suffix match.
+		if (!endsWith(name, basenameSpv))
+			continue;
+
+		std::string rel = std::string("spirv/") + name;
+		AAsset *a = AAssetManager_open(mgr, rel.c_str(), AASSET_MODE_STREAMING);
+		if (!a)
+			continue;
+
+		const off_t len = AAsset_getLength(a);
+		out.resize((size_t)len);
+		int rd = AAsset_read(a, out.data(), (size_t)len);
+		AAsset_close(a);
+		if (rd > 0) {
+			out.resize((size_t)rd);
+			break;
+		} else {
+			out.clear();
+		}
+	}
+	AAssetDir_close(dir);
+	return out;
+}
+
 inline std::vector<uint32_t> compileShader(const std::string &shaderPath /*logical*/) {
 	fs::path p(shaderPath);
-	const std::string basenameSpv = p.filename().string() + ".spv";
+	const std::string basenameSpv = p.filename().string() + ".spv"; // e.g. "raytracing.comp.spv"
 	const fs::path cache_dir(shaderCachePath);
 
-	auto chosen = selectCachedBinaryPath(cache_dir, basenameSpv);
-	if (!chosen) {
-		std::cerr << "ERROR: No SPIR-V for " << basenameSpv << " in " << cache_dir << " (Android select-only)\n";
-		return {};
+	// 1) Prefer hydrated cache in <files>/shaders: exact or suffix match "*<basename>.spv"
+	if (auto chosen = selectCachedBinaryPath(cache_dir, basenameSpv)) {
+		return readBinaryFileU32(chosen->string());
 	}
-	return readBinaryFileU32(chosen->string());
+
+	// 2) Fallback: search inside APK assets/spirv for any "<hash>--<basename>.spv"
+	auto bytes = loadSpvFromApkBySuffix(basenameSpv);
+	if (!bytes.empty() && (bytes.size() % 4 == 0)) {
+		// Seed the cache with a non-hashed name for quick exact hits
+		const std::string cache_path = (cache_dir / basenameSpv).string();
+		writeWholeFile(cache_path, bytes.data(), bytes.size());
+
+		std::vector<uint32_t> out(bytes.size() / 4);
+		std::memcpy(out.data(), bytes.data(), bytes.size());
+		return out;
+	}
+
+	return {};
 }
 #endif // ANDROID_VK
 
@@ -411,33 +502,20 @@ inline VkShaderModule createShaderModule(const std::vector<uint32_t> &binary) {
 	return m;
 }
 
-// Desktop: shaderRootDir is a real folder. Android: we synthesize stage names.
 inline ShaderModules compileShaderProgram(const std::string &shaderRootDir) {
 	ShaderModules modules;
 
 #if !ANDROID_VK
 	std::vector<std::string> shader_paths;
-	try {
-		for (const auto &entry : fs::directory_iterator(shaderRootDir)) {
-			if (entry.is_regular_file()) {
-				const std::string ext = entry.path().extension().string();
-				if (shaderExtensions.contains(ext))
-					shader_paths.push_back(entry.path().string());
-			}
+	for (const auto &entry : fs::directory_iterator(shaderRootDir)) {
+		if (entry.is_regular_file()) {
+			const std::string ext = entry.path().extension().string();
+			if (shaderExtensions.contains(ext))
+				shader_paths.push_back(entry.path().string());
 		}
-	} catch (const fs::filesystem_error &e) {
-		std::cerr << "Failed to read shader directory: " << e.what() << "\n";
-		std::exit(1);
 	}
-
-	if (shader_paths.empty()) {
-		std::cerr << "No shader files found in directory: " << shaderRootDir << "\n";
-		std::exit(1);
-	}
-
 	auto bins = compileShader(shader_paths);
 #else
-	// Android: try known stages using the base id
 	std::vector<std::string> shader_paths;
 	auto add = [&](const char *ext) { shader_paths.emplace_back(shaderRootDir + std::string(ext)); };
 	add(".vert");
@@ -460,15 +538,14 @@ inline ShaderModules compileShaderProgram(const std::string &shaderRootDir) {
 	return modules;
 }
 
-// Desktop init (keeps behavior)
 inline void initialize() {
 #if !ANDROID_VK
-	ensureDir(shaderRootPath); // contains GLSL
+	ensureDir(shaderRootPath);
 	ensureDir(textureRootPath);
 	ensureDir(modelRootPath);
 	ensureDir(fontRootPath);
 #endif
-	ensureDir(shaderCachePath); // desktop: assets/spirv ; android: <files>/shaders (set at runtime)
+	ensureDir(shaderCachePath);
 }
 
 } // namespace Assets

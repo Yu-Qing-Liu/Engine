@@ -135,7 +135,6 @@ set_target_properties(android_native_app_glue PROPERTIES LINKER_LANGUAGE C)
 # ------------------------------
 add_library(engine SHARED
         ${CMAKE_SOURCE_DIR}/android_main.cpp
-        ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
 )
 set_target_properties(engine PROPERTIES
         OUTPUT_NAME engine

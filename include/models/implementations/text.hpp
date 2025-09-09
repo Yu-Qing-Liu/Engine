@@ -76,6 +76,7 @@ class Text : public Model {
 	uint32_t atlasW = 0, atlasH = 0;
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	VkPushConstantRange pc{};
 
 	std::array<VkBuffer, Engine::MAX_FRAMES_IN_FLIGHT> frameVB{};
 	std::array<VkDeviceMemory, Engine::MAX_FRAMES_IN_FLIGHT> frameVBMem{};
@@ -101,5 +102,5 @@ class Text : public Model {
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
 	void createBindingDescriptions() override;
-	void createGraphicsPipeline() override;
+	void setupGraphicsPipeline() override;
 };

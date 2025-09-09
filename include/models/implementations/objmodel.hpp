@@ -87,7 +87,7 @@ class OBJModel : public Model {
 	void createBindingDescriptions() override;
 	void createVertexBuffer() override;
 	void createIndexBuffer() override;
-	void createGraphicsPipeline() override;
+	void setupGraphicsPipeline() override;
 
   private:
 	void loadModel();
@@ -113,7 +113,7 @@ class OBJModel : public Model {
 
 	// Geometry
 	std::vector<OBJVertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<uint16_t> indices;
 
 	// Materials
 	std::vector<MaterialGPU> materialsGPU;
@@ -134,6 +134,8 @@ class OBJModel : public Model {
 	VkDescriptorSetLayout materialDSL = VK_NULL_HANDLE;
 	VkDescriptorPool materialPool = VK_NULL_HANDLE;
 	VkDescriptorSet materialDS = VK_NULL_HANDLE;
+
+	std::array<VkDescriptorSetLayout, 2> setLayouts{};
 
 	// Dummies
 	int dummyWhiteIndex = -1;	   // VK_FORMAT_R8G8B8A8_SRGB
