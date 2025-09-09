@@ -207,14 +207,25 @@ class Model {
 	vector<VkVertexInputAttributeDescription> attributeDescriptions;
 	vector<VkDescriptorSet> descriptorSets;
 
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	VkDescriptorPoolSize poolSize{};
 	VkDescriptorPoolCreateInfo poolInfo{};
 	VkDescriptorSetAllocateInfo allocInfo{};
+
+    // Graphics pipeline
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	VkPipelineViewportStateCreateInfo viewportState{};
+	VkPipelineRasterizationStateCreateInfo rasterizer{};
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	VkPipelineDepthStencilStateCreateInfo depthStencil{};
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+	VkPipelineColorBlendStateCreateInfo colorBlending{};
+	vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+	VkPipelineDynamicStateCreateInfo dynamicState{};
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
 
 	vector<uint16_t> indices;
 	vector<VkBuffer> uniformBuffers;
@@ -240,7 +251,9 @@ class Model {
 	virtual void createVertexBuffer();
 	virtual void createIndexBuffer();
 	virtual void createBindingDescriptions() = 0;
-	virtual void createGraphicsPipeline();
+    virtual void setupGraphicsPipeline();
+
+	void createGraphicsPipeline();
 
 	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
 		VkDeviceSize bufferSize;
