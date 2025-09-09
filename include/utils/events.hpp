@@ -93,6 +93,16 @@ inline int mapAndroidKeyToPortable(int32_t code) {
 inline int32_t handleAndroidInput(struct android_app* /*app*/, AInputEvent* event) {
     const int32_t type = AInputEvent_getType(event);
 
+	if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
+		const int action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
+		const size_t idx = (AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+
+		if (action == AMOTION_EVENT_ACTION_DOWN || action == AMOTION_EVENT_ACTION_POINTER_DOWN || action == AMOTION_EVENT_ACTION_MOVE) {
+			Events::pointerX = AMotionEvent_getX(event, idx);
+			Events::pointerY = AMotionEvent_getY(event, idx);
+		}
+	}
+
     if (type == AINPUT_EVENT_TYPE_MOTION) {
         const int32_t actionMasked = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
         const int32_t meta         = AMotionEvent_getMetaState(event);
