@@ -95,7 +95,7 @@ void Default::renderPass() {
     triangle->render();
     example->render();
     room->render();
-    text->renderText("Hello World", 1.0f);
+    text->renderText("Hello World");
 
     particles->render();
 }

@@ -99,6 +99,9 @@ void Text::bake() {
 
 	// FT_Set_Transform(face, &flipY, &shift);
 
+	ascenderPx_ = float(face->size->metrics.ascender) / 64.f;
+	descenderPx_ = float(-face->size->metrics.descender) / 64.f; // make positive
+
 	for (uint32_t cp : cps) {
 		if (FT_Load_Char(face, cp, FT_LOAD_RENDER)) {
 			continue; // skip if missing
@@ -247,36 +250,208 @@ float Text::kerning(uint32_t prev, uint32_t curr) const {
 	return 0.0f;
 }
 
-void Text::buildGeometryUTF8(const std::string &utf8, const glm::vec3 &origin, float scale, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx) const {
+// Helper: decode cp and byte-length at s[i]
+static inline uint32_t utf8_decode_at(const std::string &s, size_t i, size_t &adv) {
+	const unsigned char *p = (const unsigned char *)s.data();
+	const size_t n = s.size();
+	if (i >= n) {
+		adv = 0;
+		return 0;
+	}
+	unsigned char c = p[i];
+	if (c < 0x80u) {
+		adv = 1;
+		return c;
+	}
+	if ((c >> 5) == 0x6 && i + 1 < n) {
+		adv = 2;
+		return ((c & 0x1Fu) << 6) | (p[i + 1] & 0x3Fu);
+	}
+	if ((c >> 4) == 0xEu && i + 2 < n) {
+		adv = 3;
+		return ((c & 0x0Fu) << 12) | ((p[i + 1] & 0x3Fu) << 6) | (p[i + 2] & 0x3Fu);
+	}
+	if ((c >> 3) == 0x1Eu && i + 3 < n) {
+		adv = 4;
+		return ((c & 0x07u) << 18) | ((p[i + 1] & 0x3Fu) << 12) | ((p[i + 2] & 0x3Fu) << 6) | (p[i + 3] & 0x3Fu);
+	}
+	adv = 1;
+	return 0xFFFD;
+}
+
+// test if [a,b) overlaps any selection interval
+static inline bool overlapsAny(size_t a, size_t b, const std::vector<std::pair<size_t, size_t>> &ranges) {
+	for (auto &r : ranges)
+		if (std::max(a, r.first) < std::min(b, r.second))
+			return true;
+	return false;
+}
+
+void Text::emitCaretQuad(float caretX, const glm::vec3 &origin, float scale, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx) {
+	const float y0 = origin.y - ascenderPx_ * scale;
+	const float y1 = origin.y + descenderPx_ * scale;
+	const float x0 = caretX;
+	const float w = std::max(caretWidthPx, 1.0f);
+	const float x1 = x0 + w;
+
+	const uint32_t f = 8u; // bit3 = caret quad
+	const uint32_t base = (uint32_t)outVerts.size();
+
+	// UVs unused for caret; vXNorm 0..1 across the caret; vQuadW carries width
+	outVerts.push_back({{x0, y0, origin.z}, {0, 0}, 0.0f, f, w});
+	outVerts.push_back({{x0, y1, origin.z}, {0, 0}, 0.0f, f, w});
+	outVerts.push_back({{x1, y1, origin.z}, {0, 0}, 1.0f, f, w});
+	outVerts.push_back({{x1, y0, origin.z}, {0, 0}, 1.0f, f, w});
+	outIdx.insert(outIdx.end(), {base + 0, base + 1, base + 2, base + 2, base + 3, base + 0});
+}
+
+void Text::emitSelectionQuad(float x0, float x1, const glm::vec3 &origin, float scale, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx) {
+	const float y0 = origin.y - ascenderPx_ * scale;
+	const float y1 = origin.y + descenderPx_ * scale;
+	const float w = std::max(x1 - x0, 0.0f);
+
+	const uint32_t f = 8u | 1u; // bit3 = background quad, bit0 = selection
+	const uint32_t base = (uint32_t)outVerts.size();
+
+	// UVs unused; vXNorm 0..1; vQuadW carries width (not required for selection, but kept consistent)
+	outVerts.push_back({{x0, y0, origin.z}, {0, 0}, 0.0f, f, w});
+	outVerts.push_back({{x0, y1, origin.z}, {0, 0}, 0.0f, f, w});
+	outVerts.push_back({{x1, y1, origin.z}, {0, 0}, 1.0f, f, w});
+	outVerts.push_back({{x1, y0, origin.z}, {0, 0}, 1.0f, f, w});
+	outIdx.insert(outIdx.end(), {base + 0, base + 1, base + 2, base + 2, base + 3, base + 0});
+}
+
+void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin, float scale, const std::vector<std::pair<size_t, size_t>> &selRanges, std::optional<size_t> caretByte, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx) {
 	outVerts.clear();
 	outIdx.clear();
-	std::u32string text = utf8ToUtf32(utf8);
+
+	// We’ll build into three buckets to control z-order (index order):
+	std::vector<GlyphVertex> selVerts, glyphVerts, caretVerts;
+	std::vector<uint32_t> selIdx, glyphIdx, caretIdx;
+
 	float x = origin.x, y = origin.y, z = origin.z;
 	uint32_t prev = 0;
-	for (char32_t cp : text) {
-		auto it = glyphs.find(uint32_t(cp));
+	float caretX = std::numeric_limits<float>::quiet_NaN();
+
+	// Track a contiguous selection run (in byte indices)
+	bool inSelRun = false;
+	float selRunX0 = 0.0f;
+
+	auto endSelRunIfAny = [&](float runX1) {
+		if (inSelRun) {
+			emitSelectionQuad(selRunX0, runX1, origin, scale, selVerts, selIdx);
+			inSelRun = false;
+		}
+	};
+
+	for (size_t i = 0; i < s.size();) {
+		size_t adv = 0;
+		const uint32_t cp = utf8_decode_at(s, i, adv);
+		if (adv == 0)
+			break;
+
+		const size_t giStart = i;
+		const size_t giEnd = i + adv;
+
+		// caret between glyphs
+		if (caretByte && *caretByte == giStart)
+			caretX = x;
+
+		auto it = glyphs.find(cp);
 		if (it == glyphs.end()) {
+			// advance by space width if missing
 			auto sp = glyphs.find(uint32_t(' '));
-			x += (sp != glyphs.end() ? sp->second.advance : textParams.pixelHeight / 2) * scale;
+			x += (sp != glyphs.end() ? sp->second.advance : textParams.pixelHeight * 0.5f) * scale;
+
+			// selection run may end at this break if the range ends before/at giEnd
+			const bool selectedNow = overlapsAny(giStart, giEnd, selRanges);
+			if (!selectedNow)
+				endSelRunIfAny(x);
+
+			if (caretByte && *caretByte == giEnd)
+				caretX = x;
+			i = giEnd;
 			prev = 0;
 			continue;
 		}
+
 		const GlyphMeta &g = it->second;
-		x += kerning(prev, uint32_t(cp)) * scale;
-		float w = g.size.x * scale, h = g.size.y * scale;
-		float x0 = x + g.bearing.x * scale;
-		float x1 = x0 + w;
-		float y0 = y - g.bearing.y * scale;
-		float y1 = y0 + h;
-		uint32_t base = uint32_t(outVerts.size());
-		outVerts.push_back({{x0, y0, z}, {g.uvMin.x, g.uvMin.y}});
-		outVerts.push_back({{x1, y0, z}, {g.uvMax.x, g.uvMin.y}});
-		outVerts.push_back({{x1, y1, z}, {g.uvMax.x, g.uvMax.y}});
-		outVerts.push_back({{x0, y1, z}, {g.uvMin.x, g.uvMax.y}});
-		outIdx.insert(outIdx.end(), {base + 0, base + 1, base + 2, base + 2, base + 3, base + 0});
+		x += kerning(prev, cp) * scale;
+
+		// Determine if this glyph is within any selection range (by bytes)
+		const bool selectedNow = overlapsAny(giStart, giEnd, selRanges);
+
+		// Start a selection run at the *pre-glyph* x
+		if (selectedNow && !inSelRun) {
+			inSelRun = true;
+			selRunX0 = x; // left edge before drawing this glyph’s bitmap/advance
+		}
+		// If selection ends before this glyph, close the previous run.
+		if (!selectedNow && inSelRun) {
+			endSelRunIfAny(x); // close at current x (before placing this glyph)
+		}
+
+		// Emit the glyph quad into the glyph bucket
+		const float w = g.size.x * scale;
+		const float h = g.size.y * scale;
+		const float x0 = x + g.bearing.x * scale;
+		const float x1 = x0 + w;
+		const float y0 = y - g.bearing.y * scale;
+		const float y1 = y0 + h;
+
+		const uint32_t flags = selectedNow ? 1u : 0u; // bit0 for glyphs is harmless now
+
+		const uint32_t base = (uint32_t)glyphVerts.size();
+		glyphVerts.push_back({{x0, y0, z}, {g.uvMin.x, g.uvMin.y}, 0.0f, flags, w});
+		glyphVerts.push_back({{x0, y1, z}, {g.uvMin.x, g.uvMax.y}, 0.0f, flags, w});
+		glyphVerts.push_back({{x1, y1, z}, {g.uvMax.x, g.uvMax.y}, 1.0f, flags, w});
+		glyphVerts.push_back({{x1, y0, z}, {g.uvMax.x, g.uvMin.y}, 1.0f, flags, w});
+		glyphIdx.insert(glyphIdx.end(), {base + 0, base + 1, base + 2, base + 2, base + 3, base + 0});
+
 		x += g.advance * scale;
-		prev = uint32_t(cp);
+		prev = cp;
+		i = giEnd;
+
+		if (caretByte && *caretByte == giEnd)
+			caretX = x;
 	}
+
+	// Close a trailing selection run at end of line
+	endSelRunIfAny(x);
+
+	// Caret quad (draw on top): same as before, bit3 set, bit0 clear
+	if (caretByte) {
+		float cx = std::isnan(caretX) ? origin.x : caretX;
+		emitCaretQuad(cx, origin, scale, caretWidthPx, caretVerts, caretIdx);
+	}
+
+	// Compose final order: selection bg (under), then glyphs, then caret (over)
+	auto append = [&](auto &V, auto &I) {
+		const uint32_t base = (uint32_t)outVerts.size();
+		outVerts.insert(outVerts.end(), V.begin(), V.end());
+		for (uint32_t id : I)
+			outIdx.push_back(base + id);
+	};
+
+	// We need to rebase indices, so rebuild indices relative to new bases:
+	// Rebuild index arrays with 0..N-1 for each bucket first:
+	auto reindex = [](const std::vector<GlyphVertex> &V) -> std::vector<uint32_t> {
+		std::vector<uint32_t> I;
+		I.reserve((V.size() / 4) * 6);
+		for (uint32_t q = 0; q < V.size(); q += 4) {
+			I.insert(I.end(), {q + 0, q + 1, q + 2, q + 2, q + 3, q + 0});
+		}
+		return I;
+	};
+
+	// (If you prefer, you can keep the original per-bucket indices; this keeps code compact.)
+	selIdx = reindex(selVerts);
+	glyphIdx = reindex(glyphVerts);
+	caretIdx = reindex(caretVerts);
+
+	append(selVerts, selIdx);
+	append(glyphVerts, glyphIdx);
+	append(caretVerts, caretIdx);
 }
 
 float Text::getPixelWidth(const std::string &s, float scale) const {
@@ -382,36 +557,66 @@ void Text::setupGraphicsPipeline() {
 
 	pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	pc.offset = 0;
-	pc.size = sizeof(glm::vec4);
+	pc.size = sizeof(glm::vec4) * 4;
 
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pc;
 }
 
-// ---------- Draw one string ----------
-void Text::renderText(const std::string &text, const vec3 &origin, float scale, const vec4 &color) {
-    copyUBO();
+static std::vector<std::pair<size_t, size_t>> findAllMatches(const std::string &hay, const std::string &needle, bool caseSensitive) {
+	std::vector<std::pair<size_t, size_t>> out;
+	if (needle.empty())
+		return out;
+	if (caseSensitive) {
+		size_t pos = 0;
+		while ((pos = hay.find(needle, pos)) != std::string::npos) {
+			out.emplace_back(pos, pos + needle.size());
+			pos += needle.size();
+		}
+	} else {
+		// simple ASCII fold; for full Unicode casing, integrate ICU later
+		std::string H = hay, N = needle;
+		std::transform(H.begin(), H.end(), H.begin(), ::tolower);
+		std::transform(N.begin(), N.end(), N.begin(), ::tolower);
+		size_t pos = 0;
+		while ((pos = H.find(N, pos)) != std::string::npos) {
+			out.emplace_back(pos, pos + N.size());
+			pos += N.size();
+		}
+	}
+	return out;
+}
 
-	// Build CPU geometry
+void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt) {
+	copyUBO();
+
+	// Build tagged geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
-	buildGeometryUTF8(text, origin, scale, verts, idx);
-	if (idx.empty()) {
-		return;
+	std::optional<size_t> caretByte = caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt;
+	float caretW = caretOpt ? caretOpt->px : 0.0f;
+	if (origin.has_value()) {
+		buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
+	} else {
+		buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
 	}
+	if (idx.empty())
+		return;
 
-	const uint32_t fi = Engine::currentFrame; // slot for this in-flight frame
+	// (re)alloc + upload (same as before) ...
+	const uint32_t fi = Engine::currentFrame;
 	VkDeviceSize vSize = sizeof(verts[0]) * verts.size();
 	VkDeviceSize iSize = sizeof(idx[0]) * idx.size();
 
 	// --- (Re)create VB for this frame if needed ---
 	if (frameVB[fi] == VK_NULL_HANDLE || frameVBSize[fi] < vSize) {
-		// safe to destroy: fence for this frame should have already been waited on by the app
 		if (frameVB[fi]) {
-			vkDestroyBuffer(Engine::device, frameVB[fi], nullptr), frameVB[fi] = VK_NULL_HANDLE;
+			vkDestroyBuffer(Engine::device, frameVB[fi], nullptr);
+			frameVB[fi] = VK_NULL_HANDLE;
 		}
 		if (frameVBMem[fi]) {
-			vkFreeMemory(Engine::device, frameVBMem[fi], nullptr), frameVBMem[fi] = VK_NULL_HANDLE;
+			vkFreeMemory(Engine::device, frameVBMem[fi], nullptr);
+			frameVBMem[fi] = VK_NULL_HANDLE;
 		}
 		Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameVB[fi], frameVBMem[fi]);
 		frameVBSize[fi] = vSize;
@@ -420,64 +625,95 @@ void Text::renderText(const std::string &text, const vec3 &origin, float scale, 
 	// --- (Re)create IB for this frame if needed ---
 	if (frameIB[fi] == VK_NULL_HANDLE || frameIBSize[fi] < iSize) {
 		if (frameIB[fi]) {
-			vkDestroyBuffer(Engine::device, frameIB[fi], nullptr), frameIB[fi] = VK_NULL_HANDLE;
+			vkDestroyBuffer(Engine::device, frameIB[fi], nullptr);
+			frameIB[fi] = VK_NULL_HANDLE;
 		}
 		if (frameIBMem[fi]) {
-			vkFreeMemory(Engine::device, frameIBMem[fi], nullptr), frameIBMem[fi] = VK_NULL_HANDLE;
+			vkFreeMemory(Engine::device, frameIBMem[fi], nullptr);
+			frameIBMem[fi] = VK_NULL_HANDLE;
 		}
 		Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, frameIB[fi], frameIBMem[fi]);
 		frameIBSize[fi] = iSize;
 	}
 
-	// --- Upload via staging each frame (safe: Engine::endSingleTimeCommands waits queue idle) ---
+	// --- Upload verts via staging ---
 	{
 		VkBuffer staging;
 		VkDeviceMemory stagingMem;
 		Engine::createBuffer(vSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging, stagingMem);
-
 		void *mapped = nullptr;
 		vkMapMemory(Engine::device, stagingMem, 0, vSize, 0, &mapped);
-		std::memcpy(mapped, verts.data(), size_t(vSize));
+		std::memcpy(mapped, verts.data(), (size_t)vSize);
 		vkUnmapMemory(Engine::device, stagingMem);
-
 		Engine::copyBuffer(staging, frameVB[fi], vSize);
 		vkDestroyBuffer(Engine::device, staging, nullptr);
 		vkFreeMemory(Engine::device, stagingMem, nullptr);
 	}
+
+	// --- Upload indices via staging ---
 	{
 		VkBuffer staging;
 		VkDeviceMemory stagingMem;
 		Engine::createBuffer(iSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging, stagingMem);
-
 		void *mapped = nullptr;
 		vkMapMemory(Engine::device, stagingMem, 0, iSize, 0, &mapped);
-		std::memcpy(mapped, idx.data(), size_t(iSize));
+		std::memcpy(mapped, idx.data(), (size_t)iSize);
 		vkUnmapMemory(Engine::device, stagingMem);
-
 		Engine::copyBuffer(staging, frameIB[fi], iSize);
 		vkDestroyBuffer(Engine::device, staging, nullptr);
 		vkFreeMemory(Engine::device, stagingMem, nullptr);
 	}
 
+	// Push constants (all 4 vec4s)
+	struct PC {
+		glm::vec4 textColor;
+		glm::vec4 selectColor;
+		glm::vec4 caretColor;
+		glm::vec4 misc; // x=caretPx, y=caretOn(0/1), z=timeSeconds, w=unused
+	} pc;
+	pc.textColor = textColor;
+	pc.selectColor = selColor;
+	pc.caretColor = caretOpt ? caretOpt->color : glm::vec4(0, 0, 0, 0);
+	pc.misc = glm::vec4(caretOpt ? caretOpt->px : 0.0f,			  // x
+						(caretOpt && caretOpt->on) ? 1.0f : 0.0f, // y
+						Engine::time,							  // z = time
+						0.0f									  // w
+	);
+
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
 	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
-
-	VkRect2D sc{};
-	sc.offset = {0, 0};
-	sc.extent = Engine::swapChainExtent;
 	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &screenParams.scissor);
 
-	VkBuffer vbs[]{frameVB[fi]};
+	VkBuffer vbs[]{frameVB[Engine::currentFrame]};
 	VkDeviceSize offs[]{0};
 	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vbs, offs);
-	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), frameIB[fi], 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), frameIB[Engine::currentFrame], 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &color);
-
+	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PC), &pc);
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
-
-	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(Engine::currentCommandBuffer(), (uint32_t)idx.size(), 1, 0, 0, 0);
 }
 
-void Text::renderText(const std::string &text, float scale, const vec4 &color) { renderText(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, color); }
+// 1) normal
+void Text::renderText(const std::string &text, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
+	static const std::vector<std::pair<size_t, size_t>> none;
+	renderTextEx(text, origin, scale, color, none, glm::vec4(0, 0, 0, 0), std::nullopt);
+}
+
+// 2) caret only
+void Text::renderText(const std::string &text, const Caret &caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
+	static const std::vector<std::pair<size_t, size_t>> none;
+	renderTextEx(text, origin, scale, color, none, glm::vec4(0, 0, 0, 0), caret);
+}
+
+// 3) explicit range
+void Text::renderText(const std::string &text, const SelectionRange &sel, std::optional<Caret> caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
+	std::vector<std::pair<size_t, size_t>> ranges = {{sel.start, sel.end}};
+	renderTextEx(text, origin, scale, color, ranges, sel.color, caret);
+}
+
+// 4) match all substrings
+void Text::renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
+	auto ranges = findAllMatches(text, matches.needle, matches.caseSensitive);
+	renderTextEx(text, origin, scale, color, ranges, matches.color, caret);
+}

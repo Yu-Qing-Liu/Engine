@@ -109,13 +109,13 @@ void TextInput::setParams(const StyleParams &p) {
 
 void TextInput::render() {
 	Widget::render();
-	if (text.empty()) {
-		textModel->renderText(styleParams.placeholderText, 1.0, styleParams.placeholderTextColor);
+	if (text.empty() && !selected) {
+		textModel->renderText(styleParams.placeholderText, styleParams.placeholderTextColor);
 	} else {
         if (selected) {
-            textModel->renderText(text, 1.0, styleParams.activeTextColor);
+            textModel->renderText(" ", Text::Caret{}, styleParams.activeTextColor);
         } else {
-            textModel->renderText(text, 1.0, styleParams.textColor);
+            textModel->renderText(text, styleParams.textColor);
         }
 	}
 }
