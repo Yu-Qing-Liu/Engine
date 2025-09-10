@@ -1,11 +1,11 @@
 #pragma once
 
-#include "rectangle.hpp"
+#include "widget.hpp"
 #include "text.hpp"
 #include <memory>
 #include <optional>
 
-class Button {
+class Button : public Widget {
   public:
 	Button(Button &&) = delete;
 	Button(const Button &) = delete;
@@ -31,21 +31,12 @@ class Button {
 	Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
 	~Button() = default;
 
-	void updateUniformBuffers(const Model::UBO &ubo);
+	void updateUniformBuffers(const Model::UBO &ubo) override;
 	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
 
-	void render();
-
-	// callbacks
-	void setOnMouseHover(std::function<void()> cb);
-	void setOnMouseEnter(std::function<void()> cb);
-	void setOnMouseExit(std::function<void()> cb);
-
-	void setOnMouseClick(std::function<void(int, int, int)> cb);
-	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
+	void render() override;
 
 	// models
-	std::unique_ptr<Rectangle> rectangle;
 	std::unique_ptr<Text> textModel;
 	std::unique_ptr<Model> icon;
 
