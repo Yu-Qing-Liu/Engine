@@ -9,7 +9,7 @@ using std::make_unique;
 using std::unique_ptr;
 
 #ifndef OBJMODEL_MAX_TEXTURES
-#define OBJMODEL_MAX_TEXTURES 256
+#define OBJMODEL_MAX_TEXTURES 64
 #endif
 
 class OBJModel : public Model {
