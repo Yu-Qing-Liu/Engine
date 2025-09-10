@@ -15,6 +15,7 @@
 // Your existing callback types:
 using MouseClickCallback = std::function<void(int /*button*/, int /*action*/, int /*mods*/)>; 
 using KeyboardCallback   = std::function<void(int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/)>;
+using CharacterInputCallback = std::function<void(unsigned int codepoint)>;
 
 namespace Events {
 
@@ -26,6 +27,7 @@ enum : int { MOUSE_BUTTON_LEFT = 0, MOUSE_BUTTON_RIGHT = 1, MOUSE_BUTTON_MIDDLE 
 // Storage for user callbacks
 inline std::vector<MouseClickCallback> mouseCallbacks{};
 inline std::vector<KeyboardCallback>   keyboardCallbacks{};
+inline std::vector<CharacterInputCallback> characterInputCallbacks{};
 
 inline float pointerX = 0.0f;
 inline float pointerY = 0.0f;
@@ -39,6 +41,10 @@ inline void dispatchKey(int key, int scancode, int action, int mods) {
     for (const auto& cb : keyboardCallbacks) cb(key, scancode, action, mods);
 }
 
+inline void dispatchCharacter(unsigned int codepoint) {
+    for (const auto& cb : characterInputCallbacks) cb(codepoint);
+}
+
 #if !ANDROID_VK
 // ======================= Desktop (GLFW) =======================
 // Keep the exact signatures so your current code compiles unchanged.
@@ -48,6 +54,10 @@ inline void handleMouseCallbacks(GLFWwindow* /*window*/, int button, int action,
 
 inline void handleKeyboardCallbacks(GLFWwindow* /*window*/, int key, int scancode, int action, int mods) {
     dispatchKey(key, scancode, action, mods);
+}
+
+inline void handleCharacterInputCallbacks(GLFWwindow*, unsigned int codepoint) {
+    dispatchCharacter(codepoint);
 }
 
 #else

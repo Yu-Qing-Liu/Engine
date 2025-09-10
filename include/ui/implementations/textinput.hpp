@@ -32,6 +32,8 @@ class TextInput : public Widget {
 
 	void render() override;
 
+	bool selected = false;
+
 	string text{""};
 	vec4 textColor{0.0f, 0.0f, 0.0f, 1.0f};
 
