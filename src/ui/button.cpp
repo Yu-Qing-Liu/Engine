@@ -1,11 +1,10 @@
 #include "button.hpp"
 #include "assets.hpp"
 
-Button::Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, uint32_t fontSize) {
-	Text::TextParams tp{Assets::fontRootPath + "/arial.ttf", fontSize};
+Button::Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams) {
 	rectangle = std::make_unique<Rectangle>(scene, ubo, screenParams);
 	rectangle->setRayTraceEnabled(true);
-	textModel = std::make_unique<Text>(scene, ubo, screenParams, tp);
+	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
 }
 
 void Button::updateUniformBuffers(const Model::UBO &ubo) {

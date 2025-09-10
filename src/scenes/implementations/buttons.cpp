@@ -2,9 +2,10 @@
 #include "engine.hpp"
 #include "scenes.hpp"
 #include "colors.hpp"
+#include "fonts.hpp"
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
-    button = make_unique<Button>(*this, orthographic, screenParams, 24); 
+    button = make_unique<Button>(*this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 24}); 
     button->setOnMouseClick([this](int button, int action, int mods) {
         if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
             std::cout << "Mouse 1 pressed" << std::endl;
