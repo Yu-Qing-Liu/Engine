@@ -1,13 +1,11 @@
 #include "button.hpp"
 
 Button::Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams) : Widget(scene, ubo, screenParams) {
-	container = std::make_unique<Rectangle>(scene, ubo, screenParams);
-	container->setRayTraceEnabled(true);
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
 }
 
 void Button::updateUniformBuffers(const Model::UBO &ubo) {
-	container->updateUniformBuffer(ubo);
+    Widget::updateUniformBuffers(ubo);
 	textModel->updateUniformBuffer(ubo);
 }
 
@@ -31,7 +29,7 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 
 	// Put text at same center as the rect. Text::renderText scales by font size,
 	// so we only need a translate here.
-	textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.center, 0.0f)));
+	textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
 
 	// ICON (optional)
 	if (iconIn.has_value()) {
@@ -45,7 +43,7 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 }
 
 void Button::render() {
-	container->render();
+    Widget::render();
 	textModel->renderText(label, 1.0f, labelColor);
 	if (icon) {
 		icon->render();

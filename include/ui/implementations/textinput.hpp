@@ -11,23 +11,32 @@ class TextInput : public Widget {
 
 	struct StyleParams {
 		// container style
-		glm::vec2 center{0.0f};							// center in screen pixels
-		glm::vec2 dim{200.0f, 64.0f};					// size in pixels (W,H)
-		glm::vec4 bgColor{1.0f, 1.0f, 1.0f, 1.0f};		// white fill
-		glm::vec4 outlineColor{0.0f, 0.0f, 0.0f, 1.0f}; // black outline
-		float outlineWidth{1.0f};						// px
-		float borderRadius{12.0f};						// px
+		vec2 center{0.0f};						   // center in screen pixels
+		vec2 textCenter{0.0f};					   // text center
+		vec2 dim{200.0f, 64.0f};				   // size in pixels (W,H)
+		vec4 bgColor{1.0f, 1.0f, 1.0f, 1.0f};	   // white fill
+		vec4 outlineColor{0.0f, 0.0f, 0.0f, 1.0f}; // black outline
+		float outlineWidth{1.0f};				   // px
+		float borderRadius{12.0f};				   // px
 
-		std::optional<std::string> placeholderText;
-		std::optional<glm::vec4> placeholderTextColor;
+		string placeholderText;
+		vec4 placeholderTextColor;
+
+		vec4 textColor;
 	};
 
 	TextInput(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
 
 	void updateUniformBuffers(const Model::UBO &ubo) override;
-	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
+	void setParams(const StyleParams &params);
 
 	void render() override;
 
-  private:
+	string text{""};
+	vec4 textColor{0.0f, 0.0f, 0.0f, 1.0f};
+
+	string placeholder{"Enter Text!"};
+	vec4 placeholderTextColor{0.0f, 0.0f, 0.0f, 1.0f};
+
+	std::unique_ptr<Text> textModel;
 };

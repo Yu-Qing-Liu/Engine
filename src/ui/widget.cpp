@@ -1,9 +1,17 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams) {}
+Widget::Widget(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams) {
+	container = std::make_unique<Rectangle>(scene, ubo, screenParams);
+	container->setRayTraceEnabled(true);
+}
 
-void Widget::updateUniformBuffers(const Model::UBO &ubo) {}
-void Widget::render() {}
+void Widget::updateUniformBuffers(const Model::UBO &ubo) {
+    container->updateUniformBuffer(ubo);
+}
+
+void Widget::render() {
+    container->render();
+}
 
 void Widget::setOnMouseHover(std::function<void()> cb) { container->onMouseHover = cb; }
 void Widget::setOnMouseEnter(std::function<void()> cb) { container->onMouseEnter = cb; }
