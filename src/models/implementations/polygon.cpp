@@ -7,8 +7,8 @@
 
 Polygon::Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/polygon") {
 	// default colors
-	params.color = Colors::RED;
-	params.outlineColor = Colors::YELLOW;
+	params.color = Colors::Red;
+	params.outlineColor = Colors::Yellow;
 	params.outlineWidth = 2.0f;
 
 	std::vector<Vertex> expandedVerts;

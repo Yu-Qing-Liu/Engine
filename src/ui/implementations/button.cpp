@@ -9,42 +9,32 @@ void Button::updateUniformBuffers(const Model::UBO &ubo) {
 	textModel->updateUniformBuffer(ubo);
 }
 
-void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model>> iconIn) {
-	// RECTANGLE (white bg with black outline)
+void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model>> icon) {
+    styleParams = p;
+
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
 	container->params.borderRadius = p.borderRadius;
-
-	// place rect: center + scale to pixel dims
 	container->updateUniformBuffer(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)));
-
-	// TEXT
-	if (p.text) {
-		label = *p.text;
-	}
-	if (p.textColor) {
-		labelColor = *p.textColor;
-	}
-
-	// Put text at same center as the rect. Text::renderText scales by font size,
-	// so we only need a translate here.
 	textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
 
 	// ICON (optional)
-	if (iconIn.has_value()) {
-		icon = std::move(*iconIn);
+	if (icon.has_value()) {
+		this->icon = std::move(*icon);
 		if (p.iconDim) {
-			icon->updateUniformBuffer(translate(mat4(1.0f), vec3(p.iconCenter, 0.0f)) * scale(mat4(1.0f), *p.iconDim));
+			this->icon->updateUniformBuffer(translate(mat4(1.0f), vec3(p.iconCenter, 0.0f)) * scale(mat4(1.0f), *p.iconDim));
 		} else {
-			icon->updateUniformBuffer(translate(mat4(1.0f), vec3(p.iconCenter, 0.0f)));
+			this->icon->updateUniformBuffer(translate(mat4(1.0f), vec3(p.iconCenter, 0.0f)));
 		}
 	}
 }
 
 void Button::render() {
     Widget::render();
-	textModel->renderText(label, 1.0f, labelColor);
+    if (!styleParams.text.empty()) {
+        textModel->renderText(styleParams.text, 1.0f, styleParams.textColor);
+    }
 	if (icon) {
 		icon->render();
 	}

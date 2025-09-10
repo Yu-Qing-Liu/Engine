@@ -1,5 +1,6 @@
 #pragma once
 
+#include "colors.hpp"
 #include "text.hpp"
 #include "widget.hpp"
 #include <memory>
@@ -17,13 +18,13 @@ class Button : public Widget {
 		vec2 textCenter{0.0f};	 // text center
 		vec2 dim{200.0f, 64.0f}; // button size in pixels (W,H)
 
-		vec4 bgColor{1.0f, 1.0f, 1.0f, 1.0f};	   // white fill
-		vec4 outlineColor{0.0f, 0.0f, 0.0f, 1.0f}; // black outline
-		float outlineWidth{1.0f};				   // px
-		float borderRadius{12.0f};				   // px
+		vec4 bgColor{Colors::White};	 // white fill
+		vec4 outlineColor{Colors::Gray}; // black outline
+		float outlineWidth{1.0f};		 // px
+		float borderRadius{12.0f};		 // px
 
-		std::optional<std::string> text;	// label
-		std::optional<glm::vec4> textColor; // label color
+		string text;
+		vec4 textColor{Colors::Black};
 
 		vec2 iconCenter{0.0f};			  // optional icon center
 		std::optional<glm::vec3> iconDim; // optional icon scale (x,y,1)
@@ -41,7 +42,5 @@ class Button : public Widget {
 	std::unique_ptr<Text> textModel;
 	std::unique_ptr<Model> icon;
 
-	// state
-	std::string label{"Click me!"};
-	glm::vec4 labelColor{0.0f, 0.0f, 0.0f, 1.0f}; // black
+	StyleParams styleParams{};
 };

@@ -77,10 +77,13 @@ TextInput::TextInput(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &s
 	};
 
 	auto mousePress = [this](int button, int action, int mods) {
-		if (!container->mouseIsOver) {
-			selected = false;
-		} else {
-            selected = true;
+		selected = container->mouseIsOver;
+        if (selected) {
+            container->params.color = styleParams.activeBgColor;
+            container->params.outlineColor = styleParams.activeOutlineColor;
+        } else {
+            container->params.color = styleParams.bgColor;
+            container->params.outlineColor = styleParams.outlineColor;
         }
 	};
 
@@ -95,23 +98,24 @@ void TextInput::updateUniformBuffers(const Model::UBO &ubo) {
 }
 
 void TextInput::setParams(const StyleParams &p) {
+    styleParams = p;
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
 	container->params.borderRadius = p.borderRadius;
 	container->updateUniformBuffer(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)));
-
-	placeholder = p.placeholderText;
-	placeholderTextColor = p.placeholderTextColor;
-
-	textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
+    textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
 }
 
 void TextInput::render() {
 	Widget::render();
 	if (text.empty()) {
-		textModel->renderText(placeholder, 1.0, placeholderTextColor);
+		textModel->renderText(styleParams.placeholderText, 1.0, styleParams.placeholderTextColor);
 	} else {
-		textModel->renderText(text, 1.0, textColor);
+        if (selected) {
+            textModel->renderText(text, 1.0, styleParams.activeTextColor);
+        } else {
+            textModel->renderText(text, 1.0, styleParams.textColor);
+        }
 	}
 }

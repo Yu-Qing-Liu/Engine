@@ -39,23 +39,23 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
             0, 1, 5,   5, 4, 0,
         }
     );
-    cube1->params.color = Colors::RED;
-    cube1->params.outlineColor = Colors::RED;
+    cube1->params.color = Colors::Red;
+    cube1->params.outlineColor = Colors::Red;
     cube1->setOnMouseClick([this](int button, int action, int mods) {
         if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
             std::cout << "Mouse 1 pressed" << std::endl;
-            if (cube1->params.color == Colors::RED) {
-                cube1->params.color = Colors::GREEN;
-                cube1->params.outlineColor = Colors::GREEN;
+            if (cube1->params.color == Colors::Red) {
+                cube1->params.color = Colors::Green;
+                cube1->params.outlineColor = Colors::Green;
             } else {
-                cube1->params.color = Colors::RED;
-                cube1->params.outlineColor = Colors::RED;
+                cube1->params.color = Colors::Red;
+                cube1->params.outlineColor = Colors::Red;
             }
         }
     });
     cube1->onMouseEnter = [this]() {
         std::cout << "Mouse Entered" << std::endl;
-        cube1->params.outlineColor = Colors::YELLOW;
+        cube1->params.outlineColor = Colors::Yellow;
     };
     cube1->onMouseExit = [this]() {
         std::cout << "Mouse Exited" << std::endl;
@@ -93,23 +93,23 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
             0, 1, 5,   5, 4, 0,
         }
     );
-    cube2->params.color = Colors::RED;
-    cube2->params.outlineColor = Colors::RED;
+    cube2->params.color = Colors::Red;
+    cube2->params.outlineColor = Colors::Red;
     cube2->setOnMouseClick([this](int button, int action, int mods) {
         if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
             std::cout << "Mouse 1 pressed" << std::endl;
-            if (cube2->params.color == Colors::RED) {
-                cube2->params.color = Colors::GREEN;
-                cube2->params.outlineColor = Colors::GREEN;
+            if (cube2->params.color == Colors::Red) {
+                cube2->params.color = Colors::Green;
+                cube2->params.outlineColor = Colors::Green;
             } else {
-                cube2->params.color = Colors::RED;
-                cube2->params.outlineColor = Colors::RED;
+                cube2->params.color = Colors::Red;
+                cube2->params.outlineColor = Colors::Red;
             }
         }
     });
     cube2->onMouseEnter = [this]() {
         std::cout << "Mouse Entered" << std::endl;
-        cube2->params.outlineColor = Colors::YELLOW;
+        cube2->params.outlineColor = Colors::Yellow;
     };
     cube2->onMouseExit = [this]() {
         std::cout << "Mouse Exited" << std::endl;
