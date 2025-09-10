@@ -279,7 +279,7 @@ void Text::buildGeometryUTF8(const std::string &utf8, const glm::vec3 &origin, f
 	}
 }
 
-float Text::measureUTF8(const std::string &s, float scale) const {
+float Text::getPixelWidth(const std::string &s, float scale) const {
 	std::u32string t = utf8ToUtf32(s);
 	float x = 0;
 	uint32_t prev = 0;
@@ -389,13 +389,13 @@ void Text::setupGraphicsPipeline() {
 }
 
 // ---------- Draw one string ----------
-void Text::renderText(const std::string &utf8, const vec3 &origin, float scale, const vec4 &color) {
+void Text::renderText(const std::string &text, const vec3 &origin, float scale, const vec4 &color) {
     copyUBO();
 
 	// Build CPU geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
-	buildGeometryUTF8(utf8, origin, scale, verts, idx);
+	buildGeometryUTF8(text, origin, scale, verts, idx);
 	if (idx.empty()) {
 		return;
 	}
@@ -480,4 +480,4 @@ void Text::renderText(const std::string &utf8, const vec3 &origin, float scale, 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(idx.size()), 1, 0, 0, 0);
 }
 
-void Text::renderText(const std::string &utf8, float scale, const vec4 &color) { renderText(utf8, {-measureUTF8(utf8) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, color); }
+void Text::renderText(const std::string &text, float scale, const vec4 &color) { renderText(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, color); }

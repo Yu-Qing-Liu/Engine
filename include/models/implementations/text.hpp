@@ -49,9 +49,9 @@ class Text : public Model {
 
 	Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &params);
 
-	void renderText(const std::string &utf8, const vec3 &origin, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
-	void renderText(const std::string &utf8, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
-	float measureUTF8(const std::string &utf8, float scale = 1.0f) const;
+	void renderText(const std::string &text, const vec3 &origin, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
+	void renderText(const std::string &text, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
+	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
 
   private:
