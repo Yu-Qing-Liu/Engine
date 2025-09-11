@@ -72,7 +72,7 @@ inline std::deque<DeferredBtn> gBtnQueue;
 
 // Tweakable: 0..16 ms is typical (one 60 Hz frame is ~16.7 ms)
 #ifndef ANDROID_INPUT_CLICK_DELAY_MS
-#define ANDROID_INPUT_CLICK_DELAY_MS 12
+#define ANDROID_INPUT_CLICK_DELAY_MS 50
 #endif
 
 inline void queueButton(int button, int action, int mods, int delay_ms) {
