@@ -7,8 +7,8 @@
 
 Rectangle::Rectangle(Scene &scene, const UBO &ubo, ScreenParams &screenParams) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/rectangle") {
 	// default colors
-	params.color = Colors::RED;
-	params.outlineColor = Colors::YELLOW;
+	params.color = Colors::Red;
+	params.outlineColor = Colors::Yellow;
 	params.outlineWidth = 2.0f;
     params.borderRadius = 15.0f;
 

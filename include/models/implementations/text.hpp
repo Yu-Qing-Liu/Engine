@@ -1,5 +1,6 @@
 #pragma once
 
+#include "colors.hpp"
 #include "model.hpp"
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -22,8 +23,12 @@ class Text : public Model {
 	};
 
 	struct GlyphVertex {
-		glm::vec3 pos; // world space (x,y,z)
-		glm::vec2 uv;  // atlas uv
+		glm::vec3 pos;	// world space
+		glm::vec2 uv;	// atlas
+		float xNorm;	// 0 .. 1 across the quad
+		uint32_t flags; // bit0 sel, bit1 caretBefore, bit2 caretAfter
+		float quadW;	// quad width in pixels
+
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription d{};
 			d.binding = 0;
@@ -31,10 +36,13 @@ class Text : public Model {
 			d.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			return d;
 		}
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> a{};
-			a[0] = {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(GlyphVertex, pos)}; // location 0
-			a[1] = {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(GlyphVertex, uv)};	   // location 1
+		static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 5> a{};
+			a[0] = {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(GlyphVertex, pos)};
+			a[1] = {1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(GlyphVertex, uv)};
+			a[2] = {2, 0, VK_FORMAT_R32_SFLOAT, offsetof(GlyphVertex, xNorm)};
+			a[3] = {3, 0, VK_FORMAT_R32_UINT, offsetof(GlyphVertex, flags)};
+			a[4] = {4, 0, VK_FORMAT_R32_SFLOAT, offsetof(GlyphVertex, quadW)};
 			return a;
 		}
 	};
@@ -47,12 +55,40 @@ class Text : public Model {
 		vec2 uvMax;		  // [0..1]
 	};
 
+	struct Caret {
+		size_t byte = 0;
+		float px = 1.0f;
+		glm::vec4 color{Colors::White(0.8)};
+		bool on = true;
+	};
+
+	struct SelectionRange {
+		size_t start = 0, end = 0;		 // byte offsets [start,end)
+		glm::vec4 color{0, 0, 1, 0.25f}; // default blue-ish bg
+	};
+
+	struct SelectionMatches {
+		std::string needle; // plain byte-wise match
+		bool caseSensitive = true;
+		glm::vec4 color{1, 1, 0, 0.25f}; // default yellow-ish bg
+	};
+
 	Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &params);
 
-	void renderText(const std::string &utf8, const vec3 &origin, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
-	void renderText(const std::string &utf8, float scale = 1.0f, const vec4 &color = glm::vec4(1, 0, 0, 1));
-	float measureUTF8(const std::string &utf8, float scale = 1.0f) const;
+	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
+
+	// 1) normal (no caret, no selection) – existing one calls this behavior
+	void renderText(const std::string &text, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
+
+	// 2) caret at byte index
+	void renderText(const std::string &text, const Caret &caret, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
+
+	// 3) selection [start,end)
+	void renderText(const std::string &text, const SelectionRange &sel, std::optional<Caret> caret = std::nullopt, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
+
+	// 4) select all matches of `needle`
+	void renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret = std::nullopt, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
 
   private:
 	struct RawGlyph {
@@ -64,6 +100,9 @@ class Text : public Model {
 	};
 
 	TextParams textParams;
+
+	float ascenderPx_ = 0.f;
+	float descenderPx_ = 0.f;
 
 	FT_Library ft{};
 	FT_Face face{};
@@ -96,11 +135,15 @@ class Text : public Model {
 	void uploadAtlas(const std::vector<RawGlyph> &raws, const std::vector<glm::ivec2> &positions, uint32_t W, uint32_t H);
 	void createSampler();
 
-	void buildGeometryUTF8(const std::string &utf8, const glm::vec3 &origin, float scale, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx) const;
+	void emitCaretQuad(float caretX, const glm::vec3 &origin, float scale, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
+	void emitSelectionQuad(float x0, float x1, const glm::vec3 &origin, float scale, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
+	void buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin, float scale, const std::vector<std::pair<size_t, size_t>> &selRanges, std::optional<size_t> caretByte, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
 
 	void createDescriptorSetLayout() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
 	void createBindingDescriptions() override;
 	void setupGraphicsPipeline() override;
+
+	void renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt);
 };

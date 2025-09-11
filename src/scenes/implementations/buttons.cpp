@@ -1,30 +1,33 @@
 #include "buttons.hpp"
-#include "engine.hpp"
-#include "scenes.hpp"
 #include "colors.hpp"
+#include "engine.hpp"
+#include "fonts.hpp"
+#include "scenes.hpp"
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
-    button = make_unique<Button>(*this, orthographic, screenParams, 24); 
-    button->setOnMouseClick([this](int button, int action, int mods) {
-        if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
-            std::cout << "Mouse 1 pressed" << std::endl;
-            if (this->button->rectangle->params.color == Colors::WHITE) {
-                this->button->rectangle->params.color = Colors::GREEN;
-                this->button->rectangle->params.outlineColor = Colors::GREEN;
-            } else {
-                this->button->rectangle->params.color = Colors::WHITE;
-                this->button->rectangle->params.outlineColor = Colors::WHITE;
-            }
-        }
-    });
-    button->setOnMouseEnter([this]() {
-        std::cout << "Mouse Entered" << std::endl;
-        button->rectangle->params.outlineColor = Colors::YELLOW;
-    });
-    button->setOnMouseExit([this]() {
-        std::cout << "Mouse Exited" << std::endl;
-        button->rectangle->params.outlineColor = button->rectangle->params.color;
-    });
+	button = make_unique<Button>(*this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
+	button->setOnMouseClick([this](int button, int action, int mods) {
+		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+			std::cout << "Mouse 1 pressed" << std::endl;
+			if (this->button->container->params.color == Colors::White) {
+				this->button->container->params.color = Colors::Green;
+				this->button->container->params.outlineColor = Colors::Green;
+			} else {
+				this->button->container->params.color = Colors::White;
+				this->button->container->params.outlineColor = Colors::White;
+			}
+		}
+	});
+	button->setOnMouseEnter([this]() {
+		std::cout << "Mouse Entered" << std::endl;
+		button->container->params.outlineColor = Colors::Yellow;
+	});
+	button->setOnMouseExit([this]() {
+		std::cout << "Mouse Exited" << std::endl;
+		button->container->params.outlineColor = button->container->params.color;
+	});
+
+	textInput = make_unique<TextInput>(*this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
 }
 
 void Buttons::updateScreenParams() {
@@ -41,19 +44,24 @@ void Buttons::updateScreenParams() {
 void Buttons::swapChainUpdate() {
 	orthographic.proj = ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f);
 
-    button->updateUniformBuffers(orthographic);
+	button->updateUniformBuffers(orthographic);
+	Button::StyleParams bp;
+	bp.center = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
+	bp.textCenter = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
+	bp.dim = {100.0f, 40.0f};
+	bp.outlineWidth = 5.0f;
+	bp.borderRadius = 16.0f;
+	bp.text = std::string("Click me!");
+	button->setParams(bp);
 
-	Button::StyleParams p;
-	p.center = {screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.5f};
-	p.dim = {250.0f, 100.0f};
-	p.bgColor = {1.0f, 1.0f, 1.0f, 1.0f};	   // white
-	p.outlineColor = {0.3f, 0.3f, 0.3f, 1.0f}; // grey border
-	p.outlineWidth = 5.0f;					   // 1 px
-	p.borderRadius = 16.0f;					   // rounded
-	p.text = "Click me!";
-	p.textColor = vec4(0.0f, 0.0f, 0.0f, 1.0f); // black
-
-	button->setParams(p);
+	textInput->updateUniformBuffers(orthographic);
+	TextInput::StyleParams tp;
+	tp.center = {screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f};
+	tp.textCenter = {screenParams.viewport.width * 0.75, screenParams.viewport.height * 0.25f};
+	tp.dim = {200.0f, 40.0f};
+	tp.outlineWidth = 3.0f;
+	tp.borderRadius = 8.0f;
+	textInput->setParams(tp);
 }
 
 void Buttons::updateComputeUniformBuffers() {}
@@ -62,4 +70,7 @@ void Buttons::computePass() {}
 
 void Buttons::updateUniformBuffers() {}
 
-void Buttons::renderPass() { button->render(); }
+void Buttons::renderPass() { 
+    button->render(); 
+    textInput->render();
+}

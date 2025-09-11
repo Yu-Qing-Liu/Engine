@@ -17,11 +17,11 @@ layout(set = 0, binding = 0) uniform UBO {
     mat4 proj;
 } u;
 
-// Descriptor set = 1 (matches your C++)
+// Descriptor set = 1
 //  - binding 0: the big texture array (size must equal OBJMODEL_MAX_TEXTURES)
 //  - binding 1: std430 SSBO with materials
 
-layout(set = 1, binding = 0) uniform sampler2D uTex[256];
+layout(set = 1, binding = 0) uniform sampler2D uTex[64];
 
 struct MaterialGPU {
     // 9 texture indices

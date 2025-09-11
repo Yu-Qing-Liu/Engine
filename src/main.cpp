@@ -45,6 +45,7 @@ class Application {
 
 		glfwSetMouseButtonCallback(window, Events::handleMouseCallbacks);
 		glfwSetKeyCallback(window, Events::handleKeyboardCallbacks);
+		glfwSetCharCallback(window, Events::handleCharacterInputCallbacks);
 		glfwSetCursorPosCallback(window, [](GLFWwindow *, double x, double y) {
 			Events::pointerX = (float)x;
 			Events::pointerY = (float)y;
