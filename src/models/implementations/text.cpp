@@ -9,12 +9,24 @@ Text::Text(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const TextP
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
-	if (FT_New_Face(ft, textParams.fontPath.c_str(), 0, &face)) {
+	fontBlob = Assets::loadBytes(textParams.fontPath);
+	if (fontBlob.empty()) {
+		throw std::runtime_error("FREETYPE: Font bytes not found");
+	}
+	const FT_Error err = FT_New_Memory_Face(
+		ft,
+		reinterpret_cast<const FT_Byte*>(fontBlob.data()),
+		static_cast<FT_Long>(fontBlob.size()),
+		0,
+		&face
+	);
+	if (err) {
 		throw std::runtime_error("FREETYPE: Failed to load font");
 	}
-	FT_Set_Pixel_Sizes(face, 0, textParams.pixelHeight);
+	if (FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(textParams.pixelHeight)) != 0) {
+		throw std::runtime_error("FREETYPE: FT_Set_Pixel_Sizes failed");
+	}
 	bake();
-
 	createDescriptorSetLayout();
 	createUniformBuffers();
 	createDescriptorPool();

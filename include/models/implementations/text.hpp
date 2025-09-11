@@ -106,6 +106,7 @@ class Text : public Model {
 
 	FT_Library ft{};
 	FT_Face face{};
+	std::vector<uint8_t> fontBlob;
 
 	VkImage atlasImage{};
 	VkDeviceMemory atlasMemory{};
