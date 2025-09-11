@@ -31,10 +31,15 @@ class TextInput : public Widget {
 
 	TextInput(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
 
+	void utf8_append(std::string &out, unsigned int cp, size_t position);
+	void utf8_pop_back(std::string &s, size_t position);
+
 	void updateUniformBuffers(const Model::UBO &ubo) override;
 	void setParams(const StyleParams &params);
 
 	void render() override;
+
+	Text::Caret caret{};
 
 	bool selected = false;
 	StyleParams styleParams{};
