@@ -61,6 +61,16 @@ TextInput::TextInput(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &s
 		case GLFW_KEY_ESCAPE:
 			selected = false;
 			break;
+        case GLFW_KEY_LEFT:
+            if (caret.byte > 0) {
+                caret.byte--;
+            }
+            break;
+        case GLFW_KEY_RIGHT:
+            if (caret.byte < text.length()) {
+                caret.byte++;
+            }
+            break;
 		default:
 			// ignore other keys here; text comes from char callback
 			break;
