@@ -7,8 +7,8 @@
 
 
 Instancing::Instancing(Scenes &scenes) : Scene(scenes) {
-    cells = std::make_shared<std::unordered_map<int, InstancedRectangle::InstanceData>>(
-        std::initializer_list<std::pair<const int, InstancedRectangle::InstanceData>>{
+    cells = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(
+        std::initializer_list<std::pair<const int, InstancedRectangleData>>{
             {0, {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f, {100, 100}}},
             {1, {screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f, {100, 100}}},
             {2, {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.75f, {100, 100}}},

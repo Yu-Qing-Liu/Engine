@@ -4,7 +4,6 @@
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
 
-using InstanceData = InstancedRectangle::InstanceData;
 using std::shared_ptr;
 using std::unordered_map;
 
@@ -35,5 +34,5 @@ class Instancing : public Scene {
 
 	unique_ptr<InstancedRectangle> grid;
 
-	shared_ptr<unordered_map<int, InstanceData>> cells;
+	shared_ptr<unordered_map<int, InstancedRectangleData>> cells;
 };
