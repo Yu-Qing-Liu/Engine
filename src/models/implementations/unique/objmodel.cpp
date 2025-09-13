@@ -17,7 +17,7 @@ VkFormat OBJModel::formatFor(aiTextureType type) {
 std::string OBJModel::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
 // ---------- ctor/dtor ----------
-OBJModel::OBJModel(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/objmodel") {
+OBJModel::OBJModel(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/objmodel") {
 	loadModel();
 
 	createDescriptorSetLayout();		 // set=0

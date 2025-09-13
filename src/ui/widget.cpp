@@ -1,6 +1,6 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams) {
+Widget::Widget(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams) {
 	container = std::make_unique<Rectangle>(scene, ubo, screenParams);
 	container->setRayTraceEnabled(true);
 }

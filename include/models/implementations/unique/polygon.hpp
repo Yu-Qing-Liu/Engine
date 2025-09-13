@@ -1,5 +1,6 @@
 #pragma once
 
+#include "colors.hpp"
 #include "model.hpp"
 #include <vulkan/vulkan_core.h>
 
@@ -12,8 +13,8 @@ class Polygon : public Model {
 	~Polygon();
 
 	struct Params {
-		vec4 color;
-		vec4 outlineColor;
+		vec4 color = Colors::Green;
+		vec4 outlineColor = Colors::Transparent(0.0);
 		float outlineWidth = 0.0f; // pixels
 		float _pad0 = 0.0f, _pad1 = 0.0f, _pad2 = 0.0f;
 	};
@@ -59,7 +60,7 @@ class Polygon : public Model {
 		}
 	};
 
-	Polygon(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
+	Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
 
 	Params params{};
 

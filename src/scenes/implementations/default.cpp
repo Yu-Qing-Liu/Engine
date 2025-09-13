@@ -8,7 +8,7 @@
 
 Default::Default(Scenes &scenes) : Scene(scenes) {
     triangle = make_unique<Polygon>(
-        *this,
+        this,
         persp,
         screenParams,
         std::vector<Polygon::Vertex> {
@@ -22,7 +22,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
     );
 
     example = make_unique<Texture>(
-        *this,
+        this,
         persp,
         screenParams,
         Assets::textureRootPath + "/example/example.png", 
@@ -43,16 +43,16 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         }
     );
 
-    particles = make_unique<Particles>(*this, persp, screenParams, 1024, screenParams.viewport.width, screenParams.viewport.height);
+    particles = make_unique<Particles>(this, persp, screenParams, 1024, screenParams.viewport.width, screenParams.viewport.height);
 
-    room = make_unique<OBJModel>(*this, persp, screenParams, Assets::modelRootPath + "/example/example.obj");
+    room = make_unique<OBJModel>(this, persp, screenParams, Assets::modelRootPath + "/example/example.obj");
     room->setRayTraceEnabled(true);
     room->onMouseHover = []() {
         std::cout << "Room Hit " << Engine::time << std::endl;
     };
 
     Text::TextParams tp{ Assets::fontRootPath + "/arial.ttf", 48 };
-    text = make_unique<Text>(*this, orthographic, screenParams, tp);
+    text = make_unique<Text>(this, orthographic, screenParams, tp);
     text->updateUniformBuffer(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)));
 }
 

@@ -23,7 +23,10 @@ get_filename_component(REPO_ROOT "${CMAKE_SOURCE_DIR}/../../../.." ABSOLUTE)
 # Your engine sources
 # ------------------------------
 file(GLOB ENGINE_MODELS        "${REPO_ROOT}/src/models/*.cpp")
-file(GLOB ENGINE_MODELS_IMPL   "${REPO_ROOT}/src/models/implementations/*.cpp")
+file(GLOB ENGINE_MODELS_IMPL
+  "${REPO_ROOT}/src/models/implementations/unique/*.cpp"
+  "${REPO_ROOT}/src/models/implementations/instanced/*.cpp"
+)
 file(GLOB ENGINE_SCENES        "${REPO_ROOT}/src/scenes/*.cpp")
 file(GLOB ENGINE_SCENES_IMPL   "${REPO_ROOT}/src/scenes/implementations/*.cpp")
 file(GLOB ENGINE_UI            "${REPO_ROOT}/src/ui/*.cpp")
@@ -43,7 +46,8 @@ target_include_directories(SOURCES PUBLIC
         "${REPO_ROOT}/include/utils"
         "${REPO_ROOT}/include/vulkan"
         "${REPO_ROOT}/include/models"
-        "${REPO_ROOT}/include/models/implementations"
+        "${REPO_ROOT}/include/models/implementations/unique"
+        "${REPO_ROOT}/include/models/implementations/instanced"
         "${REPO_ROOT}/include/scenes"
         "${REPO_ROOT}/include/scenes/implementations"
         "${REPO_ROOT}/include/ui"
