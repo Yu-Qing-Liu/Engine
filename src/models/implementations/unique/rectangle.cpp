@@ -1,14 +1,11 @@
 #include "rectangle.hpp"
-#include "colors.hpp"
 #include "engine.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Rectangle::Rectangle(Scene *scene, const UBO &ubo, ScreenParams &screenParams) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/rectangle") {
-    indices = {
-        0, 1, 2, 2, 3, 0
-    };
+Rectangle::Rectangle(Scene *scene, const UBO &ubo, ScreenParams &screenParams) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/rectangle") {
+	indices = {0, 1, 2, 2, 3, 0};
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
@@ -17,7 +14,7 @@ Rectangle::Rectangle(Scene *scene, const UBO &ubo, ScreenParams &screenParams) :
 	createDescriptorSets();
 
 	createVertexBuffer<Vertex>(this->vertices);
-    createIndexBuffer();
+	createIndexBuffer();
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
@@ -225,5 +222,5 @@ void Rectangle::setupGraphicsPipeline() {
 void Rectangle::render() {
 	// Update per-frame data
 	std::memcpy(paramsBuffersMapped[Engine::currentFrame], &params, sizeof(params));
-    Model::render();
+	Model::render();
 }

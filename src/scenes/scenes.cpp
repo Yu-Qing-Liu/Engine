@@ -1,5 +1,6 @@
 #include "scenes.hpp"
 #include "default.hpp"
+#include "instancing.hpp"
 #include "raytracing.hpp"
 #include "buttons.hpp"
 
@@ -14,6 +15,10 @@ Scenes::Scenes() {
     };
     scenes[Buttons::getName()] = {
         make_unique<Buttons>(*this),
+        true
+    };
+    scenes[Instancing::getName()] = {
+        make_unique<Instancing>(*this),
         true
     };
 }

@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/polygon") {
+Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
 	std::vector<Vertex> expandedVerts;
 	std::vector<uint16_t> expandedIdx;
 	expandForOutlines(inputVertices, inputIndices, this->vertices, this->indices);
