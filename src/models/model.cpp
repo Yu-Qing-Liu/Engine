@@ -7,13 +7,17 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
+Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
 	this->ubo.proj[1][1] *= -1;
-	scene.models.emplace_back(this);
+    if (scene) {
+        scene->models.emplace_back(this);
+    }
 }
-Model::Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
+Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
 	this->ubo.proj[1][1] *= -1;
-	scene.models.emplace_back(this);
+    if (scene) {
+        scene->models.emplace_back(this);
+    }
 }
 
 Model::~Model() {

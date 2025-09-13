@@ -43,8 +43,8 @@ class Model {
 		VkRect2D scissor{};
 	};
 
-	Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath);
-	Model(Scene &scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices);
+	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath);
+	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -97,7 +97,7 @@ class Model {
 	virtual void render();
 
   protected:
-	Scene &scene;
+	Scene *scene;
 
 	std::function<void(int, int, int, int)> onKeyboardKeyPress;
 
@@ -213,7 +213,7 @@ class Model {
 	VkDescriptorPoolCreateInfo poolInfo{};
 	VkDescriptorSetAllocateInfo allocInfo{};
 
-    // Graphics pipeline
+	// Graphics pipeline
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	VkPipelineViewportStateCreateInfo viewportState{};
@@ -251,7 +251,7 @@ class Model {
 	virtual void createVertexBuffer();
 	virtual void createIndexBuffer();
 	virtual void createBindingDescriptions() = 0;
-    virtual void setupGraphicsPipeline();
+	virtual void setupGraphicsPipeline();
 
 	void createGraphicsPipeline();
 

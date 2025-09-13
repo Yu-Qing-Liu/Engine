@@ -4,7 +4,7 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(Scene &scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/particle") {
+Particles::Particles(Scene *scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/particle") {
 	createComputeDescriptorSetLayout();
 	createShaderStorageBuffers();
 	createUniformBuffers();

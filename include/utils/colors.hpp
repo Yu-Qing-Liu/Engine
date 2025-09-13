@@ -22,6 +22,7 @@ inline bool operator==(const Color &a, const Color &b) noexcept { return a.rgb.r
 inline bool operator!=(const Color &a, const Color &b) noexcept { return !(a == b); }
 
 // Instances
+inline constexpr Color Transparent{{0.f,0.f,0.f}};
 inline constexpr Color White{{1.f, 1.f, 1.f}};
 inline constexpr Color Black{{0.f, 0.f, 0.f}};
 inline constexpr Color Gray{{0.33f, 0.33f, 0.33f}};

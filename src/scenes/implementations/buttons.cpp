@@ -5,7 +5,7 @@
 #include "scenes.hpp"
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
-	button = make_unique<Button>(*this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
+	button = make_unique<Button>(this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
 	button->setOnMouseClick([this](int button, int action, int mods) {
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			std::cout << "Mouse 1 pressed" << std::endl;
@@ -27,7 +27,7 @@ Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
 		button->container->params.outlineColor = button->container->params.color;
 	});
 
-	textInput = make_unique<TextInput>(*this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
+	textInput = make_unique<TextInput>(this, orthographic, screenParams, Text::TextParams{Fonts::ArialBold, 16});
 }
 
 void Buttons::updateScreenParams() {

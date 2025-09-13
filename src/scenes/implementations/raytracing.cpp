@@ -10,7 +10,7 @@
 
 RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     cube1 = make_unique<Polygon>(
-        *this,
+        this,
         persp,
         screenParams,
         std::vector<Polygon::Vertex>{
@@ -64,7 +64,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
     cube1->setRayTraceEnabled(true);
 
     cube2 = make_unique<Polygon>(
-        *this,
+        this,
         persp,
         screenParams,
         std::vector<Polygon::Vertex>{

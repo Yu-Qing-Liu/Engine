@@ -1,6 +1,6 @@
 #include "button.hpp"
 
-Button::Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams) : Widget(scene, ubo, screenParams) {
+Button::Button(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams) : Widget(scene, ubo, screenParams) {
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
 }
 

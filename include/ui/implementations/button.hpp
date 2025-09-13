@@ -30,7 +30,7 @@ class Button : public Widget {
 		std::optional<glm::vec3> iconDim; // optional icon scale (x,y,1)
 	};
 
-	Button(Scene &scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
+	Button(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
 	~Button() = default;
 
 	void updateUniformBuffers(const Model::UBO &ubo) override;
