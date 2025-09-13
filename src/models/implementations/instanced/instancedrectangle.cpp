@@ -3,7 +3,7 @@
 #include "engine.hpp"
 #include <cstring>
 
-InstancedRectangle::InstancedRectangle(const UBO &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstanceData>> instances, uint32_t maxInstances) : instances(instances), Model(nullptr, ubo, screenParams, Assets::shaderRootPath + "/instanced/rectangle") {
+InstancedRectangle::InstancedRectangle(const UBO &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstanceData>> instances, uint32_t maxInstances) : instances(instances), Model(nullptr, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedrectangle") {
 	indices = {0, 1, 2, 2, 3, 0};
 
 	// Geometry
