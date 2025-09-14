@@ -209,6 +209,14 @@ void Texture::createDescriptorSets() {
 	}
 }
 
+void Texture::setupGraphicsPipeline() {
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
+
+	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+}
+
 void Texture::createBindingDescriptions() {
 	bindingDescription = Vertex::getBindingDescription();
 	auto attrs = Vertex::getAttributeDescriptions();

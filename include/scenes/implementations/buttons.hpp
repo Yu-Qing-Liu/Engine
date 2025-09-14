@@ -1,9 +1,10 @@
 #pragma once
 
 #include "button.hpp"
-#include "textinput.hpp"
 #include "engine.hpp"
 #include "scene.hpp"
+#include "textinput.hpp"
+#include "texture.hpp"
 
 class Buttons : public Scene {
   public:
@@ -29,6 +30,8 @@ class Buttons : public Scene {
 	Model::UBO persp{mat4(1.0f), lookAt(vec3(4.0f, 4.0f, 4.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)), perspective(radians(45.0f), Engine::swapChainExtent.width / (float)Engine::swapChainExtent.height, 0.1f, 10.0f)};
 
 	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
+
+	unique_ptr<Texture> background;
 
 	unique_ptr<Button> button;
 	unique_ptr<TextInput> textInput;
