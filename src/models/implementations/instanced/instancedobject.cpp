@@ -1,11 +1,12 @@
 #include "instancedobject.hpp"
+#include "assets.hpp"
 #include "object.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <stb_image.hpp>
 
-InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, const std::string &shaderProgramPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(ubo, screenParams, shaderProgramPath, std::move(instances), maxInstances) {
+InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedobject", std::move(instances), maxInstances) {
 	loadModel();
 
 	createDescriptorSetLayout();
@@ -23,6 +24,26 @@ InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, con
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
+}
+
+InstancedObject::~InstancedObject() {
+	if (materialsBuf) {
+		vkDestroyBuffer(Engine::device, materialsBuf, nullptr);
+		materialsBuf = VK_NULL_HANDLE;
+	}
+	if (materialsMem) {
+		vkFreeMemory(Engine::device, materialsMem, nullptr);
+		materialsMem = VK_NULL_HANDLE;
+	}
+	if (materialPool) {
+		vkDestroyDescriptorPool(Engine::device, materialPool, nullptr);
+		materialPool = VK_NULL_HANDLE;
+	}
+	if (materialDSL) {
+		vkDestroyDescriptorSetLayout(Engine::device, materialDSL, nullptr);
+		materialDSL = VK_NULL_HANDLE;
+	}
+	destroyLoadedTextures();
 }
 
 // ---------- small helpers ----------

@@ -1,4 +1,5 @@
 #include "instancing.hpp"
+#include "assets.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
 #include "object.hpp"
@@ -9,22 +10,12 @@
 
 Instancing::Instancing(Scenes &scenes) : Scene(scenes) {
     cells = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(
-        std::initializer_list<std::pair<const int, InstancedRectangleData>>{
-            {0, {}},
-            {1, {}},
-            {2, {}},
-            {3, {}},
-        }
+        std::initializer_list<std::pair<const int, InstancedRectangleData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
     );
     grid = make_unique<InstancedRectangle>(orthographic, screenParams, cells, 4);
 
-    instances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(
-        std::initializer_list<std::pair<const int, InstancedPolygonData>>{
-            {0, {}},
-            {1, {}},
-            {2, {}},
-            {3, {}}
-        }
+    polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(
+        std::initializer_list<std::pair<const int, InstancedPolygonData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
     );
     polygons = make_unique<InstancedPolygon>(
         persp,
@@ -54,9 +45,14 @@ Instancing::Instancing(Scenes &scenes) : Scene(scenes) {
             // Bottom (-Y)
             0, 1, 5,   5, 4, 0,
         },
-        instances,
+        polygonInstances,
         4
     );
+
+    roomInstances = std::make_shared<std::unordered_map<int, InstancedObjectData>>(
+        std::initializer_list<std::pair<const int, InstancedObjectData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
+    );
+    rooms = make_unique<InstancedObject>(persp, screenParams, Assets::modelRootPath + "/example/example.obj" , roomInstances, 4);
 }
 
 void Instancing::updateScreenParams() {
@@ -80,12 +76,18 @@ void Instancing::swapChainUpdate() {
     grid->updateInstance(3, InstancedRectangleData(screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.75f, {100, 100}));
     grid->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
 
-    const vec3 size = vec3(0.8f); // scale cubes a bit
+    const vec3 size = vec3(0.9f); // scale cubes a bit
 	polygons->updateInstance(0, InstancedPolygonData(vec3(-1.0f, -1.0f, 0.0f), size, Colors::Green, Colors::Black));
 	polygons->updateInstance(1, InstancedPolygonData(vec3(1.0f, -1.0f, 0.0f), size, Colors::Red, Colors::Black));
 	polygons->updateInstance(2, InstancedPolygonData(vec3(-1.0f, 1.0f, 0.0f), size, Colors::Purple, Colors::Black));
 	polygons->updateInstance(3, InstancedPolygonData(vec3(1.0f, 1.0f, 0.0f), size, Colors::Yellow, Colors::Black));
     polygons->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+
+	rooms->updateInstance(0, InstancedObjectData(vec3(-1.0f, -1.0f, 0.0f), size));
+	rooms->updateInstance(1, InstancedObjectData(vec3(1.0f, -1.0f, 0.0f), size));
+	rooms->updateInstance(2, InstancedObjectData(vec3(-1.0f, 1.0f, 0.0f), size));
+	rooms->updateInstance(3, InstancedObjectData(vec3(1.0f, 1.0f, 0.0f), size));
+    rooms->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
 void Instancing::updateComputeUniformBuffers() {}
@@ -96,4 +98,5 @@ void Instancing::updateUniformBuffers() {}
 
 void Instancing::renderPass() {
     polygons->render();
+    rooms->render();
 }

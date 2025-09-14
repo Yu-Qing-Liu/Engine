@@ -24,8 +24,8 @@ class InstancedObject : public InstancedModel<InstancedObjectData> {
 	InstancedObject &operator=(InstancedObject &&) = delete;
 	InstancedObject &operator=(const InstancedObject &) = delete;
 
-	InstancedObject(const UBO &ubo, ScreenParams &screenParams, const string &objPath, const string &shaderProgramPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances = 65536);
-	~InstancedObject() override = default;
+	InstancedObject(const UBO &ubo, ScreenParams &screenParams, const string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances = 65536);
+	~InstancedObject();
 
 	struct Vertex {
 		vec3 pos;
