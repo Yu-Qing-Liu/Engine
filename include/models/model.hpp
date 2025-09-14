@@ -232,8 +232,6 @@ class Model {
 	vector<VkDeviceMemory> uniformBuffersMemory;
 	vector<void *> uniformBuffersMapped;
 
-	VkBuffer stagingBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
 	VkBuffer indexBuffer = VK_NULL_HANDLE;
@@ -256,30 +254,25 @@ class Model {
 	void createGraphicsPipeline();
 
 	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
-		VkDeviceSize bufferSize;
-		if (!vertices.empty()) {
-			bufferSize = sizeof(vertices[0]) * vertices.size();
-		} else {
-			throw std::runtime_error("No vertices specified for Vertex Buffer");
-		}
+		if (vertices.empty())
+			throw std::runtime_error("Create Vertex Buffer: No vertices");
+		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		VkBuffer stg;
+		VkDeviceMemory stgMem;
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stg, stgMem);
 
-		void *data;
-		vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
-		if (!vertices.empty()) {
-			memcpy(data, vertices.data(), (size_t)bufferSize);
-		} else {
-			throw std::runtime_error("No vertices specified for Vertex Buffer");
-		}
-		vkUnmapMemory(Engine::device, stagingBufferMemory);
+		void *data = nullptr;
+		vkMapMemory(Engine::device, stgMem, 0, bufferSize, 0, &data);
+		std::memcpy(data, vertices.data(), (size_t)bufferSize);
+		vkUnmapMemory(Engine::device, stgMem);
 
 		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
-		Engine::copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+		Engine::copyBuffer(stg, vertexBuffer, bufferSize);
 
-		vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-		vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+		vkDestroyBuffer(Engine::device, stg, nullptr);
+		vkFreeMemory(Engine::device, stgMem, nullptr);
 	}
 
   private:

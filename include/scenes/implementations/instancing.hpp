@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine.hpp"
+#include "instancedobject.hpp"
 #include "instancedpolygon.hpp"
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
@@ -36,6 +37,9 @@ class Instancing : public Scene {
 	shared_ptr<unordered_map<int, InstancedRectangleData>> cells;
 	unique_ptr<InstancedRectangle> grid;
 
-	shared_ptr<unordered_map<int, InstancedPolygonData>> instances;
+	shared_ptr<unordered_map<int, InstancedPolygonData>> polygonInstances;
 	unique_ptr<InstancedPolygon> polygons;
+
+	shared_ptr<unordered_map<int, InstancedObjectData>> roomInstances;
+	unique_ptr<InstancedObject> rooms;
 };

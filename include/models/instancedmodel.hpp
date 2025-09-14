@@ -106,12 +106,17 @@ template <typename T> class InstancedModel : public Model {
 
 		// Descriptor set (UBO set=0)
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
+        
+        // Allow derived to bind more
+        bindExtraDescriptorSets(cmd);
 
 		// Draw all instances in one call
 		vkCmdDrawIndexed(cmd, static_cast<uint32_t>(indices.size()), instanceCount, 0, 0, 0);
 	}
 
   protected:
+	virtual void bindExtraDescriptorSets(VkCommandBuffer cmd) {}
+
 	void createInstanceBuffers() {
 		const VkDeviceSize sz = static_cast<VkDeviceSize>(maxInstances * sizeof(T));
 		instanceBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);

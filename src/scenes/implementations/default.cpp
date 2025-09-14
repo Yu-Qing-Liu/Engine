@@ -1,6 +1,5 @@
 #include "default.hpp"
 #include "engine.hpp"
-#include "objmodel.hpp"
 #include "particles.hpp"
 #include "texture.hpp"
 #include "polygon.hpp"
@@ -45,7 +44,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 
     particles = make_unique<Particles>(this, persp, screenParams, 1024, screenParams.viewport.width, screenParams.viewport.height);
 
-    room = make_unique<OBJModel>(this, persp, screenParams, Assets::modelRootPath + "/example/example.obj");
+    room = make_unique<Object>(this, persp, screenParams, Assets::modelRootPath + "/example/example.obj");
     room->setRayTraceEnabled(true);
     room->onMouseHover = []() {
         std::cout << "Room Hit " << Engine::time << std::endl;

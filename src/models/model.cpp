@@ -1,7 +1,7 @@
 #include "model.hpp"
 #include "engine.hpp"
-#include "scene.hpp"
 #include "events.hpp"
+#include "scene.hpp"
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -9,15 +9,15 @@
 
 Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
 	this->ubo.proj[1][1] *= -1;
-    if (scene) {
-        scene->models.emplace_back(this);
-    }
+	if (scene) {
+		scene->models.emplace_back(this);
+	}
 }
 Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
 	this->ubo.proj[1][1] *= -1;
-    if (scene) {
-        scene->models.emplace_back(this);
-    }
+	if (scene) {
+		scene->models.emplace_back(this);
+	}
 }
 
 Model::~Model() {
@@ -118,23 +118,22 @@ Model::~Model() {
 
 void Model::copyUBO() { memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
 
-
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
-    auto callback = [this, cb](int button, int action, int mods) {
-        if(mouseIsOver) {
-            cb(button, action, mods);
-        }
-    };
-    Events::mouseCallbacks.push_back(callback);
+	auto callback = [this, cb](int button, int action, int mods) {
+		if (mouseIsOver) {
+			cb(button, action, mods);
+		}
+	};
+	Events::mouseCallbacks.push_back(callback);
 }
 
 void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
-    auto callback = [this, cb](int key, int scancode, int action, int mods) {
-        if(selected) {
-            cb(key, scancode, action, mods);
-        }
-    };
-    Events::keyboardCallbacks.push_back(callback);
+	auto callback = [this, cb](int key, int scancode, int action, int mods) {
+		if (selected) {
+			cb(key, scancode, action, mods);
+		}
+	};
+	Events::keyboardCallbacks.push_back(callback);
 }
 
 void Model::setMouseIsOver(bool over) {
@@ -284,8 +283,8 @@ void Model::updateRayTraceUniformBuffer() {
 		return;
 	}
 
-    float mousePx = 0.0f, mousePy = 0.0f;
-    Platform::GetPointerInFramebufferPixels(mousePx, mousePy);
+	float mousePx = 0.0f, mousePy = 0.0f;
+	Platform::GetPointerInFramebufferPixels(mousePx, mousePy);
 
 	setRayTraceFromViewportPx(mousePx, mousePy, screenParams.viewport);
 
@@ -527,21 +526,25 @@ void Model::createDescriptorSetLayout() {
 void Model::createVertexBuffer() {}
 
 void Model::createIndexBuffer() {
+	if (indices.empty())
+		throw std::runtime_error("Create Index Buffer: No indices");
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+	VkBuffer stg;
+	VkDeviceMemory stgMem;
+	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stg, stgMem);
 
-	void *data;
-	vkMapMemory(Engine::device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(Engine::device, stagingBufferMemory);
+	void *data = nullptr;
+	vkMapMemory(Engine::device, stgMem, 0, bufferSize, 0, &data);
+	std::memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(Engine::device, stgMem);
 
 	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-	Engine::copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+	Engine::copyBuffer(stg, indexBuffer, bufferSize);
 
-	vkDestroyBuffer(Engine::device, stagingBuffer, nullptr);
-	vkFreeMemory(Engine::device, stagingBufferMemory, nullptr);
+	vkDestroyBuffer(Engine::device, stg, nullptr);
+	vkFreeMemory(Engine::device, stgMem, nullptr);
 }
 
 void Model::createUniformBuffers() {
@@ -677,7 +680,7 @@ void Model::createGraphicsPipeline() {
 	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 
-    setupGraphicsPipeline();
+	setupGraphicsPipeline();
 
 	colorBlending.pAttachments = &colorBlendAttachment;
 
