@@ -1,10 +1,32 @@
-#include "objmodel.hpp"
-#include <assimp/material.h>
+#include "instancedobject.hpp"
+#include "object.hpp"
+#include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <stb_image.hpp>
 
+InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, const std::string &shaderProgramPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(ubo, screenParams, shaderProgramPath, std::move(instances), maxInstances) {
+	loadModel();
+
+	createDescriptorSetLayout();
+	createMaterialDescriptorSetLayout();
+
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+
+	createVertexBuffer<Vertex>(this->vertices);
+	createIndexBuffer();
+
+	createMaterialResources();
+	createMaterialDescriptorSets();
+
+	createBindingDescriptions();
+	createGraphicsPipeline();
+}
+
 // ---------- small helpers ----------
-VkFormat OBJModel::formatFor(aiTextureType type) {
+VkFormat InstancedObject::formatFor(aiTextureType type) {
 	switch (type) {
 	case aiTextureType_BASE_COLOR:
 	case aiTextureType_DIFFUSE:
@@ -14,138 +36,11 @@ VkFormat OBJModel::formatFor(aiTextureType type) {
 		return VK_FORMAT_R8G8B8A8_UNORM; // data-like
 	}
 }
-std::string OBJModel::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
-// ---------- ctor/dtor ----------
-OBJModel::OBJModel(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/objmodel") {
-	loadModel();
-
-	createDescriptorSetLayout();		 // set=0
-	createMaterialDescriptorSetLayout(); // set=1
-
-	createUniformBuffers();
-	createDescriptorPool();
-	createDescriptorSets(); // set=0
-
-	createVertexBuffer();
-	createIndexBuffer();
-
-	createMaterialResources();		// builds texSlots & uploads SSBO
-	createMaterialDescriptorSets(); // uses texSlots
-
-	createBindingDescriptions();
-	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
-}
-
-OBJModel::~OBJModel() {
-	if (materialsBuf) {
-		vkDestroyBuffer(Engine::device, materialsBuf, nullptr);
-		materialsBuf = VK_NULL_HANDLE;
-	}
-	if (materialsMem) {
-		vkFreeMemory(Engine::device, materialsMem, nullptr);
-		materialsMem = VK_NULL_HANDLE;
-	}
-	if (materialPool) {
-		vkDestroyDescriptorPool(Engine::device, materialPool, nullptr);
-		materialPool = VK_NULL_HANDLE;
-	}
-	if (materialDSL) {
-		vkDestroyDescriptorSetLayout(Engine::device, materialDSL, nullptr);
-		materialDSL = VK_NULL_HANDLE;
-	}
-	destroyLoadedTextures();
-}
-
-void OBJModel::buildBVH() {
-	// Gather positions and triangles from current mesh
-	posGPU.clear();
-	triGPU.clear();
-	if (!vertices.empty()) {
-		posGPU.reserve(vertices.size());
-		for (auto &v : vertices) {
-			posGPU.push_back(v.pos);
-		}
-	} else {
-		throw std::runtime_error("BVH build: no vertices");
-	}
-
-	std::vector<BuildTri> tris;
-	tris.reserve(indices.size() / 3);
-	for (size_t t = 0; t < indices.size(); t += 3) {
-		uint32_t i0 = indices[t + 0], i1 = indices[t + 1], i2 = indices[t + 2];
-		const vec3 &A = posGPU[i0];
-		const vec3 &B = posGPU[i1];
-		const vec3 &C = posGPU[i2];
-		BuildTri bt;
-		bt.i0 = i0;
-		bt.i1 = i1;
-		bt.i2 = i2;
-		bt.b = triAabb(A, B, C);
-		bt.centroid = (A + B + C) * (1.0f / 3.0f);
-		tris.push_back(bt);
-
-		triGPU.push_back({i0, i1, i2, 0});
-	}
-
-	// Build tree into BuildNode list (temporary)
-	std::vector<BuildNode> tmp;
-	tmp.reserve(tris.size() * 2);
-	int root = buildNode(tris, 0, (int)tris.size(), 0, tmp);
-
-	// Rebuild GPU triangles in the final order used by leaves
-	triGPU.clear();
-	triGPU.reserve(tris.size());
-	for (const auto &t : tris) {
-		triGPU.push_back({t.i0, t.i1, t.i2, 0u});
-	}
-
-	// Flatten to GPU nodes (depth-first, implicit right=left+1 for internal nodes)
-	bvhNodes.clear();
-	bvhNodes.resize(tmp.size());
-	// Map temp indices to linear DFS order
-	std::vector<int> map(tmp.size(), -1);
-	std::function<void(int, int &)> dfs = [&](int ni, int &outIdx) {
-		int my = outIdx++;
-		map[ni] = my;
-		if (tmp[ni].triCount == 0) {
-			dfs(tmp[ni].left, outIdx);
-			dfs(tmp[ni].right, outIdx);
-		}
-	};
-	int counter = 0;
-	dfs(root, counter);
-
-	// Fill nodes in DFS order
-	std::function<void(int)> emit = [&](int ni) {
-		int me = map[ni];
-		const BuildNode &n = tmp[ni];
-		BVHNodeGPU gn;
-		gn.bmin = vec4(n.b.bmin, 0.0f);
-		gn.bmax = vec4(n.b.bmax, 0.0f);
-
-		if (n.triCount == 0) {
-			gn.leftFirst = map[n.left];
-			gn.rightOrCount = (uint32_t(map[n.right]) | 0x80000000u); // INTERNAL
-			bvhNodes[me] = gn;
-			emit(n.left);
-			emit(n.right);
-		} else {
-			gn.leftFirst = n.firstTri;
-			gn.rightOrCount = n.triCount; // leaf => count, no high bit
-			bvhNodes[me] = gn;
-		}
-	};
-	emit(root);
-}
+std::string InstancedObject::cacheKeyWithFormat(const std::string &raw, VkFormat fmt) { return raw + (fmt == VK_FORMAT_R8G8B8A8_SRGB ? "|SRGB" : "|LIN"); }
 
 // ---------- loading ----------
-void OBJModel::loadModel() {
+void InstancedObject::loadModel() {
 	Assimp::Importer import;
 	unsigned flags = aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_SortByPType;
 
@@ -156,7 +51,7 @@ void OBJModel::loadModel() {
 	std::string rel = Assets::toAssetRel(objPath);
 	if (rel.empty()) {
 		rel = std::filesystem::path(objPath).filename().string();
-    }
+	}
 	const aiScene *scene = import.ReadFile(rel.c_str(), flags);
 #else
 	const aiScene *scene = import.ReadFile(objPath.c_str(), flags);
@@ -178,7 +73,7 @@ void OBJModel::loadModel() {
 	bakeTexturesAndMaterials(scene);
 }
 
-void OBJModel::processNode(aiNode *node, const aiScene *scene) {
+void InstancedObject::processNode(aiNode *node, const aiScene *scene) {
 	for (unsigned int i = 0; i < node->mNumMeshes; i++) {
 		aiMesh *m = scene->mMeshes[node->mMeshes[i]];
 
@@ -186,7 +81,7 @@ void OBJModel::processNode(aiNode *node, const aiScene *scene) {
 		const uint32_t matId = m->mMaterialIndex;
 
 		for (unsigned v = 0; v < m->mNumVertices; ++v) {
-			OBJVertex vert{};
+			Vertex vert{};
 			vert.pos = {m->mVertices[v].x, m->mVertices[v].y, m->mVertices[v].z};
 			vert.nrm = m->HasNormals() ? glm::vec3(m->mNormals[v].x, m->mNormals[v].y, m->mNormals[v].z) : glm::vec3(0, 0, 1);
 			vert.col = m->HasVertexColors(0) ? glm::vec4(m->mColors[0][v].r, m->mColors[0][v].g, m->mColors[0][v].b, m->mColors[0][v].a) : glm::vec4(1.0f);
@@ -223,7 +118,7 @@ void OBJModel::processNode(aiNode *node, const aiScene *scene) {
 
 static inline uint32_t SetFlag(uint32_t flags, bool cond, uint32_t bit) { return cond ? (flags | (1u << bit)) : flags; }
 
-void OBJModel::bakeTexturesAndMaterials(const aiScene *scene) {
+void InstancedObject::bakeTexturesAndMaterials(const aiScene *scene) {
 	textures.clear();
 	textureCache.clear();
 	texSlots.clear(); // harmless even if not used anymore
@@ -236,7 +131,7 @@ void OBJModel::bakeTexturesAndMaterials(const aiScene *scene) {
 	for (unsigned mi = 0; mi < scene->mNumMaterials; ++mi) {
 		const aiMaterial *m = scene->mMaterials[mi];
 
-		MaterialGPU g{};
+		Material g{};
 		// Indices default to -1 (no texture)
 		g.baseColor = g.normal = g.roughness = g.metallic = g.specular = g.ao = g.emissive = g.opacity = g.displacement = -1;
 
@@ -329,7 +224,7 @@ void OBJModel::bakeTexturesAndMaterials(const aiScene *scene) {
 
 	// If scene had no materials, keep one default material
 	if (materialsGPU.empty()) {
-		MaterialGPU g{};
+		Material g{};
 		g.baseColor = g.normal = g.roughness = g.metallic = g.specular = g.ao = g.emissive = g.opacity = g.displacement = -1;
 
 		g.baseColorFactor = glm::vec4(1.0f);
@@ -341,14 +236,14 @@ void OBJModel::bakeTexturesAndMaterials(const aiScene *scene) {
 }
 
 // Return texture index in textures[], or -1
-int OBJModel::getOrLoadTexture(const aiScene *scene, const std::string &directory, const aiMaterial *mat, aiTextureType type, unsigned slot) {
+int InstancedObject::getOrLoadTexture(const aiScene *scene, const std::string &directory, const aiMaterial *mat, aiTextureType type, unsigned slot) {
 	aiString str;
 	if (mat->GetTexture(type, slot, &str) != AI_SUCCESS)
 		return -1;
 	return loadTextureFromAssimpString(scene, directory, str, type);
 }
 
-int OBJModel::loadTextureFromAssimpString(const aiScene *scene, const std::string &directory, const aiString &str, aiTextureType type) {
+int InstancedObject::loadTextureFromAssimpString(const aiScene *scene, const std::string &directory, const aiString &str, aiTextureType type) {
 	std::string key = str.C_Str();
 	if (key.empty())
 		return -1;
@@ -400,7 +295,7 @@ int OBJModel::loadTextureFromAssimpString(const aiScene *scene, const std::strin
 		std::memcpy(p, rgba.data(), (size_t)imageSize);
 		vkUnmapMemory(Engine::device, stgMem);
 
-		LoadedTexture lt{};
+		Texture lt{};
 		Engine::createImage(texWidth, texHeight, fmt, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lt.image, lt.memory);
 
 		Engine::transitionImageLayout(lt.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -455,7 +350,7 @@ int OBJModel::loadTextureFromAssimpString(const aiScene *scene, const std::strin
 		vkUnmapMemory(Engine::device, stgMem);
 		stbi_image_free(pixels);
 
-		LoadedTexture lt{};
+		Texture lt{};
 		Engine::createImage(w, h, fmt, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lt.image, lt.memory);
 
 		Engine::transitionImageLayout(lt.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -480,7 +375,7 @@ int OBJModel::loadTextureFromAssimpString(const aiScene *scene, const std::strin
 }
 
 // ---------- material GPU resources ----------
-int OBJModel::createSolidTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a, VkFormat fmt) {
+int InstancedObject::createSolidTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a, VkFormat fmt) {
 	uint8_t px[4] = {r, g, b, a};
 	VkBuffer stg;
 	VkDeviceMemory stgMem;
@@ -490,7 +385,7 @@ int OBJModel::createSolidTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a, VkF
 	std::memcpy(p, px, 4);
 	vkUnmapMemory(Engine::device, stgMem);
 
-	LoadedTexture lt{};
+	Texture lt{};
 	Engine::createImage(1, 1, fmt, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, lt.image, lt.memory);
 
 	Engine::transitionImageLayout(lt.image, fmt, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -512,7 +407,47 @@ int OBJModel::createSolidTexture(uint8_t r, uint8_t g, uint8_t b, uint8_t a, VkF
 	return idx;
 }
 
-void OBJModel::createMaterialDescriptorSetLayout() {
+VkSampler InstancedObject::createDefaultSampler() const {
+	VkPhysicalDeviceProperties props{};
+	vkGetPhysicalDeviceProperties(Engine::physicalDevice, &props);
+
+	VkSamplerCreateInfo si{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+	si.magFilter = VK_FILTER_LINEAR;
+	si.minFilter = VK_FILTER_LINEAR;
+	si.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	si.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	si.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	si.anisotropyEnable = VK_TRUE;
+	si.maxAnisotropy = props.limits.maxSamplerAnisotropy;
+	si.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	si.unnormalizedCoordinates = VK_FALSE;
+	si.compareEnable = VK_FALSE;
+	si.compareOp = VK_COMPARE_OP_ALWAYS;
+	si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+	VkSampler s{};
+	if (vkCreateSampler(Engine::device, &si, nullptr, &s) != VK_SUCCESS) {
+		throw std::runtime_error("OBJModel: sampler create failed");
+	}
+	return s;
+}
+
+void InstancedObject::destroyLoadedTextures() {
+	for (auto &t : textures) {
+		if (t.sampler)
+			vkDestroySampler(Engine::device, t.sampler, nullptr);
+		if (t.view)
+			vkDestroyImageView(Engine::device, t.view, nullptr);
+		if (t.image)
+			vkDestroyImage(Engine::device, t.image, nullptr);
+		if (t.memory)
+			vkFreeMemory(Engine::device, t.memory, nullptr);
+		t = {};
+	}
+	textures.clear();
+}
+
+void InstancedObject::createMaterialDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding texArr{};
 	texArr.binding = 0;
 	texArr.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -547,7 +482,7 @@ void OBJModel::createMaterialDescriptorSetLayout() {
 		throw std::runtime_error("OBJModel: material descriptor pool create failed");
 }
 
-void OBJModel::createMaterialResources() {
+void InstancedObject::createMaterialResources() {
 	// Ensure dummies exist FIRST so we can skip them in mapping
 	if (dummyWhiteIndex < 0)
 		dummyWhiteIndex = createSolidTexture(255, 255, 255, 255, VK_FORMAT_R8G8B8A8_SRGB);
@@ -589,7 +524,7 @@ void OBJModel::createMaterialResources() {
 	}
 
 	// Upload materials SSBO
-	VkDeviceSize sz = sizeof(MaterialGPU) * materialsGPU.size();
+	VkDeviceSize sz = sizeof(Material) * materialsGPU.size();
 	if (materialsBuf) {
 		vkDestroyBuffer(Engine::device, materialsBuf, nullptr);
 		materialsBuf = VK_NULL_HANDLE;
@@ -616,7 +551,7 @@ void OBJModel::createMaterialResources() {
 	vkFreeMemory(Engine::device, stagingMem, nullptr);
 }
 
-void OBJModel::createMaterialDescriptorSets() {
+void InstancedObject::createMaterialDescriptorSets() {
 	VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
 	ai.descriptorPool = materialPool;
 	ai.descriptorSetCount = 1;
@@ -668,124 +603,43 @@ void OBJModel::createMaterialDescriptorSets() {
 	vkUpdateDescriptorSets(Engine::device, (uint32_t)w.size(), w.data(), 0, nullptr);
 }
 
-// ---------- buffers & pipeline ----------
-void OBJModel::createBindingDescriptions() {
-	bindingDescription = OBJVertex::getBindingDescription();
-	attributeDescriptions = OBJVertex::getAttributeDescriptions();
+void InstancedObject::createBindingDescriptions() {
+	// binding 0: per-vertex
+	vertexBD.binding = 0;
+	vertexBD.stride = sizeof(Vertex);
+	vertexBD.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	// binding 1: per-instance (mat4 model -> 4x vec4 = 4 attributes)
+	instanceBD.binding = 1;
+	instanceBD.stride = sizeof(InstancedObjectData);
+	instanceBD.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+	bindings = {vertexBD, instanceBD};
+
+	// Start with the mesh vertex attributes (locations 0..5)
+	attributes = Vertex::getAttributeDescriptions();
+
+	// Then append 4 attributes for the instance model matrix columns (locations 6..9)
+	// NOTE: std140-style column-major mat4 as 4 vec4 attributes.
+	const uint32_t locBase = 6;
+	attributes.push_back({locBase + 0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 0)});
+	attributes.push_back({locBase + 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 1)});
+	attributes.push_back({locBase + 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 2)});
+	attributes.push_back({locBase + 3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 3)});
 }
 
-void OBJModel::createVertexBuffer() {
-	if (vertices.empty())
-		throw std::runtime_error("OBJModel: no vertices");
-	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+void InstancedObject::setupGraphicsPipeline() {
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = (uint32_t)bindings.size();
+	vertexInputInfo.pVertexBindingDescriptions = bindings.data();
+	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)attributes.size();
+	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
-	VkBuffer stg;
-	VkDeviceMemory stgMem;
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stg, stgMem);
-
-	void *data = nullptr;
-	vkMapMemory(Engine::device, stgMem, 0, bufferSize, 0, &data);
-	std::memcpy(data, vertices.data(), (size_t)bufferSize);
-	vkUnmapMemory(Engine::device, stgMem);
-
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-	Engine::copyBuffer(stg, vertexBuffer, bufferSize);
-
-	vkDestroyBuffer(Engine::device, stg, nullptr);
-	vkFreeMemory(Engine::device, stgMem, nullptr);
-}
-
-void OBJModel::createIndexBuffer() {
-	if (indices.empty())
-		throw std::runtime_error("OBJModel: no indices");
-	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-	VkBuffer stg;
-	VkDeviceMemory stgMem;
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stg, stgMem);
-
-	void *data = nullptr;
-	vkMapMemory(Engine::device, stgMem, 0, bufferSize, 0, &data);
-	std::memcpy(data, indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(Engine::device, stgMem);
-
-	Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-	Engine::copyBuffer(stg, indexBuffer, bufferSize);
-
-	vkDestroyBuffer(Engine::device, stg, nullptr);
-	vkFreeMemory(Engine::device, stgMem, nullptr);
-}
-
-void OBJModel::setupGraphicsPipeline() {
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
-    setLayouts = { descriptorSetLayout, materialDSL };
+	setLayouts = {descriptorSetLayout, materialDSL};
 	pipelineLayoutInfo.setLayoutCount = (uint32_t)setLayouts.size();
 	pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 }
 
-// ---------- render ----------
-void OBJModel::render() {
-	copyUBO();
-
-	VkCommandBuffer cmd = Engine::currentCommandBuffer();
-
-	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-	vkCmdSetViewport(cmd, 0, 1, &screenParams.viewport);
-	vkCmdSetScissor(cmd, 0, 1, &screenParams.scissor);
-
-	VkBuffer vbs[] = {vertexBuffer};
-	VkDeviceSize offs[] = {0};
-	vkCmdBindVertexBuffers(cmd, 0, 1, vbs, offs);
-	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-	// set=0 UBO (per-frame)
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
-	// set=1 materials/textures (single)
-	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDS, 0, nullptr);
-
-	vkCmdDrawIndexed(cmd, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-}
-
-// ---------- helpers ----------
-VkSampler OBJModel::createDefaultSampler() const {
-	VkPhysicalDeviceProperties props{};
-	vkGetPhysicalDeviceProperties(Engine::physicalDevice, &props);
-
-	VkSamplerCreateInfo si{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-	si.magFilter = VK_FILTER_LINEAR;
-	si.minFilter = VK_FILTER_LINEAR;
-	si.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	si.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	si.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	si.anisotropyEnable = VK_TRUE;
-	si.maxAnisotropy = props.limits.maxSamplerAnisotropy;
-	si.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	si.unnormalizedCoordinates = VK_FALSE;
-	si.compareEnable = VK_FALSE;
-	si.compareOp = VK_COMPARE_OP_ALWAYS;
-	si.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-	VkSampler s{};
-	if (vkCreateSampler(Engine::device, &si, nullptr, &s) != VK_SUCCESS) {
-		throw std::runtime_error("OBJModel: sampler create failed");
-	}
-	return s;
-}
-
-void OBJModel::destroyLoadedTextures() {
-	for (auto &t : textures) {
-		if (t.sampler)
-			vkDestroySampler(Engine::device, t.sampler, nullptr);
-		if (t.view)
-			vkDestroyImageView(Engine::device, t.view, nullptr);
-		if (t.image)
-			vkDestroyImage(Engine::device, t.image, nullptr);
-		if (t.memory)
-			vkFreeMemory(Engine::device, t.memory, nullptr);
-		t = {};
-	}
-	textures.clear();
-}
+void InstancedObject::bindExtraDescriptorSets(VkCommandBuffer cmd) { vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDS, 0, nullptr); }

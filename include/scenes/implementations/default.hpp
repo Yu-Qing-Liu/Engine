@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine.hpp"
-#include "objmodel.hpp"
+#include "object.hpp"
 #include "scene.hpp"
 #include "text.hpp"
 
@@ -34,6 +34,6 @@ class Default : public Scene {
 	unique_ptr<Model> example;
 	unique_ptr<Model> particles;
 
-	unique_ptr<OBJModel> room;
+	unique_ptr<Object> room;
 	unique_ptr<Text> text;
 };

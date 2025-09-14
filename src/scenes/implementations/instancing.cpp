@@ -1,7 +1,7 @@
 #include "instancing.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
-#include "objmodel.hpp"
+#include "object.hpp"
 #include "scenes.hpp"
 #include <memory>
 #include <optional>

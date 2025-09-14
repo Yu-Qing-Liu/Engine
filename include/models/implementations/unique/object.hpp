@@ -1,8 +1,8 @@
 #pragma once
 
-#include "assimp/Importer.hpp"
-#include "assimp/scene.h"
 #include "model.hpp"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
 #include <vulkan/vulkan_core.h>
 
 using std::make_unique;
@@ -12,16 +12,16 @@ using std::unique_ptr;
 #define OBJMODEL_MAX_TEXTURES 64
 #endif
 
-class OBJModel : public Model {
+class Object : public Model {
   public:
-	OBJModel(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &objPath);
-	OBJModel(OBJModel &&) = delete;
-	OBJModel(const OBJModel &) = delete;
-	OBJModel &operator=(OBJModel &&) = delete;
-	OBJModel &operator=(const OBJModel &) = delete;
-	~OBJModel();
+	Object(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &objPath);
+	Object(Object &&) = delete;
+	Object(const Object &) = delete;
+	Object &operator=(Object &&) = delete;
+	Object &operator=(const Object &) = delete;
+	~Object();
 
-	struct OBJVertex {
+	struct Vertex {
 		vec3 pos;
 		vec3 nrm;
 		vec4 col;
@@ -32,24 +32,24 @@ class OBJModel : public Model {
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription b{};
 			b.binding = 0;
-			b.stride = sizeof(OBJVertex);
+			b.stride = sizeof(Vertex);
 			b.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 			return b;
 		}
 
 		static vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
 			vector<VkVertexInputAttributeDescription> a(6);
-			a[0] = {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(OBJVertex, pos)};
-			a[1] = {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(OBJVertex, nrm)};
-			a[2] = {2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(OBJVertex, col)};
-			a[3] = {3, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(OBJVertex, uv)};
-			a[4] = {4, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(OBJVertex, tan_sgn)};
-			a[5] = {5, 0, VK_FORMAT_R32_UINT, offsetof(OBJVertex, materialId)};
+			a[0] = {0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)};
+			a[1] = {1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, nrm)};
+			a[2] = {2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, col)};
+			a[3] = {3, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv)};
+			a[4] = {4, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, tan_sgn)};
+			a[5] = {5, 0, VK_FORMAT_R32_UINT, offsetof(Vertex, materialId)};
 			return a;
 		}
 	};
 
-	struct MaterialGPU {
+	struct Material {
 		// 9 texture indices
 		int32_t baseColor;
 		int32_t normal;
@@ -72,7 +72,7 @@ class OBJModel : public Model {
 		glm::vec4 metallic_flags_pad;		// x = metallic, y = flags (uintBitsToFloat), z/w pad
 	};
 
-	struct LoadedTexture {
+	struct Texture {
 		VkImage image = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
 		VkImageView view = VK_NULL_HANDLE;
@@ -85,8 +85,6 @@ class OBJModel : public Model {
   protected:
 	void buildBVH() override;
 	void createBindingDescriptions() override;
-	void createVertexBuffer() override;
-	void createIndexBuffer() override;
 	void setupGraphicsPipeline() override;
 
   private:
@@ -112,12 +110,11 @@ class OBJModel : public Model {
 	string directory;
 
 	// Geometry
-	std::vector<OBJVertex> vertices;
-	std::vector<uint16_t> indices;
+	std::vector<Vertex> vertices;
 
 	// Materials
-	std::vector<MaterialGPU> materialsGPU;
-	std::vector<LoadedTexture> textures;			   // loaded images (not descriptor slots!)
+	std::vector<Material> materialsGPU;
+	std::vector<Texture> textures;					   // loaded images (not descriptor slots!)
 	std::unordered_map<std::string, int> textureCache; // "path|FMT" or "*N|FMT" -> textures[] index
 
 	std::vector<uint8_t> matHasBaseColorTex;

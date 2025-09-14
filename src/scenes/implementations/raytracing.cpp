@@ -1,6 +1,6 @@
 #include "raytracing.hpp"
 #include "engine.hpp"
-#include "objmodel.hpp"
+#include "object.hpp"
 #include "polygon.hpp"
 #include "scenes.hpp"
 #include "colors.hpp"
