@@ -61,6 +61,7 @@ class Texture : public Model {
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
 	void createBindingDescriptions() override;
+	void setupGraphicsPipeline() override;
 
   private:
 	string texturePath;
