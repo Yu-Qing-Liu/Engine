@@ -1,4 +1,5 @@
 #include "instancing.hpp"
+#include "colors.hpp"
 #include "engine.hpp"
 #include "objmodel.hpp"
 #include "scenes.hpp"
@@ -80,10 +81,10 @@ void Instancing::swapChainUpdate() {
     grid->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
 
     const vec3 size = vec3(0.8f); // scale cubes a bit
-	polygons->updateInstance(0, InstancedPolygonData(vec3(-1.0f, -1.0f, 0.0f), size));
-	polygons->updateInstance(1, InstancedPolygonData(vec3(1.0f, -1.0f, 0.0f), size));
-	polygons->updateInstance(2, InstancedPolygonData(vec3(-1.0f, 1.0f, 0.0f), size));
-	polygons->updateInstance(3, InstancedPolygonData(vec3(1.0f, 1.0f, 0.0f), size));
+	polygons->updateInstance(0, InstancedPolygonData(vec3(-1.0f, -1.0f, 0.0f), size, Colors::Green, Colors::Black));
+	polygons->updateInstance(1, InstancedPolygonData(vec3(1.0f, -1.0f, 0.0f), size, Colors::Red, Colors::Black));
+	polygons->updateInstance(2, InstancedPolygonData(vec3(-1.0f, 1.0f, 0.0f), size, Colors::Purple, Colors::Black));
+	polygons->updateInstance(3, InstancedPolygonData(vec3(1.0f, 1.0f, 0.0f), size, Colors::Yellow, Colors::Black));
     polygons->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 

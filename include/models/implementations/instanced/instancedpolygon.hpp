@@ -11,13 +11,13 @@ using std::unordered_map;
 struct InstancedPolygonData {
 	mat4 model{1.0f};
 	vec4 color{Colors::Green};
-	vec4 outlineColor{Colors::Transparent(0.0f)};
+	vec4 outlineColor{Colors::Green};
 	float outlineWidth{0.0f};
 	float _pad0 = 0.0f, _pad1 = 0.0f, _pad2 = 0.0f;
 
 	InstancedPolygonData() = default;
 
-	InstancedPolygonData(vec3 pos, vec3 size, vec4 color = Colors::Green, vec4 outlineColor = Colors::Transparent(0.0f), float outlineWidth = 0.0f, float borderRadius = 0.0f) : model(glm::translate(mat4(1.0f), pos) * glm::scale(mat4(1.0), size)), color(color), outlineColor(outlineColor), outlineWidth(outlineWidth) {}
+	InstancedPolygonData(vec3 pos, vec3 size, vec4 color = Colors::Green, vec4 outlineColor = Colors::Green, float outlineWidth = 0.0f, float borderRadius = 0.0f) : model(glm::translate(mat4(1.0f), pos) * glm::scale(mat4(1.0), size)), color(color), outlineColor(outlineColor), outlineWidth(outlineWidth) {}
 };
 
 class InstancedPolygon : public InstancedModel<InstancedPolygonData> {

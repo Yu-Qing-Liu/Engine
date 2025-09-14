@@ -14,7 +14,7 @@ class Polygon : public Model {
 
 	struct Params {
 		vec4 color = Colors::Green;
-		vec4 outlineColor = Colors::Transparent(0.0);
+		vec4 outlineColor = Colors::Green;
 		float outlineWidth = 0.0f; // pixels
 		float _pad0 = 0.0f, _pad1 = 0.0f, _pad2 = 0.0f;
 	};
