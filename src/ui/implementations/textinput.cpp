@@ -109,9 +109,15 @@ TextInput::TextInput(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &s
 			if (selected) {
 				container->params.color = styleParams.activeBgColor;
 				container->params.outlineColor = styleParams.activeOutlineColor;
+                #if ANDROID_VK
+                Events::showSoftKeyboard(true);
+                #endif
 			} else {
 				container->params.color = styleParams.bgColor;
 				container->params.outlineColor = styleParams.outlineColor;
+                #if ANDROID_VK
+                Events::hideSoftKeyboard(true);
+                #endif
 			}
 		}
 	};

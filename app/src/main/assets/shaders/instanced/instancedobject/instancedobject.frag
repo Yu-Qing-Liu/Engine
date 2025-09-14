@@ -150,7 +150,7 @@ void main() {
     vec3 direct = (kD * albedo / PI + spec) * NoL;
 
     // Very simple ambient term modulated by AO
-    vec3 ambient = albedo * 0.03 * ao;
+    vec3 ambient = albedo * 0.48 * ao;
 
     vec3 color = ambient + direct + emissive;
 

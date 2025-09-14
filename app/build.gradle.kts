@@ -1,4 +1,7 @@
-plugins { id("com.android.application") }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+}
 
 android {
     namespace = "com.example.engine"
@@ -10,6 +13,11 @@ android {
         applicationId = "com.example.engine"
         minSdk = 26
         targetSdk = 34
+
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_21
+            targetCompatibility = JavaVersion.VERSION_21
+        }
 
         externalNativeBuild {
             cmake {
@@ -34,4 +42,4 @@ android {
     }
 }
 
-dependencies { }
+dependencies {}
