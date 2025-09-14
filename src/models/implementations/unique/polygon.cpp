@@ -1,14 +1,11 @@
 #include "polygon.hpp"
-#include "colors.hpp"
 #include "engine.hpp"
 #include <cstring>
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : inputVertices(vertices), inputIndices(indices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
-	std::vector<Vertex> expandedVerts;
-	std::vector<uint16_t> expandedIdx;
-	expandForOutlines(inputVertices, inputIndices, this->vertices, this->indices);
+Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
+	expandForOutlines<Vertex>(vertices, indices, this->vertices, this->indices);
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
@@ -39,120 +36,6 @@ Polygon::~Polygon() {
 		if (paramsBuffers[i]) {
 			vkDestroyBuffer(Engine::device, paramsBuffers[i], nullptr);
 		}
-	}
-}
-
-struct EdgeKey {
-	uint32_t a, b;
-	bool operator==(const EdgeKey &o) const noexcept { return a == o.a && b == o.b; }
-};
-
-struct EdgeKeyHash {
-	size_t operator()(const EdgeKey &k) const noexcept { return (size_t(k.a) << 32) ^ size_t(k.b); }
-};
-
-void Polygon::expandForOutlines(const std::vector<Vertex> &inVerts, const std::vector<uint16_t> &inIdx, std::vector<Vertex> &outVerts, std::vector<uint16_t> &outIdx) {
-	struct Edge {
-		uint32_t a, b;
-		int tri0 = -1;
-		int tri1 = -1;
-	};
-	struct EdgeKey {
-		uint32_t a, b;
-		bool operator==(const EdgeKey &o) const noexcept { return a == o.a && b == o.b; }
-	};
-	struct EdgeKeyHash {
-		size_t operator()(const EdgeKey &k) const noexcept { return (size_t(k.a) << 32) ^ size_t(k.b); }
-	};
-
-	if (inIdx.size() % 3 != 0)
-		throw std::runtime_error("indices not multiple of 3");
-
-	const int triCount = (int)inIdx.size() / 3;
-
-	// 1) Face normals
-	std::vector<glm::vec3> triN(triCount);
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-		glm::vec3 A = inVerts[i0].pos;
-		glm::vec3 B = inVerts[i1].pos;
-		glm::vec3 C = inVerts[i2].pos;
-		triN[t] = glm::normalize(glm::cross(B - A, C - A));
-	}
-
-	// 2) Edge adjacency
-	std::unordered_map<EdgeKey, Edge, EdgeKeyHash> edges;
-	edges.reserve(inIdx.size());
-	auto addEdge = [&](uint32_t u, uint32_t v, int tri) {
-		EdgeKey k{std::min(u, v), std::max(u, v)};
-		auto &e = edges[k];
-		e.a = k.a;
-		e.b = k.b;
-		if (e.tri0 == -1)
-			e.tri0 = tri;
-		else
-			e.tri1 = tri;
-	};
-
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-		addEdge(i0, i1, t);
-		addEdge(i1, i2, t);
-		addEdge(i2, i0, t);
-	}
-
-	// crease threshold (degrees -> cos)
-	const float deg = 30.0f; // tweak
-	const float creaseCos = std::cos(glm::radians(deg));
-
-	// 3) For each triangle, decide which of its three edges are "hard"
-	auto edgeIsHard = [&](uint32_t u, uint32_t v) {
-		EdgeKey k{std::min(u, v), std::max(u, v)};
-		auto it = edges.find(k);
-		if (it == edges.end())
-			return false; // shouldn't happen
-		const Edge &e = it->second;
-		if (e.tri1 == -1)
-			return true; // boundary
-		// two faces: compare normals
-		float d = glm::dot(triN[e.tri0], triN[e.tri1]);
-		return d < creaseCos;
-	};
-
-	outVerts.clear();
-	outIdx.clear();
-	outVerts.reserve(inIdx.size());
-	outIdx.reserve(inIdx.size());
-
-	for (int t = 0; t < triCount; ++t) {
-		uint32_t i0 = inIdx[3 * t + 0], i1 = inIdx[3 * t + 1], i2 = inIdx[3 * t + 2];
-
-		// mask.x corresponds to edge opposite v0 (edge i1-i2)
-		// mask.y -> opposite v1 (edge i2-i0)
-		// mask.z -> opposite v2 (edge i0-i1)
-		glm::vec3 mask(0.0f);
-		if (edgeIsHard(i1, i2))
-			mask.x = 1.0f;
-		if (edgeIsHard(i2, i0))
-			mask.y = 1.0f;
-		if (edgeIsHard(i0, i1))
-			mask.z = 1.0f;
-
-		auto makeV = [&](const Vertex &vin, glm::vec3 bary) {
-			Vertex v = vin;
-			v.bary = bary;
-			v.edgeMask = mask;
-			return v;
-		};
-
-		uint32_t base = (uint32_t)outVerts.size();
-		outVerts.push_back(makeV(inVerts[i0], {1, 0, 0}));
-		outVerts.push_back(makeV(inVerts[i1], {0, 1, 0}));
-		outVerts.push_back(makeV(inVerts[i2], {0, 0, 1}));
-
-		outIdx.push_back(uint16_t(base + 0));
-		outIdx.push_back(uint16_t(base + 1));
-		outIdx.push_back(uint16_t(base + 2));
 	}
 }
 

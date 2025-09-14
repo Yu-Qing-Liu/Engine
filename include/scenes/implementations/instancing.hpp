@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine.hpp"
+#include "instancedpolygon.hpp"
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
 
@@ -32,7 +33,9 @@ class Instancing : public Scene {
 
 	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
+	shared_ptr<unordered_map<int, InstancedRectangleData>> cells;
 	unique_ptr<InstancedRectangle> grid;
 
-	shared_ptr<unordered_map<int, InstancedRectangleData>> cells;
+	shared_ptr<unordered_map<int, InstancedPolygonData>> instances;
+	unique_ptr<InstancedPolygon> polygons;
 };
