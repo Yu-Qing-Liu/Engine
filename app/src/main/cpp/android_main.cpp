@@ -2,6 +2,7 @@
 #include <android/log.h>
 #include <android/looper.h>
 #include <android_native_app_glue.h>
+#include <jni.h>
 #include <chrono>
 #include <unistd.h>
 
@@ -34,6 +35,36 @@ struct AppState {
 	bool ready = false; // swapchain available
 	std::unique_ptr<Scenes> scenes;
 };
+
+static void DispatchUtf16AsCodepoints(const jchar* s, jsize len) {
+	for (jsize i = 0; i < len; ) {
+		uint32_t cp = s[i++];
+		if (cp >= 0xD800 && cp <= 0xDBFF && i < len) {
+			uint32_t low = s[i];
+			if (low >= 0xDC00 && low <= 0xDFFF) {
+				++i;
+				cp = 0x10000 + (((cp - 0xD800) << 10) | (low - 0xDC00));
+			}
+		}
+		Events::dispatchCharacter(static_cast<unsigned int>(cp));
+	}
+}
+
+// MainActivity.Companion.@JvmStatic external fun nativeOnCommitText(text: String)
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_engine_MainActivity_nativeOnCommitText(JNIEnv* env, jclass /*cls*/, jstring text) {
+	if (!text) return;
+	const jchar* chars = env->GetStringChars(text, nullptr);
+	const jsize  len   = env->GetStringLength(text);
+	DispatchUtf16AsCodepoints(chars, len);
+	env->ReleaseStringChars(text, chars);
+}
+
+// Optional: if you ever remove @JvmStatic and keep it on Companion, this alias will still work.
+extern "C" JNIEXPORT void JNICALL
+Java_com_example_engine_MainActivity_00024Companion_nativeOnCommitText(JNIEnv* env, jclass cls, jstring text) {
+	Java_com_example_engine_MainActivity_nativeOnCommitText(env, cls, text);
+}
 
 // --- Record commands just like your desktop code does ---
 static void recordComputeCommandBuffer(VkCommandBuffer commandBuffer, AppState &S) {
@@ -299,6 +330,7 @@ static void handle_cmd(android_app *app, int32_t cmd) {
 // --- Entry point for NativeActivity ---
 void android_main(android_app *app) {
 	app_dummy();
+    Events::setAndroidApp(app);
 
 	AppState state{};
 	app->userData = &state;

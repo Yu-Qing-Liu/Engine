@@ -1,10 +1,19 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:label="@string/app_name" android:hasCode="false">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.engine">
+
+    <application android:label="@string/app_name">
         <activity
-            android:name="android.app.NativeActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode|locale|layoutDirection|fontScale|smallestScreenSize|density">
-            <meta-data android:name="android.app.lib_name" android:value="engine"/>
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="stateUnspecified|adjustResize"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode">
+
+            <!-- Your native lib name -->
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="engine" />
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
