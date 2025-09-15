@@ -15,7 +15,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
             {{-0.433f, -0.25f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
             {{0.433f, -0.25f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
         },
-        std::vector<uint16_t> {
+        std::vector<uint32_t> {
             0, 1, 2
         }
     );
@@ -36,7 +36,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
             {{0.5f, 0.5f, -0.25f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
             {{-0.5f, 0.5f, -0.25f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
         },
-        std::vector<uint16_t> {
+        std::vector<uint32_t> {
             0, 1, 2, 2, 3, 0,
             4, 5, 6, 6, 7, 4
         }

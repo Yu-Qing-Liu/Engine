@@ -24,7 +24,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
             /*6*/ {{ 0.5f,  0.5f,  0.5f},     {1.0f, 1.0f, 1.0f, 1.0f}}, // RTF
             /*7*/ {{-0.5f,  0.5f,  0.5f},     {1.0f, 1.0f, 1.0f, 1.0f}}, // LTF
         },
-        std::vector<uint16_t>{
+        std::vector<uint32_t>{
             // Front  (+Z)
             4, 5, 6,   6, 7, 4,
             // Back   (-Z)
@@ -78,7 +78,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
             /*6*/ {{ 0.5f,  0.5f,  0.5f},     {1.0f, 1.0f, 1.0f, 1.0f}}, // RTF
             /*7*/ {{-0.5f,  0.5f,  0.5f},     {1.0f, 1.0f, 1.0f, 1.0f}}, // LTF
         },
-        std::vector<uint16_t>{
+        std::vector<uint32_t>{
             // Front  (+Z)
             4, 5, 6,   6, 7, 4,
             // Back   (-Z)
