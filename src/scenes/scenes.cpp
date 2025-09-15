@@ -1,9 +1,9 @@
 #include "scenes.hpp"
-#include "header.hpp"
+#include "background.hpp"
 
 Scenes::Scenes() {
-    scenes[Header::getName()] = {
-        make_unique<Header>(*this),
+    scenes[Background::getName()] = {
+        make_unique<Background>(*this),
         true
     };
 }
