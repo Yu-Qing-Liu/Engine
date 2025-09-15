@@ -60,7 +60,7 @@ class Polygon : public Model {
 		}
 	};
 
-	Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint16_t> &indices);
+	Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
 
 	Params params{};
 
@@ -76,7 +76,7 @@ class Polygon : public Model {
 	};
 
     template <typename T>
-	static void expandForOutlines(const std::vector<T> &inVerts, const std::vector<uint16_t> &inIdx, std::vector<T> &outVerts, std::vector<uint16_t> &outIdx) {
+	static void expandForOutlines(const std::vector<T> &inVerts, const std::vector<uint32_t> &inIdx, std::vector<T> &outVerts, std::vector<uint32_t> &outIdx) {
 		struct Edge {
 			uint32_t a, b;
 			int tri0 = -1;

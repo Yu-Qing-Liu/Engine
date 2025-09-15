@@ -696,7 +696,7 @@ void Object::render() {
 	VkBuffer vbs[] = {vertexBuffer};
 	VkDeviceSize offs[] = {0};
 	vkCmdBindVertexBuffers(cmd, 0, 1, vbs, offs);
-	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	// set=0 UBO (per-frame)
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);

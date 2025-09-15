@@ -3,7 +3,7 @@
 #include "assets.hpp"
 #include <cstring>
 
-InstancedPolygon::InstancedPolygon(const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint16_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances) : InstancedModel(ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedpolygon", instances, maxInstances) {
+InstancedPolygon::InstancedPolygon(const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint32_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances) : InstancedModel(ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedpolygon", instances, maxInstances) {
     Polygon::expandForOutlines<Vertex>(vertices, indices, this->vertices, this->indices);
 
 	// Geometry

@@ -102,7 +102,7 @@ template <typename T> class InstancedModel : public Model {
 		vkCmdBindVertexBuffers(cmd, 0, 2, vbs, ofs);
 
 		// Index buffer (note: your base uses uint16 indices)
-		vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 		// Descriptor set (UBO set=0)
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);

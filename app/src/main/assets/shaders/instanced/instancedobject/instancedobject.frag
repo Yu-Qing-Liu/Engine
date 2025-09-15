@@ -21,7 +21,7 @@ layout(set = 0, binding = 0) uniform UBO {
 //  - binding 0: the big texture array (size must equal OBJMODEL_MAX_TEXTURES)
 //  - binding 1: std430 SSBO with materials
 
-layout(set = 1, binding = 0) uniform sampler2D uTex[64];
+layout(set = 1, binding = 0) uniform sampler2D uTex[128];
 
 struct MaterialGPU {
     // 9 texture indices

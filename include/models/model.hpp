@@ -39,12 +39,12 @@ class Model {
 	};
 
 	struct ScreenParams {
-		VkViewport viewport{};
-		VkRect2D scissor{};
+		VkViewport viewport{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+		VkRect2D scissor{{1, 1}, {1, 1}};
 	};
 
 	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath);
-	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint16_t> &indices);
+	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -227,7 +227,7 @@ class Model {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 
-	vector<uint16_t> indices;
+	vector<uint32_t> indices;
 	vector<VkBuffer> uniformBuffers;
 	vector<VkDeviceMemory> uniformBuffersMemory;
 	vector<void *> uniformBuffersMapped;
