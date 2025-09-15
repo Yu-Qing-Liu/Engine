@@ -1,5 +1,6 @@
 #include "background.hpp"
 #include "assets.hpp"
+#include "camera.hpp"
 
 Background::Background(Scenes &scenes) : Scene(scenes) {
     kitchen = make_unique<Object>(this, kitchenUBO, screenParams, Assets::modelRootPath + "/kitchen/kitchen.obj"); 
@@ -17,8 +18,12 @@ void Background::updateScreenParams() {
 }
 
 void Background::swapChainUpdate() {
-    kitchenUBO.proj = perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 20.0f);
-	kitchen->updateUniformBuffer(std::nullopt, std::nullopt, kitchenUBO.proj);
+    kitchenUBO = Camera::blenderPerspectiveMVP(
+        screenParams.viewport.width,
+        screenParams.viewport.height,
+        lookAt(vec3(0.037831f, 0.75345f, 0.21098f), vec3(0.16384f, -0.000591f, -0.000036f), vec3(0.0f, 0.0f, 1.0f))
+    );
+	kitchen->updateUniformBuffer(kitchenUBO);
 }
 
 void Background::updateComputeUniformBuffers() {}

@@ -24,7 +24,7 @@ class Background : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	Model::UBO kitchenUBO{mat4(1.0f), lookAt(vec3(1.0f, 1.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f))};
+	Model::UBO kitchenUBO{};
 
 	std::unique_ptr<Object> kitchen;
 	std::unique_ptr<Object> walls;
