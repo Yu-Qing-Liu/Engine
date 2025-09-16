@@ -5,7 +5,7 @@
 
 // ---------- ctor/dtor ----------
 Object::Object(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/object") {
-	loadModel();
+    loadModel();
 
 	createDescriptorSetLayout();		 // set=0
 	createMaterialDescriptorSetLayout(); // set=1
@@ -157,7 +157,7 @@ void Object::loadModel() {
 	std::string rel = Assets::toAssetRel(objPath);
 	if (rel.empty()) {
 		rel = std::filesystem::path(objPath).filename().string();
-    }
+	}
 	const aiScene *scene = import.ReadFile(rel.c_str(), flags);
 #else
 	const aiScene *scene = import.ReadFile(objPath.c_str(), flags);
@@ -441,8 +441,14 @@ int Object::loadTextureFromAssimpString(const aiScene *scene, const std::string 
 		}
 
 		if (!pixels) {
-			throw std::runtime_error("assimp load texture failed");
-			return -1;
+			std::cout << "[Warning] missing texture: " << path << "\n";
+
+			if (dummyWhiteIndex < 0) {
+				dummyWhiteIndex = createSolidTexture(255, 255, 255, 255, VK_FORMAT_R8G8B8A8_SRGB);
+			}
+
+			textureCache[cacheKey] = dummyWhiteIndex;
+			return dummyWhiteIndex;
 		}
 
 		VkDeviceSize imageSize = (VkDeviceSize)w * h * 4;
@@ -678,7 +684,7 @@ void Object::createBindingDescriptions() {
 void Object::setupGraphicsPipeline() {
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
-    setLayouts = { descriptorSetLayout, materialDSL };
+	setLayouts = {descriptorSetLayout, materialDSL};
 	pipelineLayoutInfo.setLayoutCount = (uint32_t)setLayouts.size();
 	pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 }
