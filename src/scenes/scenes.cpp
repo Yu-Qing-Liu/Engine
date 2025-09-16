@@ -1,9 +1,24 @@
 #include "scenes.hpp"
-#include "background.hpp"
+#include "default.hpp"
+#include "instancing.hpp"
+#include "raytracing.hpp"
+#include "buttons.hpp"
 
 Scenes::Scenes() {
-    scenes[Background::getName()] = {
-        make_unique<Background>(*this),
+    scenes[Default::getName()] = {
+        make_unique<Default>(*this),
+        true
+    };
+    scenes[RayTracing::getName()] = {
+        make_unique<RayTracing>(*this),
+        true
+    };
+    scenes[Buttons::getName()] = {
+        make_unique<Buttons>(*this),
+        true
+    };
+    scenes[Instancing::getName()] = {
+        make_unique<Instancing>(*this),
         true
     };
 }
