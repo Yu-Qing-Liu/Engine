@@ -2,9 +2,8 @@
 .gcroots/
 .idea/
 
-# Implementation
-./src/scenes/
-./include/scenes/
+src/scenes/implementations
+src/include/implementations
 
 ##### Windows
 # Windows thumbnail cache files
