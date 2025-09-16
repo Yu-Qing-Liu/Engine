@@ -5,16 +5,16 @@
 #include "scene.hpp"
 #include "text.hpp"
 
-class Main : public Scene {
+class Default : public Scene {
   public:
-	Main(Scenes &scenes);
-	Main(Main &&) = default;
-	Main(const Main &) = delete;
-	Main &operator=(Main &&) = delete;
-	Main &operator=(const Main &) = delete;
-	~Main() = default;
+	Default(Scenes &scenes);
+	Default(Default &&) = default;
+	Default(const Default &) = delete;
+	Default &operator=(Default &&) = delete;
+	Default &operator=(const Default &) = delete;
+	~Default() = default;
 
-	static const std::string getName() { return "Main"; }
+	static const std::string getName() { return "Default"; }
 
 	void updateScreenParams() override;
 
