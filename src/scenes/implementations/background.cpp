@@ -21,7 +21,7 @@ void Background::swapChainUpdate() {
     kitchenUBO = Camera::blenderPerspectiveMVP(
         screenParams.viewport.width,
         screenParams.viewport.height,
-        lookAt(vec3(0.037831f, 0.75345f, 0.21098f), vec3(0.16384f, -0.000591f, -0.000036f), vec3(0.0f, 0.0f, 1.0f))
+        lookAt(vec3(0.44584f, 1.0074f, 0.09592f), vec3(0.2928f, 0.0f, -0.047457f), vec3(0.0f, 0.0f, 1.0f))
     );
 	kitchen->updateUniformBuffer(kitchenUBO);
 }
