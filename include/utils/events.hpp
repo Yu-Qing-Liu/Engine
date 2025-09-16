@@ -17,6 +17,8 @@
 using MouseClickCallback = std::function<void(int /*button*/, int /*action*/, int /*mods*/)>;
 using KeyboardCallback = std::function<void(int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/)>;
 using CharacterInputCallback = std::function<void(unsigned int codepoint)>;
+using WindowFocusedCallback = std::function<void(GLFWwindow* win, int focused)>;
+using CursorCallback = std::function<void(float x, float y)>;
 
 namespace Events {
 
@@ -29,6 +31,8 @@ enum : int { MOUSE_BUTTON_LEFT = 0, MOUSE_BUTTON_RIGHT = 1, MOUSE_BUTTON_MIDDLE 
 inline std::vector<MouseClickCallback> mouseCallbacks{};
 inline std::vector<KeyboardCallback> keyboardCallbacks{};
 inline std::vector<CharacterInputCallback> characterInputCallbacks{};
+inline std::vector<WindowFocusedCallback> windowFocusedCallbacks{};
+inline std::vector<CursorCallback> cursorCallbacks{};
 
 inline float pointerX = 0.0f;
 inline float pointerY = 0.0f;
@@ -49,6 +53,16 @@ inline void dispatchCharacter(unsigned int codepoint) {
 		cb(codepoint);
 }
 
+inline void dispatchWindowFocused(GLFWwindow* win, int focused) {
+    for (const auto &cb : windowFocusedCallbacks)
+        cb(win, focused);
+}
+
+inline void dispatchCursorCallback(float x, float y) {
+    for (const auto &cb : cursorCallbacks)
+        cb(x, y);
+}
+
 inline void setAndroidApp(void *) {}
 
 #if !ANDROID_VK
@@ -59,6 +73,8 @@ inline void handleMouseCallbacks(GLFWwindow * /*window*/, int button, int action
 inline void handleKeyboardCallbacks(GLFWwindow * /*window*/, int key, int scancode, int action, int mods) { dispatchKey(key, scancode, action, mods); }
 
 inline void handleCharacterInputCallbacks(GLFWwindow *, unsigned int codepoint) { dispatchCharacter(codepoint); }
+
+inline void handleWindowFocusedCallbacks(GLFWwindow * win, int focused) { dispatchWindowFocused(win, focused); }
 
 #else
 // ======================= Android (NativeActivity) =======================

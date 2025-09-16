@@ -1,9 +1,8 @@
 #pragma once
 
-#include "engine.hpp"
-#include "object.hpp"
-#include "scene.hpp"
-#include "text.hpp"
+#include "circuit.hpp"
+#include "scenes.hpp"
+#include "shapes.hpp"
 
 class Main : public Scene {
   public:
@@ -26,14 +25,30 @@ class Main : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	Model::UBO persp{mat4(1.0f), lookAt(vec3(2.0f, 2.0f, 2.0f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f)), perspective(radians(45.0f), Engine::swapChainExtent.width / (float)Engine::swapChainExtent.height, 0.1f, 10.0f)};
+	Model::UBO persp{};
+	Model::UBO orthographic{};
 
-	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
+	// Camera state (meters)
+	glm::vec3 camPos{12.0f, 12.0f, 12.0f};
+	glm::vec3 camTarget{0.0f, 0.0f, 0.0f};
+	glm::vec3 camUp{0.0f, 0.0f, 1.0f};
+	float camSpeed = 1.0f;
 
-	unique_ptr<Model> triangle;
-	unique_ptr<Model> example;
-	unique_ptr<Model> particles;
+	// FPS mouselook state
+	float yaw = 0.0f;		   // radians, wraps freely
+	float pitch = 0.0f;		   // radians, clamp to ~(-89°, +89°)
+	float mouseSens = 0.0025f; // tweak to taste
 
-	unique_ptr<Object> room;
-	unique_ptr<Text> text;
+	// mouse-aim state
+	double lastPointerX = -1.0;
+	double lastPointerY = -1.0;
+
+	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
+
+	unique_ptr<Circuit> circuit;
+	unique_ptr<InstancedPolygon> nodes;
+	unique_ptr<InstancedPolygon> edges;
+
+	void handleCameraInput(float dt);
+    void mouseLookFPS();
 };

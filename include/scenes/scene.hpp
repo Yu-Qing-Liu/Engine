@@ -1,7 +1,9 @@
 #pragma once
 
 #include "model.hpp"
+#include "polygon.hpp"
 #include <memory>
+
 using std::unique_ptr;
 
 class Scenes;
@@ -32,4 +34,6 @@ class Scene {
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
+	unique_ptr<Polygon> limits;
+	vec3 lookAtCoords;
 };

@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "main.hpp"
 #include "scenes.hpp"
 
 Scene::Scene(Scenes &scenes) : scenes(scenes) {
@@ -10,6 +11,8 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.maxDepth = 1.0f;
 	screenParams.scissor.offset = {0, 0};
 	screenParams.scissor.extent = Engine::swapChainExtent;
+    limits = Shapes::cube(this, UBO{}, screenParams);
+    limits->setRayTraceEnabled(true);
 }
 
 void Scene::updateRayTraceUniformBuffers() {
@@ -47,11 +50,14 @@ void Scene::rayTraces() {
 	}
 
 	if (closest) {
+        lookAtCoords = closest->hitPos.value();
 		closest->setMouseIsOver(true);
 		if (closest->onMouseHover) {
 			closest->onMouseHover();
 		}
-	} 
+	} else if (limits->hitPos) {
+        lookAtCoords = limits->hitPos.value();
+    } 
     for (auto *m : models) {
         if (closest && m == closest) {
             continue;

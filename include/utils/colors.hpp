@@ -31,6 +31,15 @@ inline constexpr Color Green{{0.f, 1.f, 0.f}};
 inline constexpr Color Blue{{0.f, 0.f, 1.f}};
 inline constexpr Color Yellow{{1.f, 1.f, 0.f}};
 inline constexpr Color Cyan{{0.f, 1.f, 1.f}};
-inline constexpr Color Purple{{1.f, 0.f, 1.f}};
+inline constexpr Color Purple{{0.3f, 0.f, 0.3f}};
+inline constexpr Color Orange{{1.f, 0.349f, 0.f}};
+inline constexpr Color Teal{{0.f, 0.50, 0.50}};
+inline constexpr Color LightBlue{{0.678f, 0.847f, 0.902f}};
+inline constexpr Color Turquoise{{0.f, 1.f, 0.8f}};
+inline constexpr Color Pink{{1.0f, 0.71f, 0.76f}};
+inline constexpr Color Lime{{0.196f, 0.804f, 0.196f}};
+inline constexpr Color DeepPink{{1.0f, 0.078f, 0.588f}};
+inline constexpr Color Tan{{0.824f, 0.706f, 0.549f}};
+inline constexpr Color DarkBlue{{0.f, 0.20f, 0.4f}};
 
 } // namespace Colors
