@@ -1,0 +1,2 @@
+include/scenes/** merge=ours
+src/scenes/**     merge=ours
