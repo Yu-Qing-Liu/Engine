@@ -27,16 +27,18 @@ file(GLOB ENGINE_MODELS_IMPL
   "${REPO_ROOT}/src/models/implementations/unique/*.cpp"
   "${REPO_ROOT}/src/models/implementations/instanced/*.cpp"
 )
-file(GLOB ENGINE_SCENES        "${REPO_ROOT}/src/scenes/*.cpp")
-file(GLOB ENGINE_SCENES_IMPL   "${REPO_ROOT}/src/scenes/implementations/*.cpp")
-file(GLOB ENGINE_UI            "${REPO_ROOT}/src/ui/*.cpp")
-file(GLOB ENGINE_UI_IMPL       "${REPO_ROOT}/src/ui/implementations/*.cpp")
+file(GLOB ENGINE_SCENES           "${REPO_ROOT}/src/scenes/*.cpp")
+file(GLOB ENGINE_SCENES_IMPL      "${REPO_ROOT}/src/scenes/implementations/*.cpp")
+file(GLOB ENGINE_SCENES_DEFAULT   "${REPO_ROOT}/src/scenes/implementations/default/*.cpp")
+file(GLOB ENGINE_UI               "${REPO_ROOT}/src/ui/*.cpp")
+file(GLOB ENGINE_UI_IMPL          "${REPO_ROOT}/src/ui/implementations/*.cpp")
 
 add_library(SOURCES STATIC
         ${ENGINE_MODELS}
         ${ENGINE_MODELS_IMPL}
         ${ENGINE_SCENES}
         ${ENGINE_SCENES_IMPL}
+        ${ENGINE_SCENES_DEFAULT}
         ${ENGINE_UI}
         ${ENGINE_UI_IMPL}
 )
@@ -50,6 +52,7 @@ target_include_directories(SOURCES PUBLIC
         "${REPO_ROOT}/include/models/implementations/instanced"
         "${REPO_ROOT}/include/scenes"
         "${REPO_ROOT}/include/scenes/implementations"
+        "${REPO_ROOT}/include/scenes/default"
         "${REPO_ROOT}/include/ui"
         "${REPO_ROOT}/include/ui/implementations"
 )
