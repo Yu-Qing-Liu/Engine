@@ -1,5 +1,4 @@
 #include "scene.hpp"
-#include "main.hpp"
 #include "scenes.hpp"
 
 Scene::Scene(Scenes &scenes) : scenes(scenes) {

@@ -1,10 +1,14 @@
 #include "scenes.hpp"
-#include "main.hpp"
-#include "overlay.hpp"
+#include "buttons.hpp"
+#include "default.hpp"
+#include "instancing.hpp"
+#include "raytracing.hpp"
 
 Scenes::Scenes() {
-    scenesContainer.emplace_back(make_shared<Main>(*this));
-    scenesContainer.emplace_back(make_shared<Overlay>(*this));
+    scenesContainer.emplace_back(make_shared<Default>(*this));
+    scenesContainer.emplace_back(make_shared<Buttons>(*this));
+    scenesContainer.emplace_back(make_shared<Instancing>(*this));
+    scenesContainer.emplace_back(make_shared<RayTracing>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
     }
