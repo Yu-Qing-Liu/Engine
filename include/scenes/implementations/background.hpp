@@ -12,7 +12,7 @@ class Background : public Scene {
 	Background &operator=(const Background &) = delete;
 	~Background() = default;
 
-	static const std::string getName() { return "Background"; }
+	std::string getName() override { return "Background"; }
 
 	void updateScreenParams() override;
 
