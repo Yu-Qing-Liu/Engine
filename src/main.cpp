@@ -43,12 +43,18 @@ class Application {
 
 		glfwMakeContextCurrent(window);
 
+		glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_FALSE);
+		glfwSetInputMode(window, GLFW_REPEAT, GLFW_TRUE);
+
 		glfwSetMouseButtonCallback(window, Events::handleMouseCallbacks);
 		glfwSetKeyCallback(window, Events::handleKeyboardCallbacks);
 		glfwSetCharCallback(window, Events::handleCharacterInputCallbacks);
+		glfwSetWindowFocusCallback(window, Events::handleWindowFocusedCallbacks);
+
 		glfwSetCursorPosCallback(window, [](GLFWwindow *, double x, double y) {
 			Events::pointerX = (float)x;
 			Events::pointerY = (float)y;
+			Events::dispatchCursorCallback(x, y);
 		});
 	}
 

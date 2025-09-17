@@ -13,7 +13,7 @@ class RayTracing : public Scene {
 	RayTracing &operator=(const RayTracing &) = delete;
 	~RayTracing() = default;
 
-	static const std::string getName() { return "RayTracing"; }
+	std::string getName() override { return "RayTracing"; }
 
 	void updateScreenParams() override;
 

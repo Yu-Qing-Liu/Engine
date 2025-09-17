@@ -13,13 +13,7 @@ Text::Text(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const TextP
 	if (fontBlob.empty()) {
 		throw std::runtime_error("FREETYPE: Font bytes not found");
 	}
-	const FT_Error err = FT_New_Memory_Face(
-		ft,
-		reinterpret_cast<const FT_Byte*>(fontBlob.data()),
-		static_cast<FT_Long>(fontBlob.size()),
-		0,
-		&face
-	);
+	const FT_Error err = FT_New_Memory_Face(ft, reinterpret_cast<const FT_Byte *>(fontBlob.data()), static_cast<FT_Long>(fontBlob.size()), 0, &face);
 	if (err) {
 		throw std::runtime_error("FREETYPE: Failed to load font");
 	}
@@ -567,9 +561,9 @@ void Text::setupGraphicsPipeline() {
 	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-	pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pc.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	pc.offset = 0;
-	pc.size = sizeof(glm::vec4) * 4;
+	pc.size = sizeof(glm::vec4) * 7;
 
 	pipelineLayoutInfo.pushConstantRangeCount = 1;
 	pipelineLayoutInfo.pPushConstantRanges = &pc;
@@ -599,19 +593,27 @@ static std::vector<std::pair<size_t, size_t>> findAllMatches(const std::string &
 	return out;
 }
 
-void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt) {
+void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt, const BillboardParams *bbOpt) {
 	copyUBO();
+
+	const bool billboard = (bbOpt != nullptr);
 
 	// Build tagged geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
 	std::optional<size_t> caretByte = caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt;
 	float caretW = caretOpt ? caretOpt->px : 0.0f;
-	if (origin.has_value()) {
-		buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
+
+	if (!billboard) {
+		if (origin.has_value()) {
+			buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
+		} else {
+			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
+		}
 	} else {
-		buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
+		buildGeometryTaggedUTF8(text, {/*origin*/ 0, 0, 0}, scale, selRanges, caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt, caretOpt ? caretOpt->px : 0.0f, verts, idx);
 	}
+
 	if (idx.empty())
 		return;
 
@@ -676,21 +678,30 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 		vkFreeMemory(Engine::device, stagingMem, nullptr);
 	}
 
-	// Push constants (all 4 vec4s)
+	// --- Push constants (now include billboard data and push to VS|FS) ---
 	struct PC {
 		glm::vec4 textColor;
 		glm::vec4 selectColor;
 		glm::vec4 caretColor;
-		glm::vec4 misc; // x=caretPx, y=caretOn(0/1), z=timeSeconds, w=unused
-	} pc;
+		glm::vec4 misc;			// x=caretPx, y=caretOn, z=time, w=mode (0=normal, 1=billboard)
+		glm::vec4 bbCenter;		// xyz = world center (billboard only)
+		glm::vec4 bbOffsetPx;	// xy = pixel offset
+		glm::vec4 bbScreenSize; // xy = framebuffer size in px
+	} pc{};
+
 	pc.textColor = textColor;
 	pc.selectColor = selColor;
 	pc.caretColor = caretOpt ? caretOpt->color : glm::vec4(0, 0, 0, 0);
-	pc.misc = glm::vec4(caretOpt ? caretOpt->px : 0.0f,			  // x
-						(caretOpt && caretOpt->on) ? 1.0f : 0.0f, // y
-						Engine::time,							  // z = time
-						0.0f									  // w
-	);
+	pc.misc = glm::vec4(caretOpt ? caretOpt->px : 0.0f, (caretOpt && caretOpt->on) ? 1.0f : 0.0f, Engine::time,
+						billboard ? 1.0f : 0.0f); // <- mode
+
+	if (billboard) {
+		pc.bbCenter = glm::vec4(bbOpt->centerWorld, 0.0f);
+		pc.bbOffsetPx = glm::vec4(bbOpt->offsetPx, 0.0f, 0.0f);
+		pc.bbScreenSize = glm::vec4(float(Engine::swapChainExtent.width), float(Engine::swapChainExtent.height), 0.f, 0.f);
+	} else {
+		pc.bbCenter = pc.bbOffsetPx = pc.bbScreenSize = glm::vec4(0);
+	}
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
@@ -701,7 +712,7 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vbs, offs);
 	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), frameIB[Engine::currentFrame], 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PC), &pc);
+	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PC), &pc);
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), (uint32_t)idx.size(), 1, 0, 0, 0);
 }
@@ -728,4 +739,9 @@ void Text::renderText(const std::string &text, const SelectionRange &sel, std::o
 void Text::renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
 	auto ranges = findAllMatches(text, matches.needle, matches.caseSensitive);
 	renderTextEx(text, origin, scale, color, ranges, matches.color, caret);
+}
+
+void Text::renderBillboard(const std::string &text, const BillboardParams &bb, const glm::vec4 &color, float scale) {
+	static const std::vector<std::pair<size_t, size_t>> none;
+	renderTextEx(text, std::nullopt, scale, color, none, glm::vec4(0), std::nullopt, &bb);
 }

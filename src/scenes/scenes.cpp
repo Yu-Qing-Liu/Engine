@@ -1,26 +1,17 @@
 #include "scenes.hpp"
+#include "buttons.hpp"
 #include "default.hpp"
 #include "instancing.hpp"
 #include "raytracing.hpp"
-#include "buttons.hpp"
 
 Scenes::Scenes() {
-    scenes[Default::getName()] = {
-        make_unique<Default>(*this),
-        true
-    };
-    scenes[RayTracing::getName()] = {
-        make_unique<RayTracing>(*this),
-        true
-    };
-    scenes[Buttons::getName()] = {
-        make_unique<Buttons>(*this),
-        true
-    };
-    scenes[Instancing::getName()] = {
-        make_unique<Instancing>(*this),
-        true
-    };
+    scenesContainer.emplace_back(make_shared<Default>(*this));
+    scenesContainer.emplace_back(make_shared<Buttons>(*this));
+    scenesContainer.emplace_back(make_shared<Instancing>(*this));
+    scenesContainer.emplace_back(make_shared<RayTracing>(*this));
+    for (const auto &sc : scenesContainer) {
+        scenes[sc->getName()] = {sc, true};
+    }
 }
 
 void Scenes::showScene(const string &sceneName) {

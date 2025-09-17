@@ -22,6 +22,11 @@ class Text : public Model {
 		uint32_t padding = 1;
 	};
 
+	struct BillboardParams {
+		vec3 centerWorld;	 // location
+		vec2 offsetPx{0, 0}; // pixel offset from the center (e.g. {-w/2, -h} to center/above)
+	};
+
 	struct GlyphVertex {
 		glm::vec3 pos;	// world space
 		glm::vec2 uv;	// atlas
@@ -90,6 +95,8 @@ class Text : public Model {
 	// 4) select all matches of `needle`
 	void renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret = std::nullopt, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
 
+	void renderBillboard(const std::string &text, const BillboardParams &bb, const glm::vec4 &color = Colors::Red, float scale = 1.0);
+
   private:
 	struct RawGlyph {
 		uint32_t cp{};
@@ -146,5 +153,5 @@ class Text : public Model {
 	void createBindingDescriptions() override;
 	void setupGraphicsPipeline() override;
 
-	void renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt);
+	void renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt, const BillboardParams* bbOpt = nullptr);
 };

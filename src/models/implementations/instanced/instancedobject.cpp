@@ -6,7 +6,7 @@
 #include <assimp/scene.h>
 #include <stb_image.hpp>
 
-InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedobject", std::move(instances), maxInstances) {
+InstancedObject::InstancedObject(Scene* scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedobject", std::move(instances), maxInstances) {
 	loadModel();
 
 	createDescriptorSetLayout();
@@ -24,6 +24,11 @@ InstancedObject::InstancedObject(const UBO &ubo, ScreenParams &screenParams, con
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
+
+	createComputeDescriptorSetLayout();
+	createShaderStorageBuffers();
+	createComputeDescriptorSets();
+	createComputePipeline();
 }
 
 InstancedObject::~InstancedObject() {
@@ -44,6 +49,10 @@ InstancedObject::~InstancedObject() {
 		materialDSL = VK_NULL_HANDLE;
 	}
 	destroyLoadedTextures();
+}
+
+void InstancedObject::buildBVH() {
+    Model::buildBVH<Vertex>(vertices);
 }
 
 // ---------- small helpers ----------

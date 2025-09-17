@@ -14,7 +14,7 @@ class Default : public Scene {
 	Default &operator=(const Default &) = delete;
 	~Default() = default;
 
-	static const std::string getName() { return "Default"; }
+	std::string getName() override { return "Default"; }
 
 	void updateScreenParams() override;
 
