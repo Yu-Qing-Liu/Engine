@@ -271,7 +271,7 @@ template <typename T> class InstancedModel : public Model {
 			throw std::runtime_error("instanced compute pipeline failed");
 	}
 
-	void updateComputeUniformBuffer() override {
+	void updateRayTraceUniformBuffer() override {
 		if (!rayTracingEnabled)
 			return;
 

@@ -185,6 +185,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
         int id = nodes->hitMapped->primId;
         InstancedPolygonData prev = nodes->getInstance(id);
         prev.outlineColor = Colors::inverse(prev.color);
+        prev.outlineWidth = 4.0f;
         nodes->updateInstance(id, prev);
     };
     nodes->onMouseExit = [&]() {
@@ -194,28 +195,31 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
         int id = nodes->hitMapped->primId;
         InstancedPolygonData prev = nodes->getInstance(id);
         prev.outlineColor = Colors::Black;
+        prev.outlineWidth = 1.0f;
         nodes->updateInstance(id, prev);
     };
     nodes->setRayTraceEnabled(true);
 
 	edges = Shapes::cubes(this, persp, screenParams, 4000);
     edges->onMouseEnter = [&]() {
-        if (!nodes->hitMapped) {
+        if (!edges->hitMapped) {
             return;
         }
-        int id = nodes->hitMapped->primId;
-        InstancedPolygonData prev = nodes->getInstance(id);
-        prev.outlineColor = Colors::inverse(prev.color);
-        nodes->updateInstance(id, prev);
+        int id = edges->hitMapped->primId;
+        InstancedPolygonData prev = edges->getInstance(id);
+        prev.outlineColor = Colors::Yellow;
+        prev.outlineWidth = 4.0f;
+        edges->updateInstance(id, prev);
     };
     edges->onMouseExit = [&]() {
-        if (!nodes->hitMapped) {
+        if (!edges->hitMapped) {
             return;
         }
-        int id = nodes->hitMapped->primId;
-        InstancedPolygonData prev = nodes->getInstance(id);
+        int id = edges->hitMapped->primId;
+        InstancedPolygonData prev = edges->getInstance(id);
         prev.outlineColor = Colors::Black;
-        nodes->updateInstance(id, prev);
+        prev.outlineWidth = 1.0f;
+        edges->updateInstance(id, prev);
     };
     edges->setRayTraceEnabled(true);
 

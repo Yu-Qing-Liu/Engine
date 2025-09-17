@@ -1,7 +1,6 @@
 #pragma once
 
 #include "model.hpp"
-#include "polygon.hpp"
 #include <memory>
 
 using std::unique_ptr;

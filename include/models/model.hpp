@@ -86,7 +86,7 @@ class Model {
 	void setRayTraceFromViewportPx(float px, float py, const VkViewport &vp);
 	void setRayTraceEnabled(bool v) { rayTracingEnabled = v; }
 
-	void updateRayTraceUniformBuffer();
+	virtual void updateRayTraceUniformBuffer();
 	void rayTrace();
 
 	void setMouseIsOver(bool over);
