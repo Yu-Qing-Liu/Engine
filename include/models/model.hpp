@@ -57,6 +57,14 @@ class Model {
 		int _pad0 = 0;
 	};
 
+	struct HitOutCPU {
+		uint32_t hit;
+		uint32_t primId;
+		float t;
+		float rayLen;
+		vec4 hitPos;
+	};
+
 	bool rayTracingEnabled = false;
 	bool mouseIsOver{false};
 	bool selected{false};
@@ -66,6 +74,7 @@ class Model {
 
 	optional<vec3> hitPos;
 	optional<float> rayLength;
+	HitOutCPU *hitMapped = nullptr;
 
 	std::function<void()> onMouseHover;
 	std::function<void()> onMouseEnter;
@@ -128,14 +137,6 @@ class Model {
 		int _pad;
 	};
 
-	struct HitOutCPU {
-		uint32_t hit;
-		uint32_t primId;
-		float t;
-		float rayLen;
-		vec4 hitPos;
-	};
-
 	// CPU-side BVH build helpers
 	struct AABB {
 		vec3 bmin, bmax;
@@ -174,7 +175,6 @@ class Model {
 	VkDeviceMemory hitMem = VK_NULL_HANDLE;
 
 	void *pickUBOMapped = nullptr;
-	HitOutCPU *hitMapped = nullptr;
 	RayTraceParams rayTraceParams{};
 
 	// CPU copies (once, unless geometry changes)

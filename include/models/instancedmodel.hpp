@@ -93,6 +93,14 @@ template <typename T> class InstancedModel : public Model {
 		frameDirty.fill(true);
 	}
 
+	const T &getInstance(int id) const {
+		auto it = instances->find(id);
+		if (it == instances->end()) {
+			throw std::out_of_range("Instance not found");
+		}
+		return it->second;
+	}
+
 	void render() override {
 		if (!instances) {
 			return;
@@ -156,7 +164,7 @@ template <typename T> class InstancedModel : public Model {
 		frameDirty.fill(true);
 
 		instCPU.resize(maxInstances);
-		idsCPU.resize(maxInstances - 1);
+		idsCPU.resize(maxInstances);
 	}
 
 	void createShaderStorageBuffers() override {
@@ -202,6 +210,46 @@ template <typename T> class InstancedModel : public Model {
 		pci.pPoolSizes = ps.data();
 		if (vkCreateDescriptorPool(Engine::device, &pci, nullptr, &computePool) != VK_SUCCESS)
 			throw std::runtime_error("compute pool failed");
+	}
+
+	void createComputeDescriptorSets() override {
+		// allocate one set with our 7-binding layout
+		VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+		ai.descriptorPool = computePool;
+		ai.descriptorSetCount = 1;
+		ai.pSetLayouts = &computeDescriptorSetLayout;
+
+		if (vkAllocateDescriptorSets(Engine::device, &ai, &computeDescriptorSet) != VK_SUCCESS)
+			throw std::runtime_error("instanced compute DS alloc failed");
+
+		// buffer infos
+		VkDescriptorBufferInfo nb{nodesBuf, 0, VK_WHOLE_SIZE};
+		VkDescriptorBufferInfo tb{trisBuf, 0, VK_WHOLE_SIZE};
+		VkDescriptorBufferInfo pb{posBuf, 0, VK_WHOLE_SIZE};
+		VkDescriptorBufferInfo ub{pickUBO, 0, sizeof(PickingUBO)};
+		VkDescriptorBufferInfo rb{hitBuf, 0, sizeof(HitOutCPU)};
+		VkDescriptorBufferInfo xb{instBuf, 0, VK_WHOLE_SIZE}; // binding 5
+		VkDescriptorBufferInfo ib{idBuf, 0, VK_WHOLE_SIZE};	  // binding 6
+
+		std::array<VkWriteDescriptorSet, 7> w{};
+		auto W = [&](uint32_t i, uint32_t binding, VkDescriptorType type, const VkDescriptorBufferInfo *bi) {
+			w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			w[i].dstSet = computeDescriptorSet;
+			w[i].dstBinding = binding;
+			w[i].descriptorType = type;
+			w[i].descriptorCount = 1;
+			w[i].pBufferInfo = bi;
+		};
+
+		W(0, 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &nb); // nodes
+		W(1, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &tb); // tris
+		W(2, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &pb); // pos
+		W(3, 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, &ub); // params
+		W(4, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &rb); // out
+		W(5, 5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &xb); // inst xforms
+		W(6, 6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, &ib); // ids
+
+		vkUpdateDescriptorSets(Engine::device, (uint32_t)w.size(), w.data(), 0, nullptr);
 	}
 
 	void createComputePipeline() override {

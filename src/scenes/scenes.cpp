@@ -1,9 +1,14 @@
 #include "scenes.hpp"
 #include "main.hpp"
+#include "raytracing.hpp"
 
 Scenes::Scenes() {
-    scenes[Main::getName()] = {
-        make_unique<Main>(*this),
+    // scenes[Main::getName()] = {
+    //     make_unique<Main>(*this),
+    //     true
+    // };
+    scenes[RayTracing::getName()] = {
+        make_unique<RayTracing>(*this),
         true
     };
 }

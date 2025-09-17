@@ -179,9 +179,49 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	// Circuit: default ctor loads the correct path (as you said)
 	circuit = std::make_unique<Circuit>();
 
-	// IMPORTANT: construct instanced meshes AFTER UBO/screenParams are set
-	nodes = Shapes::dodecahedra(this, persp, screenParams); // default big capacity
-	edges = Shapes::cubes(this, persp, screenParams);
+	// Setup: construct instanced meshes
+	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
+    nodes->onMouseEnter = [&]() {
+        if (!nodes->hitMapped) {
+            return;
+        }
+        int id = nodes->hitMapped->primId;
+        InstancedPolygonData prev = nodes->getInstance(id);
+        prev.outlineColor = Colors::inverse(prev.color);
+        nodes->updateInstance(id, prev);
+    };
+    nodes->onMouseExit = [&]() {
+        if (!nodes->hitMapped) {
+            return;
+        }
+        int id = nodes->hitMapped->primId;
+        InstancedPolygonData prev = nodes->getInstance(id);
+        prev.outlineColor = Colors::Black;
+        nodes->updateInstance(id, prev);
+    };
+    nodes->setRayTraceEnabled(true);
+
+	edges = Shapes::cubes(this, persp, screenParams, 4000);
+    edges->onMouseEnter = [&]() {
+        if (!nodes->hitMapped) {
+            return;
+        }
+        int id = nodes->hitMapped->primId;
+        InstancedPolygonData prev = nodes->getInstance(id);
+        prev.outlineColor = Colors::inverse(prev.color);
+        nodes->updateInstance(id, prev);
+    };
+    edges->onMouseExit = [&]() {
+        if (!nodes->hitMapped) {
+            return;
+        }
+        int id = nodes->hitMapped->primId;
+        InstancedPolygonData prev = nodes->getInstance(id);
+        prev.outlineColor = Colors::Black;
+        nodes->updateInstance(id, prev);
+    };
+    edges->setRayTraceEnabled(true);
+
 
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {
