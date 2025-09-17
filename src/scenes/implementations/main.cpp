@@ -13,6 +13,7 @@
 #include "colors.hpp"
 #include "engine.hpp"
 #include "events.hpp"
+#include "fonts.hpp"
 
 using std::unordered_set;
 
@@ -177,6 +178,9 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	circuit = std::make_unique<Circuit>();
 
 	// Setup: construct instanced meshes
+    Text::TextParams tp{Fonts::ArialBold, 32};
+    nodeName = make_unique<Text>(this, persp, screenParams, tp);
+
 	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
     nodes->onMouseEnter = [&]() {
         if (!nodes->hitMapped) {
@@ -187,6 +191,9 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
         prev.outlineColor = Colors::inverse(prev.color);
         prev.outlineWidth = 4.0f;
         nodes->updateInstance(id, prev);
+
+        textPos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
+        label = "TEST";
     };
     nodes->onMouseExit = [&]() {
         if (!nodes->hitMapped) {
@@ -197,6 +204,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
         prev.outlineColor = Colors::Black;
         prev.outlineWidth = 1.0f;
         nodes->updateInstance(id, prev);
+        label = "";
     };
     nodes->setRayTraceEnabled(true);
 
@@ -512,6 +520,8 @@ void Main::swapChainUpdate() {
 	persp.view = lookAt(camPos, camTarget, camUp);
 	persp.proj = perspective(fovY, aspect, nearP, farP);
 
+    nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
+
 	// ---- stamp nodes (8 legend colors) ----
 	float nodeScale = 2.0f;
 	for (int i = 0; i < N; ++i) {
@@ -648,9 +658,12 @@ void Main::updateUniformBuffers() {
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);
+    nodeName->updateUniformBuffer(std::nullopt, persp.view);
 }
 
 void Main::renderPass() {
 	nodes->render();
 	edges->render();
+    float textLen = nodeName->getPixelWidth(label);
+    nodeName->renderBillboard(label, Text::BillboardParams{textPos, {-textLen/2, 0}});
 }

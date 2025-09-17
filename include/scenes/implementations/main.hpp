@@ -3,6 +3,7 @@
 #include "circuit.hpp"
 #include "scenes.hpp"
 #include "shapes.hpp"
+#include "text.hpp"
 
 class Main : public Scene {
   public:
@@ -50,6 +51,10 @@ class Main : public Scene {
 	unique_ptr<InstancedPolygon> nodes;
 	unique_ptr<InstancedPolygon> edges;
 
+    unique_ptr<Text> nodeName;
+    vec3 textPos;
+    string label;
+
 	void handleCameraInput(float dt);
-    void mouseLookFPS();
+	void mouseLookFPS();
 };
