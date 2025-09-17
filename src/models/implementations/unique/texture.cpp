@@ -41,9 +41,7 @@ Texture::~Texture() {
 	}
 }
 
-void Texture::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
-}
+void Texture::buildBVH() { Model::buildBVH<Vertex>(vertices); }
 
 void Texture::createDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
@@ -135,8 +133,17 @@ void Texture::setupGraphicsPipeline() {
 	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
 	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // or ZERO
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 }
 
 void Texture::createBindingDescriptions() {

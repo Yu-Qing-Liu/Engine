@@ -1,9 +1,14 @@
 #include "scenes.hpp"
 #include "main.hpp"
+#include "overlay.hpp"
 
 Scenes::Scenes() {
     scenes[Main::getName()] = {
         make_unique<Main>(*this),
+        true
+    };
+    scenes[Overlay::getName()] = {
+        make_unique<Overlay>(*this),
         true
     };
 }

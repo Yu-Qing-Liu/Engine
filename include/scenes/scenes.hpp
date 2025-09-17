@@ -1,7 +1,7 @@
 #pragma once
 
 #include "scene.hpp"
-#include <unordered_map>
+#include <map>
 
 using std::make_unique;
 using std::string;
@@ -32,5 +32,5 @@ class Scenes {
 	void hideScene(const string &sceneName);
 
   private:
-	std::unordered_map<string, SceneEntry> scenes;
+	std::map<string, SceneEntry> scenes;
 };
