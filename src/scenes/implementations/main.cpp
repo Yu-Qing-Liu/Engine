@@ -180,8 +180,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	circuit = std::make_unique<Circuit>();
 
 	// IMPORTANT: construct instanced meshes AFTER UBO/screenParams are set
-	nodes = Shapes::dodecahedra(persp, screenParams); // default big capacity
-	edges = Shapes::cubes(persp, screenParams);
+	nodes = Shapes::dodecahedra(this, persp, screenParams); // default big capacity
+	edges = Shapes::cubes(this, persp, screenParams);
 
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {

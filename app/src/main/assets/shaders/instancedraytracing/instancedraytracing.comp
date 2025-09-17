@@ -1,0 +1,165 @@
+#version 450
+
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+struct BVHNode {
+    vec4  bmin;
+    uint  leftFirst;
+    uint  _pad0_0, _pad0_1, _pad0_2;
+    vec4  bmax;
+    uint  rightOrCount;
+    uint  _pad1_0, _pad1_1, _pad1_2;
+};
+struct Ray { vec3 o; vec3 d; };
+
+layout(std430, set=0, binding=0) readonly buffer BvhBuf { BVHNode nodes[]; };
+layout(std430, set=0, binding=1) readonly buffer TriBuf { uvec4   tris[];  };
+layout(std430, set=0, binding=2) readonly buffer PosBuf { vec4    pos[];   };
+
+// UBO: reuse your base struct; _pad carries instanceCount
+layout(std140, set=0, binding=3) uniform Params {
+    mat4 invViewProj;
+    mat4 invModel;           // unused here (we have per-instance)
+    vec2 mouseNdc; vec2 _pad0;
+    vec3 camPos;   int  _pad;     // <-- instanceCount
+} u;
+
+layout(std430, set=0, binding=4) buffer OutBuf {
+    uint  hit;
+    uint  primId;   // we'll store modelId here
+    float t;
+    float rayLen;
+    vec4  hitPos;
+} outHit;
+
+// New SSBOs
+struct InstanceXform { mat4 model; mat4 invModel; };
+layout(std430, set=0, binding=5) readonly buffer InstBuf { InstanceXform inst[]; };
+layout(std430, set=0, binding=6) readonly buffer IdBuf   { int slotToKey[]; };
+
+// ---------- utils (same as your base) ----------
+bool isLeaf(BVHNode n)          { return (n.rightOrCount & 0x80000000u) == 0u; }
+uint rightChildIndex(BVHNode n) { return  n.rightOrCount & 0x7FFFFFFFu; }
+uint leafCount(BVHNode n)       { return  n.rightOrCount; }
+
+bool finite3(vec3 v){ return all(lessThan(abs(v), vec3(3.0e37))) && !any(isnan(v)); }
+bool safeUnprojectClip(vec2 ndc, float z01, out vec3 outP){
+    float zClip = 2.0*z01 - 1.0;
+    vec4 h = u.invViewProj * vec4(ndc, zClip, 1.0);
+    if (abs(h.w) < 1e-20) return false;
+    outP = h.xyz / h.w; return true;
+}
+bool buildWorldRay(vec2 ndc, out Ray rW){
+    vec3 nearP, farP;
+    if (!safeUnprojectClip(ndc, 0.001, nearP)) return false;
+    if (!safeUnprojectClip(ndc, 0.999, farP))  return false;
+    vec3 d = normalize(farP - nearP);
+    if (!finite3(d)) return false;
+    rW.o = nearP; rW.d = d; return true;
+}
+bool rayAabb(Ray r, vec3 bmin, vec3 bmax, out float t0, out float t1) {
+    const float INF = 3.402823e38;
+    float tx0, tx1_, ty0, ty1_, tz0, tz1_;
+
+    if (abs(r.d.x) < 1e-12) { if (r.o.x < bmin.x || r.o.x > bmax.x) return false; tx0=-INF; tx1_= INF; }
+    else { float inv=1.0/r.d.x; float a=(bmin.x - r.o.x)*inv, b=(bmax.x - r.o.x)*inv; tx0=min(a,b); tx1_=max(a,b); }
+    if (abs(r.d.y) < 1e-12) { if (r.o.y < bmin.y || r.o.y > bmax.y) return false; ty0=-INF; ty1_= INF; }
+    else { float inv=1.0/r.d.y; float a=(bmin.y - r.o.y)*inv, b=(bmax.y - r.o.y)*inv; ty0=min(a,b); ty1_=max(a,b); }
+    if (abs(r.d.z) < 1e-12) { if (r.o.z < bmin.z || r.o.z > bmax.z) return false; tz0=-INF; tz1_= INF; }
+    else { float inv=1.0/r.d.z; float a=(bmin.z - r.o.z)*inv, b=(bmax.z - r.o.z)*inv; tz0=min(a,b); tz1_=max(a,b); }
+
+    t0 = max(max(tx0, ty0), max(tz0, 0.0));
+    t1 = min(min(tx1_, ty1_), tz1_);
+    return t0 <= t1;
+}
+bool rayTri(Ray r, vec3 a, vec3 b, vec3 c, out float t){
+    vec3 e1=b-a, e2=c-a;
+    vec3 p = cross(r.d, e2);
+    float det = dot(e1, p);
+    if (abs(det) < 1e-8) return false;
+    float inv = 1.0/det;
+    vec3 s = r.o - a;
+    float uB = dot(s, p) * inv; if (uB < 0.0 || uB > 1.0) return false;
+    vec3 q = cross(s, e1);
+    float vB = dot(r.d, q) * inv; if (vB < 0.0 || uB+vB > 1.0) return false;
+    t = dot(e2, q) * inv; return t > 1e-6;
+}
+
+// ---------- main ----------
+void main(){
+    outHit.hit = 0u;
+
+    Ray rW;
+    if (!buildWorldRay(u.mouseNdc, rW)) { return; }
+
+    float bestT = 3.4e38;
+    uint  bestPrim = 0xFFFFFFFFu;
+    int   bestModelId = -1;
+    uint  bestInstIdx = 0u;
+
+    uint N = uint(u._pad); // instanceCount passed from CPU
+
+    for (uint i = 0u; i < N; ++i) {
+        // world -> instance space
+        vec3 oM = (inst[i].invModel * vec4(rW.o, 1.0)).xyz;
+        vec3 dM = (inst[i].invModel * vec4(rW.d, 0.0)).xyz;
+        dM = normalize(dM);
+        if (!finite3(dM)) continue;
+
+        Ray rM; rM.o = oM; rM.d = dM;
+
+        // BVH traversal (same as single-mesh path)
+        uint stack[64]; int sp = 0; stack[sp++] = 0u;
+        float bestT_i = bestT;
+        uint  bestPrim_i = 0xFFFFFFFFu;
+
+        while (sp > 0){
+            uint ni = stack[--sp];
+            BVHNode n = nodes[ni];
+            float nt0, nt1;
+            if (!rayAabb(rM, n.bmin.xyz, n.bmax.xyz, nt0, nt1) || nt0 > bestT_i) continue;
+
+            if ((n.rightOrCount & 0x80000000u) != 0u) {
+                uint left = n.leftFirst;
+                uint right = n.rightOrCount & 0x7FFFFFFFu;
+                if (sp <= 62) { stack[sp++] = right; stack[sp++] = left; }
+            } else {
+                uint first = n.leftFirst;
+                uint count = n.rightOrCount;
+                for (uint k=0u; k<count; ++k){
+                    uvec4 tri = tris[first + k];
+                    vec3 A = pos[tri.x].xyz, B = pos[tri.y].xyz, C = pos[tri.z].xyz;
+                    float t;
+                    if (rayTri(rM, A,B,C, t) && t < bestT_i){ bestT_i = t; bestPrim_i = first + k; }
+                }
+            }
+        }
+
+        if (bestPrim_i != 0xFFFFFFFFu && bestT_i < bestT) {
+            bestT = bestT_i;
+            bestPrim = bestPrim_i;
+            bestModelId = slotToKey[i];
+            bestInstIdx = i;
+        }
+    }
+
+    if (bestPrim != 0xFFFFFFFFu) {
+        outHit.hit    = 1u;
+        outHit.primId = uint(bestModelId);  // <-- return your external id here
+        outHit.t      = bestT;
+
+        // reconstruct world hit using the winning instance
+        vec3 hitPosM = rW.o; // recompute: rW in world; bestT is in instance space,
+                             // but we can rebuild a world hit by computing again:
+        // Convert world ray to winning instance space
+        vec3 oM = (inst[bestInstIdx].invModel * vec4(rW.o, 1.0)).xyz;
+        vec3 dM = (inst[bestInstIdx].invModel * vec4(rW.d, 0.0)).xyz;
+        dM = normalize(dM);
+        vec3 hitPosI = oM + bestT * dM;
+        vec3 hitPosW = (inst[bestInstIdx].model * vec4(hitPosI, 1.0)).xyz;
+
+        outHit.hitPos = vec4(hitPosW, 1.0);
+        outHit.rayLen = length(u.camPos - hitPosW);
+    }
+}
+

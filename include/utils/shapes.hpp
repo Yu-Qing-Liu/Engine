@@ -31,9 +31,9 @@ inline unique_ptr<Polygon> cube(Scene *scene, const UBO &ubo, ScreenParams &scre
 								});
 }
 
-inline unique_ptr<InstancedPolygon> cubes(const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> cubes(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
 	shared_ptr<unordered_map<int, InstancedPolygonData>> polygonInstances = make_shared<unordered_map<int, InstancedPolygonData>>(instances);
-	return make_unique<InstancedPolygon>(ubo, screenParams,
+	return make_unique<InstancedPolygon>(scene, ubo, screenParams,
 										 std::vector<InstancedPolygon::Vertex>{
 											 // idx, position                 // color (RGBA)
 											 /*0*/ {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f, 1.0f}}, // LBB
@@ -108,7 +108,7 @@ inline unique_ptr<Polygon> sphere(Scene *scene, const UBO &ubo, ScreenParams &sc
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> spheres(const UBO &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
+inline unique_ptr<InstancedPolygon> spheres(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
 	// Clamp to reasonable minimums
 	latitudeSegments = std::max<uint32_t>(latitudeSegments, 2);
 	longitudeSegments = std::max<uint32_t>(longitudeSegments, 3);
@@ -165,7 +165,7 @@ inline unique_ptr<InstancedPolygon> spheres(const UBO &ubo, ScreenParams &screen
 	// Shared map of per-instance data
 	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
 
-	return std::make_unique<InstancedPolygon>(ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
+	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
 }
 
 inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenParams &screenParams) {
@@ -231,7 +231,7 @@ inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenPara
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> dodecahedra(const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> dodecahedra(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
 	float phi = (1.0f + std::sqrt(5.0f)) * 0.5f;
 	float invphi = 1.0f / phi;
 	float s = 0.5f / std::sqrt(3.0f);
@@ -284,7 +284,7 @@ inline unique_ptr<InstancedPolygon> dodecahedra(const UBO &ubo, ScreenParams &sc
 
 	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
 
-	return std::make_unique<InstancedPolygon>(ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
+	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
 }
 
 } // namespace Shapes

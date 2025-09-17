@@ -69,13 +69,14 @@ class InstancedPolygon : public InstancedModel<InstancedPolygonData> {
 		}
 	};
 
-	InstancedPolygon(const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint32_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances = 65536);
+	InstancedPolygon(Scene* scene, const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint32_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances = 65536);
 	~InstancedPolygon() override = default;
 
   protected:
 	// ---- Model overrides we need for instancing ----
 	void createBindingDescriptions() override; // adds instance binding + attrs
 	void setupGraphicsPipeline() override;	   // culling/depth tweaks (optional)
+	void buildBVH() override;
 
   private:
 	std::vector<Vertex> vertices;
