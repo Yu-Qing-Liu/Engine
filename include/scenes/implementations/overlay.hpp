@@ -15,7 +15,7 @@ class Overlay : public Scene {
 	Overlay &operator=(const Overlay &) = delete;
 	~Overlay() = default;
 
-	static const std::string getName() { return "Overlay"; }
+	std::string getName() override { return "Overlay"; }
 
 	void updateScreenParams() override;
 

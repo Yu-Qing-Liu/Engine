@@ -3,9 +3,9 @@
 #include "scene.hpp"
 #include <map>
 
-using std::make_unique;
+using std::make_shared;
 using std::string;
-using std::unique_ptr;
+using std::shared_ptr;
 
 class Scenes {
   public:
@@ -17,7 +17,7 @@ class Scenes {
 	~Scenes() = default;
 
 	struct SceneEntry {
-		unique_ptr<Scene> scene;
+		shared_ptr<Scene> scene;
 		bool show = false;
 	};
 
@@ -32,5 +32,6 @@ class Scenes {
 	void hideScene(const string &sceneName);
 
   private:
+	std::vector<shared_ptr<Scene>> scenesContainer;
 	std::map<string, SceneEntry> scenes;
 };

@@ -4,6 +4,7 @@
 #include <memory>
 
 using std::unique_ptr;
+using std::make_unique;
 
 class Scenes;
 
@@ -15,6 +16,8 @@ class Scene {
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene() = default;
+
+	virtual std::string getName() = 0;
 
 	vector<Model *> models;
 

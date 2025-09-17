@@ -15,7 +15,7 @@ class Buttons : public Scene {
 	Buttons &operator=(const Buttons &) = delete;
 	~Buttons() = default;
 
-	static const std::string getName() { return "Buttons"; }
+	std::string getName() override { return "Buttons"; }
 
 	void updateScreenParams() override;
 
