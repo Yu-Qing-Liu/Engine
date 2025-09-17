@@ -33,7 +33,9 @@ file(GLOB SCENES_DEFAULT  ${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/implementations
 file(GLOB UI              ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp)
 file(GLOB UI_IMPL         ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/implementations/*.cpp)
 
-add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL} ${SCENES_DEFAULT} ${UI} ${UI_IMPL})
+file(GLOB CIRCUIT         ${CMAKE_CURRENT_SOURCE_DIR}/src/circuit/*.cpp)
+
+add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL} ${SCENES_DEFAULT} ${UI} ${UI_IMPL} ${CIRCUIT})
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 
 if(WIN32)
@@ -55,6 +57,8 @@ target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include/ui
     ${CMAKE_SOURCE_DIR}/include/ui/implementations
     ${SHADERC_INCLUDE_DIRS}
+
+    ${CMAKE_SOURCE_DIR}/include/circuit/
 )
 
 if(WIN32)

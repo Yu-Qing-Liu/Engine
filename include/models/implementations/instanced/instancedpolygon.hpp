@@ -18,6 +18,7 @@ struct InstancedPolygonData {
 	InstancedPolygonData() = default;
 
 	InstancedPolygonData(vec3 pos, vec3 size, vec4 color = Colors::Green, vec4 outlineColor = Colors::Green, float outlineWidth = 0.0f, float borderRadius = 0.0f) : model(glm::translate(mat4(1.0f), pos) * glm::scale(mat4(1.0), size)), color(color), outlineColor(outlineColor), outlineWidth(outlineWidth) {}
+	InstancedPolygonData(vec3 pos, vec3 size, const glm::quat &rot, vec4 color = Colors::Green, vec4 outlineColor = Colors::Green, float outlineWidth = 0.0f, float borderRadius = 0.0f) : model(glm::translate(mat4(1.0f), pos) * glm::mat4_cast(rot) * glm::scale(mat4(1.0f), size)), color(color), outlineColor(outlineColor), outlineWidth(outlineWidth) {}
 };
 
 class InstancedPolygon : public InstancedModel<InstancedPolygonData> {
@@ -68,13 +69,14 @@ class InstancedPolygon : public InstancedModel<InstancedPolygonData> {
 		}
 	};
 
-	InstancedPolygon(const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint32_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances = 65536);
+	InstancedPolygon(Scene* scene, const UBO &ubo, ScreenParams &screenParams, const vector<Vertex> &vertices, const vector<uint32_t> &indices, shared_ptr<unordered_map<int, InstancedPolygonData>> instances, uint32_t maxInstances = 65536);
 	~InstancedPolygon() override = default;
 
   protected:
 	// ---- Model overrides we need for instancing ----
 	void createBindingDescriptions() override; // adds instance binding + attrs
 	void setupGraphicsPipeline() override;	   // culling/depth tweaks (optional)
+	void buildBVH() override;
 
   private:
 	std::vector<Vertex> vertices;
