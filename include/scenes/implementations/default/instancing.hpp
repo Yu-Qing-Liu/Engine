@@ -18,7 +18,7 @@ class Instancing : public Scene {
 	Instancing &operator=(const Instancing &) = delete;
 	~Instancing() = default;
 
-	static const std::string getName() { return "Instancing"; }
+	std::string getName() override { return "Instancing"; }
 
 	void updateScreenParams() override;
 

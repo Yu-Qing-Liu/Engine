@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "main.hpp"
 #include "scenes.hpp"
 
 Scene::Scene(Scenes &scenes) : scenes(scenes) {
@@ -22,8 +23,9 @@ void Scene::updateRayTraceUniformBuffers() {
 
 void Scene::rayTraces() {
 	for (auto *m : models) {
-		if (m && m->rayTracingEnabled)
+		if (m && m->rayTracingEnabled) {
 			m->rayTrace();
+        }
 	}
 
 	Model *closest = nullptr;

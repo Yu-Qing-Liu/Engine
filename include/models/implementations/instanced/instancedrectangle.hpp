@@ -49,13 +49,14 @@ class InstancedRectangle : public InstancedModel<InstancedRectangleData> {
 		}
 	};
 
-	InstancedRectangle(const UBO &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances = 65536);
+	InstancedRectangle(Scene *scene, const UBO &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances = 65536);
 	~InstancedRectangle() override = default;
 
   protected:
 	// ---- Model overrides we need for instancing ----
 	void createBindingDescriptions() override; // adds instance binding + attrs
 	void setupGraphicsPipeline() override;	   // culling/depth tweaks (optional)
+	void buildBVH() override;
 
   private:
 	std::vector<Vertex> vertices = {

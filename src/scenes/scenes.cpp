@@ -1,11 +1,13 @@
 #include "scenes.hpp"
 #include "main.hpp"
+#include "overlay.hpp"
 
 Scenes::Scenes() {
-    scenes[Main::getName()] = {
-        make_unique<Main>(*this),
-        true
-    };
+    scenesContainer.emplace_back(make_shared<Main>(*this));
+    scenesContainer.emplace_back(make_shared<Overlay>(*this));
+    for (const auto &sc : scenesContainer) {
+        scenes[sc->getName()] = {sc, true};
+    }
 }
 
 void Scenes::showScene(const string &sceneName) {
