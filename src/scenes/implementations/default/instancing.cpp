@@ -12,12 +12,13 @@ Instancing::Instancing(Scenes &scenes) : Scene(scenes) {
     cells = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(
         std::initializer_list<std::pair<const int, InstancedRectangleData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
     );
-    grid = make_unique<InstancedRectangle>(orthographic, screenParams, cells, 4);
+    grid = make_unique<InstancedRectangle>(this, orthographic, screenParams, cells, 4);
 
     polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(
         std::initializer_list<std::pair<const int, InstancedPolygonData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
     );
     polygons = make_unique<InstancedPolygon>(
+        this,
         persp,
         screenParams,
         std::vector<InstancedPolygon::Vertex>{
@@ -52,7 +53,7 @@ Instancing::Instancing(Scenes &scenes) : Scene(scenes) {
     roomInstances = std::make_shared<std::unordered_map<int, InstancedObjectData>>(
         std::initializer_list<std::pair<const int, InstancedObjectData>>{{0, {}}, {1, {}}, {2, {}}, {3, {}}}
     );
-    rooms = make_unique<InstancedObject>(persp, screenParams, Assets::modelRootPath + "/example/example.obj" , roomInstances, 4);
+    rooms = make_unique<InstancedObject>(this, persp, screenParams, Assets::modelRootPath + "/example/example.obj" , roomInstances, 4);
 }
 
 void Instancing::updateScreenParams() {

@@ -2,10 +2,10 @@
 #include "background.hpp"
 
 Scenes::Scenes() {
-    scenes[Background::getName()] = {
-        make_unique<Background>(*this),
-        true
-    };
+    scenesContainer.emplace_back(make_shared<Background>(*this));
+    for (const auto &sc : scenesContainer) {
+        scenes[sc->getName()] = {sc, true};
+    }
 }
 
 void Scenes::showScene(const string &sceneName) {
