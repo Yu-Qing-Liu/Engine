@@ -51,9 +51,20 @@ class Main : public Scene {
 	unique_ptr<InstancedPolygon> nodes;
 	unique_ptr<InstancedPolygon> edges;
 
-    unique_ptr<Text> nodeName;
-    vec3 textPos;
-    string label;
+	struct NodeData {
+		string name;
+	};
+
+	struct EdgeData {
+		float length;
+	};
+
+	unordered_map<int, NodeData> nodeMap;
+	unordered_map<int, EdgeData> edgeMap;
+
+	unique_ptr<Text> nodeName;
+	vec3 textPos;
+	string label;
 
 	void handleCameraInput(float dt);
 	void mouseLookFPS();

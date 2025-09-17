@@ -178,59 +178,58 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	circuit = std::make_unique<Circuit>();
 
 	// Setup: construct instanced meshes
-    Text::TextParams tp{Fonts::ArialBold, 32};
-    nodeName = make_unique<Text>(this, persp, screenParams, tp);
+	Text::TextParams tp{Fonts::ArialBold, 32};
+	nodeName = make_unique<Text>(this, persp, screenParams, tp);
 
 	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
-    nodes->onMouseEnter = [&]() {
-        if (!nodes->hitMapped) {
-            return;
-        }
-        int id = nodes->hitMapped->primId;
-        InstancedPolygonData prev = nodes->getInstance(id);
-        prev.outlineColor = Colors::inverse(prev.color);
-        prev.outlineWidth = 4.0f;
-        nodes->updateInstance(id, prev);
+	nodes->onMouseEnter = [&]() {
+		if (!nodes->hitMapped) {
+			return;
+		}
+		int id = nodes->hitMapped->primId;
+		InstancedPolygonData prev = nodes->getInstance(id);
+		prev.outlineColor = Colors::inverse(prev.color);
+		prev.outlineWidth = 4.0f;
+		nodes->updateInstance(id, prev);
 
-        textPos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
-        label = "TEST";
-    };
-    nodes->onMouseExit = [&]() {
-        if (!nodes->hitMapped) {
-            return;
-        }
-        int id = nodes->hitMapped->primId;
-        InstancedPolygonData prev = nodes->getInstance(id);
-        prev.outlineColor = Colors::Black;
-        prev.outlineWidth = 1.0f;
-        nodes->updateInstance(id, prev);
-        label = "";
-    };
-    nodes->setRayTraceEnabled(true);
+		textPos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
+		label = nodeMap[id].name;
+	};
+	nodes->onMouseExit = [&]() {
+		if (!nodes->hitMapped) {
+			return;
+		}
+		int id = nodes->hitMapped->primId;
+		InstancedPolygonData prev = nodes->getInstance(id);
+		prev.outlineColor = Colors::Black;
+		prev.outlineWidth = 1.0f;
+		nodes->updateInstance(id, prev);
+		label = "";
+	};
+	nodes->setRayTraceEnabled(true);
 
 	edges = Shapes::cubes(this, persp, screenParams, 4000);
-    edges->onMouseEnter = [&]() {
-        if (!edges->hitMapped) {
-            return;
-        }
-        int id = edges->hitMapped->primId;
-        InstancedPolygonData prev = edges->getInstance(id);
-        prev.outlineColor = Colors::Yellow;
-        prev.outlineWidth = 4.0f;
-        edges->updateInstance(id, prev);
-    };
-    edges->onMouseExit = [&]() {
-        if (!edges->hitMapped) {
-            return;
-        }
-        int id = edges->hitMapped->primId;
-        InstancedPolygonData prev = edges->getInstance(id);
-        prev.outlineColor = Colors::Black;
-        prev.outlineWidth = 1.0f;
-        edges->updateInstance(id, prev);
-    };
-    edges->setRayTraceEnabled(true);
-
+	edges->onMouseEnter = [&]() {
+		if (!edges->hitMapped) {
+			return;
+		}
+		int id = edges->hitMapped->primId;
+		InstancedPolygonData prev = edges->getInstance(id);
+		prev.outlineColor = Colors::Yellow;
+		prev.outlineWidth = 4.0f;
+		edges->updateInstance(id, prev);
+	};
+	edges->onMouseExit = [&]() {
+		if (!edges->hitMapped) {
+			return;
+		}
+		int id = edges->hitMapped->primId;
+		InstancedPolygonData prev = edges->getInstance(id);
+		prev.outlineColor = Colors::Black;
+		prev.outlineWidth = 1.0f;
+		edges->updateInstance(id, prev);
+	};
+	edges->setRayTraceEnabled(true);
 
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {
@@ -520,7 +519,7 @@ void Main::swapChainUpdate() {
 	persp.view = lookAt(camPos, camTarget, camUp);
 	persp.proj = perspective(fovY, aspect, nearP, farP);
 
-    nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
+	nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
 
 	// ---- stamp nodes (8 legend colors) ----
 	float nodeScale = 2.0f;
@@ -529,6 +528,7 @@ void Main::swapChainUpdate() {
 		auto k = classify8WithEdges(circuit.get(), raw);
 		auto color = colorFor(k);
 		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), color, Colors::Black));
+        nodeMap[i] = {raw};
 	}
 	nodes->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 
@@ -658,12 +658,12 @@ void Main::updateUniformBuffers() {
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);
-    nodeName->updateUniformBuffer(std::nullopt, persp.view);
+	nodeName->updateUniformBuffer(std::nullopt, persp.view);
 }
 
 void Main::renderPass() {
 	nodes->render();
 	edges->render();
-    float textLen = nodeName->getPixelWidth(label);
-    nodeName->renderBillboard(label, Text::BillboardParams{textPos, {-textLen/2, 0}});
+	float textLen = nodeName->getPixelWidth(label);
+	nodeName->renderBillboard(label, Text::BillboardParams{textPos, {-textLen / 2, 0}});
 }
