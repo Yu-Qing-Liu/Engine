@@ -173,9 +173,6 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	// Set an initial camera (will be resized in swapChainUpdate)
 	persp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
 
-	// Set boundaries for cam raytrace
-	limits->updateUniformBuffer(scale(mat4(1.0f), vec3(1000.f, 1000.f, 1000.f)), persp.view, persp.proj);
-
 	// Circuit: default ctor loads the correct path (as you said)
 	circuit = std::make_unique<Circuit>();
 
@@ -510,7 +507,6 @@ void Main::swapChainUpdate() {
 	const float farP = std::max(desiredDist * 4.0f, sceneRadius * 6.0f);
 	persp.view = lookAt(camPos, camTarget, camUp);
 	persp.proj = perspective(fovY, aspect, nearP, farP);
-	limits->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
 
 	// ---- stamp nodes (8 legend colors) ----
 	float nodeScale = 2.0f;

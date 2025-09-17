@@ -34,6 +34,4 @@ class Scene {
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
-	unique_ptr<Polygon> limits;
-	vec3 lookAtCoords;
 };

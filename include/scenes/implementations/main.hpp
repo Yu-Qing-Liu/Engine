@@ -38,6 +38,7 @@ class Main : public Scene {
 	float yaw = 0.0f;		   // radians, wraps freely
 	float pitch = 0.0f;		   // radians, clamp to ~(-89°, +89°)
 	float mouseSens = 0.0025f; // tweak to taste
+	vec3 lookAtCoords;
 
 	// mouse-aim state
 	double lastPointerX = -1.0;
