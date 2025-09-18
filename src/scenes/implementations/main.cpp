@@ -613,8 +613,7 @@ void Main::swapChainUpdate() {
 				int v = ch[k];
 				if (depth[v] != d)
 					continue;
-				float shift = ((k & 1) ? +1.f : -1.f) * (float((k + 1) / 2) * epsCol);
-				xcol[v] = xcol[p] + shift;
+				xcol[v] = xcol[p];
 				any = true;
 			}
 		}
@@ -653,7 +652,7 @@ void Main::swapChainUpdate() {
 		sceneRadius = std::max(sceneRadius, glm::length(p));
 	const float aspect = screenParams.viewport.width / screenParams.viewport.height;
 	const float fovY = radians(45.0f);
-	const float desiredDist = std::max(18.0f, sceneRadius * 0.65f);
+	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
 	camPos = dir * desiredDist;
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
@@ -695,14 +694,12 @@ void Main::swapChainUpdate() {
 			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f));
 	}
 
-	// depth>=2: connect to parent (L-shaped, same column as parent plus tiny offset)
+	// depth>=2: connect to parent
 	for (int v = 0; v < N; ++v) {
 		if (depth[v] >= 2 && parent[v] >= 0) {
 			const glm::vec3 A = pos[v];
 			const glm::vec3 B = pos[parent[v]];
-			// 2-segment orthogonal: A -> (x_parent, A.y) -> B
-			addSeg(A, glm::vec3(xcol[parent[v]], A.y, A.z)); // small horizontal
-			addSeg(glm::vec3(xcol[parent[v]], A.y, A.z), B); // vertical to parent
+			addSeg(A, B); // vertical to parent
 		}
 	}
 
