@@ -1,3 +1,5 @@
+#pragma once
+
 #include "instancedpolygon.hpp"
 #include "model.hpp"
 #include "polygon.hpp"
@@ -286,24 +288,6 @@ inline unique_ptr<InstancedPolygon> dodecahedra(Scene* scene, const UBO &ubo, Sc
 	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
 
 	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
-}
-
-inline unique_ptr<Texture> icon(Scene* scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath) {
-    return make_unique<Texture>(
-        scene,
-        ubo,
-        screenParams,
-        texturePath, 
-        std::vector<Texture::Vertex> {
-            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-        },
-        std::vector<uint32_t> {
-            0, 1, 2, 2, 3, 0,
-        }
-    );
 }
 
 } // namespace Shapes

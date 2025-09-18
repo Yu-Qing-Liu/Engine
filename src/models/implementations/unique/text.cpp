@@ -608,7 +608,7 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 		if (origin.has_value()) {
 			buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
 		} else {
-			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
+			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() / 3.3 * scale, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
 		}
 	} else {
 		buildGeometryTaggedUTF8(text, {/*origin*/ 0, 0, 0}, scale, selRanges, caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt, caretOpt ? caretOpt->px : 0.0f, verts, idx);

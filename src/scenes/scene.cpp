@@ -20,12 +20,13 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 		}
 	};
 	Events::keyboardCallbacks.push_back(kbState);
+}
+
+void Scene::disableMouseMode() {
+	mouseMode = false;
 
 	GLFWwindow *win = Engine::window;
 	if (win) {
-		glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // capture/hide
-		glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);  // smoother deltas (if supported)
-		// initialize the cursor center reference
 		int ww, hh;
 		glfwGetWindowSize(win, &ww, &hh);
 		lastPointerX = ww * 0.5;
@@ -41,7 +42,6 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 		pitch = asinf(glm::clamp(f0.z, -1.0f, 1.0f));
 	}
 
-	// Capture the cursor
 	if (Engine::window) {
 		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		if (glfwRawMouseMotionSupported())
@@ -51,9 +51,23 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	}
 }
 
+void Scene::enableMouseMode() {
+	mouseMode = true;
+
+	GLFWwindow *win = Engine::window;
+	if (Engine::window) {
+		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (glfwRawMouseMotionSupported())
+			glfwSetInputMode(Engine::window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+	}
+}
+
 void Scene::firstPersonMouseControls() {
 	GLFWwindow *win = Engine::window;
 	if (!win)
+		return;
+	const bool captured = glfwGetInputMode(win, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+	if (!captured)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;
@@ -106,6 +120,9 @@ void Scene::firstPersonMouseControls() {
 void Scene::firstPersonKeyboardControls(float dt) {
 	GLFWwindow *win = Engine::window;
 	if (!win)
+		return;
+	const bool captured = glfwGetInputMode(win, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+	if (!captured)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;

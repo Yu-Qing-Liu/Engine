@@ -14,7 +14,6 @@
 #include "camera.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
-#include "events.hpp"
 #include "fonts.hpp"
 
 using std::unordered_set;
@@ -170,6 +169,9 @@ static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId)
 
 // ------------ Main ------------
 Main::Main(Scenes &scenes) : Scene(scenes) {
+    // Enable controls
+    disableMouseMode();
+
 	// Make sure screenParams are valid before constructing drawables
 	updateScreenParams();
 
@@ -239,6 +241,13 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		wireLabel = "";
 	};
 	edges->setRayTraceEnabled(true);
+
+	auto kbState = [this](int key, int, int action, int) {
+        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
+            enableMouseMode();
+        }
+	};
+	Events::keyboardCallbacks.push_back(kbState);
 }
 
 void Main::updateScreenParams() {

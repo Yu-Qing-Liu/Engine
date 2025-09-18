@@ -37,6 +37,8 @@ class Scene {
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
 
+	bool mouseMode = true;
+
 	// Camera state (meters)
 	glm::vec3 camPos{12.0f, 12.0f, 12.0f};
 	glm::vec3 camTarget{0.0f, 0.0f, 0.0f};
@@ -55,6 +57,8 @@ class Scene {
 
 	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
 
+	void disableMouseMode();
+	void enableMouseMode();
 	void firstPersonKeyboardControls(float dt);
 	void firstPersonMouseControls();
 };

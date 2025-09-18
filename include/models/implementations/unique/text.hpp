@@ -2,6 +2,7 @@
 
 #include "colors.hpp"
 #include "model.hpp"
+#include "fonts.hpp"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <vulkan/vulkan_core.h>
@@ -15,8 +16,8 @@ class Text : public Model {
 	~Text() override;
 
 	struct TextParams {
-		string fontPath;
-		uint32_t pixelHeight = 48;
+		string fontPath = Fonts::Arial;
+		uint32_t pixelHeight = 24;
 		vector<uint32_t> codepoints;
 		uint32_t maxAtlasWidth = 2048;
 		uint32_t padding = 1;
