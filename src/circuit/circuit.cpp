@@ -4,6 +4,9 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <algorithm>
+#include <queue>
+#include <unordered_set>
 
 static std::vector<std::string> split(const std::string &s, char delim, bool keepEmpty = false) {
 	std::vector<std::string> out;

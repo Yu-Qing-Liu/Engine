@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -181,6 +182,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	// Setup: construct instanced meshes
 	Text::TextParams tp{Fonts::ArialBold, 32};
 	nodeName = make_unique<Text>(this, persp, screenParams, tp);
+	wireName = make_unique<Text>(this, persp, screenParams, tp);
 
 	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
 	nodes->onMouseEnter = [&]() {
@@ -193,8 +195,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineWidth = 4.0f;
 		nodes->updateInstance(id, prev);
 
-		textPos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
-		label = nodeMap[id].name;
+		nodePos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
+		nodeLabel = nodeMap[id].name;
 	};
 	nodes->onMouseExit = [&]() {
 		if (!nodes->hitMapped) {
@@ -205,7 +207,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
 		nodes->updateInstance(id, prev);
-		label = "";
+
+		nodeLabel = "";
 	};
 	nodes->setRayTraceEnabled(true);
 
@@ -219,6 +222,9 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Yellow;
 		prev.outlineWidth = 4.0f;
 		edges->updateInstance(id, prev);
+
+		wirePos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 1.0);
+		wireLabel = "#" + std::to_string(edgeMap[id].cableId);
 	};
 	edges->onMouseExit = [&]() {
 		if (!edges->hitMapped) {
@@ -229,6 +235,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
 		edges->updateInstance(id, prev);
+
+		wireLabel = "";
 	};
 	edges->setRayTraceEnabled(true);
 
@@ -418,6 +426,28 @@ void Main::swapChainUpdate() {
 	idToIdx.reserve(N);
 	for (int i = 0; i < N; ++i)
 		idToIdx[ids[i]] = i;
+
+	// Build a cable-name index keyed by directed (uIdx,vIdx)
+	std::unordered_map<long long, int> cableIdByUV;
+	auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
+
+	for (const auto &ce : circuit->edges()) {
+		std::string su = normalizedId(ce.u.id);
+		std::string sv = normalizedId(ce.v.id);
+		auto itu = idToIdx.find(su);
+		auto itv = idToIdx.find(sv);
+		if (itu == idToIdx.end() || itv == idToIdx.end())
+			continue;
+		long long k = pack(itu->second, itv->second);
+		// keep first seen; or overwrite if you prefer latest
+		if (!cableIdByUV.count(k))
+			cableIdByUV[k] = ce.id;
+
+		// optional: also allow reverse lookup (in case directions differ)
+		long long krev = pack(itv->second, itu->second);
+		if (!cableIdByUV.count(krev))
+			cableIdByUV[krev] = ce.id;
+	}
 
 	// ---- sizing stats ----
 	float avgLen = 0.f;
@@ -670,36 +700,48 @@ void Main::swapChainUpdate() {
 	nodes->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 
 	// ---- wires ----
-	const float edgeThickness = glm::clamp(avgLen * 0.012f, 0.012f, 0.14f);
+	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
 	const glm::vec4 wireColor = Colors::Gray;
 
 	int eIdx = 0;
-	auto addSeg = [&](const glm::vec3 &P0, const glm::vec3 &P1) {
+	auto addSeg = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
 		glm::vec3 d = P1 - P0;
 		float L = glm::length(d);
 		if (L < 1e-6f)
 			return;
 		glm::vec3 mid = 0.5f * (P0 + P1);
 		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L}; // <-- use real label
 		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, wireColor, Colors::Black));
 	};
 
 	// Draw trunk
 	const float pad = 0.75f * dx;
-	addSeg(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f));
+	addSeg(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
 
 	// depth==1: single vertical to bus
 	for (int v = 0; v < N; ++v) {
-		if (depth[v] == 1)
-			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f));
+		if (depth[v] == 1) {
+			int p = parent[v]; // BFS parent that sits on/near the bus
+			int cableId;
+			if (p >= 0) {
+				auto it = cableIdByUV.find(pack(p, v));
+				if (it != cableIdByUV.end())
+					cableId = it->second;
+			}
+			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f), cableId);
+		}
 	}
 
 	// depth>=2: connect to parent
 	for (int v = 0; v < N; ++v) {
 		if (depth[v] >= 2 && parent[v] >= 0) {
-			const glm::vec3 A = pos[v];
-			const glm::vec3 B = pos[parent[v]];
-			addSeg(A, B); // vertical to parent
+			int p = parent[v];
+			int cableId;
+			auto it = cableIdByUV.find(pack(p, v));
+			if (it != cableIdByUV.end())
+				cableId = it->second;
+			addSeg(pos[v], pos[p], cableId);
 		}
 	}
 
@@ -717,11 +759,14 @@ void Main::updateUniformBuffers() {
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);
 	nodeName->updateUniformBuffer(std::nullopt, persp.view);
+	wireName->updateUniformBuffer(std::nullopt, persp.view);
 }
 
 void Main::renderPass() {
 	nodes->render();
 	edges->render();
-	float textLen = nodeName->getPixelWidth(label);
-	nodeName->renderBillboard(label, Text::BillboardParams{textPos, {-textLen / 2, 0}});
+	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
+	float wireTextLength = wireName->getPixelWidth(wireLabel);
+	nodeName->renderBillboard(nodeLabel, Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}}, Colors::Orange);
+	wireName->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
 }

@@ -1,12 +1,9 @@
 #pragma once
 
-#include <algorithm>
 #include <cctype>
 #include <initializer_list>
-#include <queue>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 class Circuit {

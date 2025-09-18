@@ -36,8 +36,8 @@ class Main : public Scene {
 	float camSpeed = 1.0f;
 
 	// FPS mouselook state
-	float yaw = 0.0f;		   // radians, wraps freely
-	float pitch = 0.0f;		   // radians, clamp to ~(-89°, +89°)
+	float yaw = 0.0f;		  // radians, wraps freely
+	float pitch = 0.0f;		  // radians, clamp to ~(-89°, +89°)
 	float mouseSens = 0.001f; // tweak to taste
 	vec3 lookAtCoords;
 
@@ -56,6 +56,7 @@ class Main : public Scene {
 	};
 
 	struct EdgeData {
+		int cableId;
 		float length;
 	};
 
@@ -63,8 +64,12 @@ class Main : public Scene {
 	unordered_map<int, EdgeData> edgeMap;
 
 	unique_ptr<Text> nodeName;
-	vec3 textPos;
-	string label;
+	vec3 nodePos;
+	string nodeLabel;
+
+	unique_ptr<Text> wireName;
+	vec3 wirePos;
+	string wireLabel;
 
 	void handleCameraInput(float dt);
 	void mouseLookFPS();
