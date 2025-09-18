@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -180,6 +182,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	// Setup: construct instanced meshes
 	Text::TextParams tp{Fonts::ArialBold, 32};
 	nodeName = make_unique<Text>(this, persp, screenParams, tp);
+	wireId = make_unique<Text>(this, persp, screenParams, tp);
 
 	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
 	nodes->onMouseEnter = [&]() {
@@ -192,8 +195,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineWidth = 4.0f;
 		nodes->updateInstance(id, prev);
 
-		textPos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
-		label = nodeMap[id].name;
+		nodePos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 2);
+		nodeLabel = nodeMap[id].name;
 	};
 	nodes->onMouseExit = [&]() {
 		if (!nodes->hitMapped) {
@@ -204,7 +207,8 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
 		nodes->updateInstance(id, prev);
-		label = "";
+
+		nodeLabel = "";
 	};
 	nodes->setRayTraceEnabled(true);
 
@@ -218,6 +222,9 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Yellow;
 		prev.outlineWidth = 4.0f;
 		edges->updateInstance(id, prev);
+
+		wirePos = vec3(prev.model[3].x, prev.model[3].y, prev.model[3].z + 1.0);
+		wireLabel = "#" + std::to_string(edgeMap[id].cableId);
 	};
 	edges->onMouseExit = [&]() {
 		if (!edges->hitMapped) {
@@ -228,159 +235,10 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
 		edges->updateInstance(id, prev);
+
+		wireLabel = "";
 	};
 	edges->setRayTraceEnabled(true);
-
-	auto kbState = [this](int key, int, int action, int) {
-		if (key >= 0 && key <= GLFW_KEY_LAST) {
-			if (action == GLFW_PRESS)
-				keyDown[key] = true;
-			if (action == GLFW_RELEASE)
-				keyDown[key] = false;
-		}
-	};
-	Events::keyboardCallbacks.push_back(kbState);
-
-	GLFWwindow *win = Engine::window;
-	if (win) {
-		glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // capture/hide
-		glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);  // smoother deltas (if supported)
-		// initialize the cursor center reference
-		int ww, hh;
-		glfwGetWindowSize(win, &ww, &hh);
-		lastPointerX = ww * 0.5;
-		lastPointerY = hh * 0.5;
-		glfwSetCursorPos(win, lastPointerX, lastPointerY);
-	}
-
-	// Initialize yaw/pitch from current view direction so we face the scene
-	{
-		glm::vec3 f0 = glm::normalize(lookAtCoords - camPos); // if lookAtCoords==origin, this points to origin
-		f0 = glm::normalize(glm::vec3(-1, -1, -1));
-		yaw = atan2f(f0.y, f0.x);
-		pitch = asinf(glm::clamp(f0.z, -1.0f, 1.0f));
-	}
-
-	// Capture the cursor
-	if (Engine::window) {
-		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-		if (glfwRawMouseMotionSupported())
-			glfwSetInputMode(Engine::window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-		lastPointerX = -1.0;
-		lastPointerY = -1.0;
-	}
-}
-
-void Main::mouseLookFPS() {
-	GLFWwindow *win = Engine::window;
-	if (!win)
-		return;
-	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
-		return;
-
-	// center of the window
-	int ww = 0, hh = 0;
-	glfwGetWindowSize(win, &ww, &hh);
-	const double cx = ww * 0.5;
-	const double cy = hh * 0.5;
-
-	// read current cursor, compute delta from center
-	double mx = 0.0, my = 0.0;
-	glfwGetCursorPos(win, &mx, &my);
-
-	// first frame after focus or startup: just recenter without a jump
-	if (lastPointerX < 0.0 || lastPointerY < 0.0) {
-		glfwSetCursorPos(win, cx, cy);
-		lastPointerX = cx;
-		lastPointerY = cy;
-		return;
-	}
-
-	const double dx = mx - cx;
-	const double dy = my - cy;
-
-	// immediately re-center so next frame's delta is relative
-	glfwSetCursorPos(win, cx, cy);
-	lastPointerX = cx;
-	lastPointerY = cy;
-
-	// update yaw/pitch from mouse delta
-	yaw -= float(dx) * mouseSens;	// yaw wraps naturally → 360°+
-	pitch -= float(dy) * mouseSens; // invert if you prefer
-	pitch = glm::clamp(pitch, glm::radians(-89.0f), glm::radians(89.0f));
-
-	// build forward from yaw/pitch (Z-up)
-	const float cyaw = cosf(yaw), syaw = sinf(yaw);
-	const float cp = cosf(pitch), sp = sinf(pitch);
-	glm::vec3 f = glm::normalize(glm::vec3(cyaw * cp, syaw * cp, sp));
-
-	// keep your current look distance (fallback to 1)
-	float lookDist = glm::length(lookAtCoords - camPos);
-	if (!(lookDist > 1e-4f))
-		lookDist = 1.0f;
-
-	// drive the existing lookAt target
-	lookAtCoords = camPos + f * lookDist;
-}
-
-void Main::handleCameraInput(float dt) {
-	GLFWwindow *win = Engine::window;
-	if (!win)
-		return;
-	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
-		return;
-
-	// read keys directly from GLFW
-	auto down = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
-
-	float moveX = 0.f, moveY = 0.f, moveZ = 0.f; // strafe right, forward, up
-	if (down(GLFW_KEY_D) || down(GLFW_KEY_RIGHT))
-		moveX += 1.f;
-	if (down(GLFW_KEY_A) || down(GLFW_KEY_LEFT))
-		moveX -= 1.f;
-	if (down(GLFW_KEY_W) || down(GLFW_KEY_UP))
-		moveY += 1.f;
-	if (down(GLFW_KEY_S) || down(GLFW_KEY_DOWN))
-		moveY -= 1.f;
-	if (down(GLFW_KEY_E))
-		moveZ += 1.f;
-	if (down(GLFW_KEY_Q))
-		moveZ -= 1.f;
-
-	// speed modifiers (same as before)
-	float kbSens = 0.24f;
-	if (down(GLFW_KEY_LEFT_CONTROL) || down(GLFW_KEY_RIGHT_CONTROL))
-		kbSens *= 5.0f;
-	if (down(GLFW_KEY_LEFT_ALT) || down(GLFW_KEY_RIGHT_ALT))
-		kbSens *= 0.2f;
-
-	// ------- build camera-aligned basis from current aim (cursor) -------
-	const glm::vec3 worldUp(0, 0, 1);
-
-	// forward = where the cursor points (what you use in lookAt())
-	glm::vec3 f = lookAtCoords - camPos;
-	if (glm::dot(f, f) < 1e-12f)
-		f = glm::vec3(0, 1, 0);
-	f = glm::normalize(f);
-
-	// right = perpendicular to forward in the horizontal sense
-	glm::vec3 right = glm::cross(f, worldUp);
-	if (glm::dot(right, right) < 1e-12f)
-		right = glm::vec3(1, 0, 0);
-	right = glm::normalize(right);
-
-	// up for flying (keeps Q/E vertical lift)
-	const glm::vec3 up = worldUp;
-
-	// movement aligned to cursor (W/S uses full forward, including pitch)
-	glm::vec3 delta = moveX * right + moveY * f + moveZ * up;
-
-	if (glm::dot(delta, delta) > 0.0f) {
-		delta = glm::normalize(delta) * (camSpeed * kbSens * (dt > 0 ? dt : 1.f));
-		camPos += delta;
-		lookAtCoords += delta; // pan the *actual* aim point you render with
-		camTarget += delta;	   // keep in sync if you still use camTarget elsewhere
-	}
 }
 
 void Main::updateScreenParams() {
@@ -398,253 +256,346 @@ void Main::swapChainUpdate() {
 	if (!circuit)
 		return;
 
-	// Use the unifilar graph, but place by semantic "tiers", not depth
 	const auto &G = circuit->unifilar();
 	if (G.adj.empty() && G.level.empty())
 		return;
 
-	// --- collect unique node ids present in unifilar (parents & children) ---
+	// ---- collect ids (stable) ----
 	std::unordered_set<std::string> idset;
 	for (const auto &kv : G.adj) {
 		idset.insert(kv.first);
 		for (const auto &e : kv.second)
 			idset.insert(e.child);
 	}
-	std::vector<std::string> nodeIds(idset.begin(), idset.end());
-	std::sort(nodeIds.begin(), nodeIds.end());
+	std::vector<std::string> ids(idset.begin(), idset.end());
+	std::sort(ids.begin(), ids.end());
+	const int N = (int)ids.size();
 
 	std::unordered_map<std::string, int> idToIdx;
-	idToIdx.reserve(nodeIds.size());
-	for (int i = 0; i < (int)nodeIds.size(); ++i)
-		idToIdx[nodeIds[i]] = i;
+	idToIdx.reserve(N);
+	for (int i = 0; i < N; ++i)
+		idToIdx[ids[i]] = i;
 
-	const int N = (int)nodeIds.size();
-	const float EPS = 1e-6f;
+	// Build a cable-name index keyed by directed (uIdx,vIdx)
+	std::unordered_map<long long, int> cableIdByUV;
+	auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
 
-	// ---- stats (keep your sizing heuristics) ----
-	float avgLen = 0.0f;
+	for (const auto &ce : circuit->edges()) {
+		std::string su = normalizedId(ce.u.id);
+		std::string sv = normalizedId(ce.v.id);
+		auto itu = idToIdx.find(su);
+		auto itv = idToIdx.find(sv);
+		if (itu == idToIdx.end() || itv == idToIdx.end())
+			continue;
+		long long k = pack(itu->second, itv->second);
+		// keep first seen; or overwrite if you prefer latest
+		if (!cableIdByUV.count(k))
+			cableIdByUV[k] = ce.id;
+
+		// optional: also allow reverse lookup (in case directions differ)
+		long long krev = pack(itv->second, itu->second);
+		if (!cableIdByUV.count(krev))
+			cableIdByUV[krev] = ce.id;
+	}
+
+	// ---- sizing stats ----
+	float avgLen = 0.f;
 	int m = 0;
 	for (const auto &e : circuit->edges()) {
-		avgLen += e.length * 2;
+		avgLen += e.length;
 		++m;
 	}
-	if (m > 0)
+	if (m)
 		avgLen /= float(m);
 
-	// ---- define tier from ID (adjust to your taxonomy) ----
-
-	auto tierOf = [](const std::string &s) -> int {
+	// ---- taxonomy: sign only (above/below/center) ----
+	auto sideSign = [](const std::string &s) -> int {
 		auto starts = [&](const char *p) { return s.rfind(p, 0) == 0; };
-
-		// TOP: feeders/panels
-		if (starts("CSE-PCHG") || starts("CSE-PCGH"))
-			return 0;
-
-		// Sensors (next row down)
 		if (starts("TTC-"))
-			return 1;
-
-		// splices
-		if (starts("SPN-") || starts("SPS-"))
-			return 2;
-
-		// device rows (adjust buckets as you like)
-		if (starts("BJ-29"))
-			return 3;
-		if (starts("BJ-28"))
-			return 4;
-		if (starts("BJ-"))
-			return 4;
-
-		// EPI/CEV labels – keep near sensors/splices or give them their own row
-		if (starts("CSE-EPI-") || starts("CEV-EPI-"))
-			return 2;
-
-		// unknowns
-		return 3;
+			return -1; // below
+		if (starts("CSE-"))
+			return 0; // on bus
+		return +1;	  // above (BJ-, SPN-, ...)
 	};
 
-	// ---- group nodes by tier & assign positions ----
-	const float dy = std::max(1.2f, avgLen * 0.06f); // vertical separation between rows
-	const float dx = std::max(2.5f, avgLen * 0.10f); // horizontal spacing between siblings
+	// ---- horizontal order key (same as you had) ----
+	auto familyKey = [](const std::string &s) -> int {
+		auto starts = [&](const char *p) { return s.rfind(p, 0) == 0; };
+		if (starts("CSE-"))
+			return 0;
+		if (starts("BJ-29"))
+			return 10;
+		if (starts("BJ-28"))
+			return 11;
+		if (starts("BJ-"))
+			return 12;
+		if (starts("SPN-") || starts("SPS-"))
+			return 20;
+		if (starts("TTC-"))
+			return 30;
+		return 40;
+	};
+	auto numTail = [](const std::string &s) -> int {
+		int n = 0, i = (int)s.size() - 1;
+		while (i >= 0 && std::isdigit((unsigned char)s[i]))
+			--i;
+		if (i + 1 < (int)s.size()) {
+			try {
+				n = std::stoi(s.substr(i + 1));
+			} catch (...) {
+			}
+		}
+		return n;
+	};
 
-	std::unordered_map<int, std::vector<std::string>> byTier;
-	int minTier = INT_MAX, maxTier = INT_MIN;
-	std::unordered_map<std::string, int> tier;
-	tier.reserve(nodeIds.size());
-	for (const auto &id : nodeIds) {
-		int t = tierOf(id);
-		tier[id] = t;
-		byTier[t].push_back(id);
-		minTier = std::min(minTier, t);
-		maxTier = std::max(maxTier, t);
-	}
+	std::vector<int> order(N);
+	std::iota(order.begin(), order.end(), 0);
+	std::sort(order.begin(), order.end(), [&](int a, int b) {
+		int fa = familyKey(ids[a]), fb = familyKey(ids[b]);
+		if (fa != fb)
+			return fa < fb;
+		int na = numTail(ids[a]), nb = numTail(ids[b]);
+		if (na != nb)
+			return na < nb;
+		return ids[a] < ids[b];
+	});
 
-	// sort each tier for stable layout and center lanes around y=0
-	std::vector<glm::vec3> pos(N, glm::vec3(0));
-	for (auto &kv : byTier) {
-		int t = kv.first;
-		auto &vec = kv.second;
-		std::sort(vec.begin(), vec.end());
+	// ---------------- BFS forest: depth[] and parent[] ----------------
+	// Build adj (u->v) with dedupe and indegrees
+	std::vector<std::vector<int>> adj(N), radj(N);
+	std::vector<int> indeg(N, 0);
 
-		// place this tier at Y = (tier index), mapped to world coordinates
-		float y = float(maxTier - t) * dy; // top tiers get larger y (like your image)
+	{
+		std::unordered_set<long long> seen;
+		auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
 
-		// simple left->right packing; keep similar families near each other by sort
-		// center around x=0 for symmetry
-		float x0 = -0.5f * float(vec.size() - 1) * dx;
-		for (size_t i = 0; i < vec.size(); ++i) {
-			auto it = idToIdx.find(vec[i]);
-			if (it == idToIdx.end())
-				continue;
-			pos[it->second] = glm::vec3(x0 + float(i) * dx, y, 0.0f);
+		for (const auto &kv : G.adj) {
+			int u = idToIdx[kv.first];
+			for (const auto &ee : kv.second) {
+				auto it = idToIdx.find(ee.child);
+				if (it == idToIdx.end())
+					continue;
+				int v = it->second;
+				long long k = pack(u, v);
+				if (seen.insert(k).second) {
+					adj[u].push_back(v);
+					radj[v].push_back(u);
+					indeg[v]++;
+				}
+			}
 		}
 	}
 
-	// ---- fit camera ----
-	float sceneRadius = 0.0f;
+	// roots: prefer CSE-; else indeg==0; final fallback=0
+	std::vector<int> roots;
+	for (int i = 0; i < N; ++i)
+		if (ids[i].rfind("CSE-", 0) == 0)
+			roots.push_back(i);
+	if (roots.empty()) {
+		for (int i = 0; i < N; ++i)
+			if (indeg[i] == 0)
+				roots.push_back(i);
+	}
+	if (roots.empty())
+		roots.push_back(0);
+
+	std::vector<int> depth(N, INT_MAX), parent(N, -1);
+	std::queue<int> q;
+	for (int r : roots) {
+		depth[r] = 0;
+		parent[r] = -1;
+		q.push(r);
+	}
+
+	while (!q.empty()) {
+		int u = q.front();
+		q.pop();
+		for (int v : adj[u]) {
+			if (depth[v] > depth[u] + 1) {
+				depth[v] = depth[u] + 1;
+				parent[v] = u; // choose u as the tree parent
+				q.push(v);
+			}
+		}
+	}
+	// Unreached -> attach to any predecessor if exists; else near roots
+	for (int v = 0; v < N; ++v) {
+		if (depth[v] == INT_MAX) {
+			if (!radj[v].empty()) {
+				parent[v] = radj[v][0];
+				depth[v] = depth[parent[v]] + 1;
+			} else {
+				depth[v] = 1;
+				parent[v] = roots[0];
+			}
+		}
+	}
+
+	// --------------- X placement (columns) ----------------
+	// Columns are created by depth==1 anchors (the nodes that touch the bus).
+	// Ups on integer slots, downs on half slots. Deeper nodes inherit their
+	// parent’s column with tiny sibling offsets to keep wires distinct.
+	const float trunkY = 0.0f;
+	const float dx = std::max(9.0f, avgLen * 0.26f); // column spacing
+	const float epsCol = dx * 0.12f;				 // sibling x offset
+
+	std::vector<int> ups1, downs1, mids0;
+	for (int v : order) {
+		if (depth[v] == 0) {
+			mids0.push_back(v);
+			continue;
+		} // on bus (CSE)
+		if (depth[v] == 1) {
+			(sideSign(ids[v]) > 0 ? ups1 : downs1).push_back(v);
+		}
+	}
+
+	// assign column x for anchors
+	std::vector<float> xcol(N, 0.f);
+	auto placeLane = [&](const std::vector<int> &lane, float x0) {
+		for (int i = 0; i < (int)lane.size(); ++i)
+			xcol[lane[i]] = x0 + float(i) * dx;
+	};
+	placeLane(ups1, 0.0f);		  // integer slots
+	placeLane(downs1, 0.5f * dx); // half slots
+	for (int i = 0; i < (int)mids0.size(); ++i)
+		xcol[mids0[i]] = float(i) * dx;
+
+	// children lists for sibling offsets
+	std::vector<std::vector<int>> kids(N);
+	for (int v = 0; v < N; ++v)
+		if (parent[v] >= 0)
+			kids[parent[v]].push_back(v);
+
+	// DFS/BFS by depth to assign deeper columns = parent column +/- small offsets
+	// (keeps stacks vertical but wires distinct)
+	for (int d = 2; d < N + 2; ++d) {
+		bool any = false;
+		for (int p = 0; p < N; ++p) {
+			if (depth[p] != d - 1)
+				continue;
+			auto &ch = kids[p];
+			// deterministic order
+			std::sort(ch.begin(), ch.end(), [&](int a, int b) {
+				int sa = sideSign(ids[a]), sb = sideSign(ids[b]);
+				if (sa != sb)
+					return sa > sb; // above before below
+				int fa = familyKey(ids[a]), fb = familyKey(ids[b]);
+				if (fa != fb)
+					return fa < fb;
+				int na = numTail(ids[a]), nb = numTail(ids[b]);
+				if (na != nb)
+					return na < nb;
+				return ids[a] < ids[b];
+			});
+			for (int k = 0; k < (int)ch.size(); ++k) {
+				int v = ch[k];
+				if (depth[v] != d)
+					continue;
+				xcol[v] = xcol[p];
+				any = true;
+			}
+		}
+		if (!any)
+			break;
+	}
+
+	// --------------- Y placement (tiers by depth) ----------------
+	const float tierBase = std::max(8.0f, avgLen * 0.1f); // depth==1 distance
+	const float tierStep = std::max(5.0f, avgLen * 0.1f); // per extra depth
+
+	auto yFor = [&](int v) -> float {
+		if (depth[v] == 0)
+			return trunkY;
+		float mag = tierBase + float(depth[v] - 1) * tierStep;
+		int s = sideSign(ids[v]);
+		if (s == 0)
+			s = +1; // non-TTC default above if depth>0 but on trunk taxonomy
+		return trunkY + (s > 0 ? +mag : -mag);
+	};
+
+	std::vector<glm::vec3> pos(N, glm::vec3(0));
+	for (int v = 0; v < N; ++v)
+		pos[v] = glm::vec3(xcol[v], yFor(v), 0.f);
+
+	// extents
+	float minX = 1e9f, maxX = -1e9f;
+	for (int i = 0; i < N; ++i) {
+		minX = std::min(minX, pos[i].x);
+		maxX = std::max(maxX, pos[i].x);
+	}
+
+	// ---- camera ----
+	float sceneRadius = 1.f;
 	for (auto &p : pos)
 		sceneRadius = std::max(sceneRadius, glm::length(p));
-	sceneRadius = std::max(sceneRadius, 1.0f);
-
 	const float aspect = screenParams.viewport.width / screenParams.viewport.height;
 	const float fovY = radians(45.0f);
-	const float desiredDist = std::max(12.0f, sceneRadius * 2.2f);
-
+	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
 	camPos = dir * desiredDist;
-
-	const float nearP = 0.05f;
-	const float farP = std::max(desiredDist * 4.0f, sceneRadius * 6.0f);
+	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
 	persp.view = lookAt(camPos, camTarget, camUp);
 	persp.proj = perspective(fovY, aspect, nearP, farP);
 
 	nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
+	wireId->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
 
-	// ---- stamp nodes (8 legend colors) ----
-	float nodeScale = 2.0f;
+	// ---- draw nodes ----
+	const float nodeScale = 2.0f;
 	for (int i = 0; i < N; ++i) {
-		const std::string &raw = nodeIds[i];
-		auto k = classify8WithEdges(circuit.get(), raw);
-		auto color = colorFor(k);
-		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), color, Colors::Black));
-        nodeMap[i] = {raw};
+		auto kind = classify8WithEdges(circuit.get(), ids[i]);
+		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), colorFor(kind), Colors::Black));
+		nodeMap[i] = {ids[i]};
 	}
 	nodes->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 
-	// Build reverse adjacency (child -> parents) from G.adj
-	std::unordered_map<std::string, std::vector<std::string>> parentsOf;
-	for (auto &kv : G.adj) {
-		const auto &p = kv.first;
-		for (auto &e : kv.second)
-			parentsOf[e.child].push_back(p);
-	}
-
-	// After you compute a first pass of pos[] (or at least parent tier X’s),
-	// do one reorder pass for each tier t>minTier:
-	for (auto &kv : byTier) {
-		int t = kv.first;
-		auto &vec = kv.second;
-
-		// Compute sort key = average parent X (fallback to own name)
-		struct Item {
-			std::string id;
-			float key;
-		};
-		std::vector<Item> items;
-		items.reserve(vec.size());
-		for (auto &id : vec) {
-			float key = 0.f;
-			int cnt = 0;
-			auto pit = parentsOf.find(id);
-			if (pit != parentsOf.end()) {
-				for (auto &p : pit->second) {
-					auto itP = idToIdx.find(p);
-					if (itP != idToIdx.end()) {
-						key += pos[itP->second].x;
-						++cnt;
-					}
-				}
-			}
-			if (cnt > 0)
-				key /= float(cnt);
-			else {
-				// leaf or no known parents: keep deterministic fallback
-				key = 0.f;
-			}
-			items.push_back({id, key});
-		}
-		std::sort(items.begin(), items.end(), [](const Item &a, const Item &b) { return a.key < b.key || (a.key == b.key && a.id < b.id); });
-		// rewrite vec in this order
-		for (size_t i = 0; i < vec.size(); ++i)
-			vec[i] = items[i].id;
-	}
-
-	// Then re-assign x positions for each tier using your usual spacing
-
-	// ---- stamp edges (parent -> child) ----
-	// same offsetting as before for parallel edges
-	struct PairKey {
-		int a, b;
-		bool operator==(const PairKey &o) const { return a == o.a && b == o.b; }
-	};
-	struct PairKeyHash {
-		size_t operator()(const PairKey &k) const { return (size_t)k.a * 1000003u ^ (size_t)k.b; }
-	};
-	std::unordered_map<PairKey, int, PairKeyHash> pairCounts;
-
-	const float edgeThickness = glm::clamp(avgLen * 0.01f, 0.01f, 0.10f);
-	const float edgeOffset = glm::clamp(avgLen * 0.02f, 0.03f, 0.15f);
+	// ---- wires ----
+	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
+	const glm::vec4 wireColor = Colors::Gray;
 
 	int eIdx = 0;
-	// ---- edge stamping with orthogonal routing (3 segments) ----
-	auto addSegment = [&](const glm::vec3 &P0, const glm::vec3 &P1, float thickness, const glm::vec4 &color) {
+	auto addSeg = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
 		glm::vec3 d = P1 - P0;
 		float L = glm::length(d);
 		if (L < 1e-6f)
 			return;
-		glm::vec3 dirN = d / L;
 		glm::vec3 mid = 0.5f * (P0 + P1);
-		glm::quat rot = rotatePlusXTo(dirN);
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, thickness, thickness), rot, color, Colors::Black));
+		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L}; // <-- use real label
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, wireColor, Colors::Black));
 	};
 
-	// choose a bus height between tiers (works even if tiers are equal)
-	auto busY = [&](float yA, float yB) {
-		// midpoint bus; if you prefer a fixed track per tier, replace with a table of per-tier y's
-		return 0.5f * (yA + yB);
-	};
+	// Draw trunk
+	const float pad = 0.75f * dx;
+	addSeg(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
 
-	const glm::vec4 wireColor = Colors::Gray;
-
-	eIdx = 0; // reset edge instance cursor
-	for (const auto &adjKV : G.adj) {
-		auto itU = idToIdx.find(adjKV.first);
-		if (itU == idToIdx.end())
-			continue;
-		const int iu = itU->second;
-		const glm::vec3 A = pos[iu];
-
-		for (const auto &ue : adjKV.second) {
-			auto itV = idToIdx.find(ue.child);
-			if (itV == idToIdx.end())
-				continue;
-			const int iv = itV->second;
-			const glm::vec3 B = pos[iv];
-
-			// 3-piece orthogonal: drop1, span, drop2
-			const float yBus = busY(A.y, B.y);
-
-			// drop1: A -> (A.x, yBus)
-			addSegment(A, glm::vec3(A.x, yBus, A.z), edgeThickness, wireColor);
-
-			// span : (A.x, yBus) -> (B.x, yBus)
-			addSegment(glm::vec3(A.x, yBus, A.z), glm::vec3(B.x, yBus, B.z), edgeThickness, wireColor);
-
-			// drop2: (B.x, yBus) -> B
-			addSegment(glm::vec3(B.x, yBus, B.z), B, edgeThickness, wireColor);
+	// depth==1: single vertical to bus
+	for (int v = 0; v < N; ++v) {
+		if (depth[v] == 1) {
+			int p = parent[v]; // BFS parent that sits on/near the bus
+			int cableId;
+			if (p >= 0) {
+				auto it = cableIdByUV.find(pack(p, v));
+				if (it != cableIdByUV.end())
+					cableId = it->second;
+			}
+			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f), cableId);
 		}
 	}
+
+	// depth>=2: connect to parent
+	for (int v = 0; v < N; ++v) {
+		if (depth[v] >= 2 && parent[v] >= 0) {
+			int p = parent[v];
+			int cableId;
+			auto it = cableIdByUV.find(pack(p, v));
+			if (it != cableIdByUV.end())
+				cableId = it->second;
+			addSeg(pos[v], pos[p], cableId);
+		}
+	}
+
 	edges->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
@@ -653,17 +604,20 @@ void Main::updateComputeUniformBuffers() {}
 void Main::computePass() {}
 
 void Main::updateUniformBuffers() {
-	mouseLookFPS();
-	handleCameraInput(1.0f);
+	firstPersonMouseControls();
+	firstPersonKeyboardControls(1.0f);
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);
 	nodeName->updateUniformBuffer(std::nullopt, persp.view);
+	wireId->updateUniformBuffer(std::nullopt, persp.view);
 }
 
 void Main::renderPass() {
 	nodes->render();
 	edges->render();
-	float textLen = nodeName->getPixelWidth(label);
-	nodeName->renderBillboard(label, Text::BillboardParams{textPos, {-textLen / 2, 0}});
+	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
+	float wireTextLength = wireId->getPixelWidth(wireLabel);
+	nodeName->renderBillboard(nodeLabel, Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}}, Colors::Orange);
+	wireId->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
 }
