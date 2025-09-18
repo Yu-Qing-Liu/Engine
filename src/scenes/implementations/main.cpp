@@ -622,8 +622,8 @@ void Main::swapChainUpdate() {
 	}
 
 	// --------------- Y placement (tiers by depth) ----------------
-	const float tierBase = std::max(8.0f, avgLen * 0.40f); // depth==1 distance
-	const float tierStep = std::max(5.0f, avgLen * 0.22f); // per extra depth
+	const float tierBase = std::max(8.0f, avgLen * 0.1f); // depth==1 distance
+	const float tierStep = std::max(5.0f, avgLen * 0.1f); // per extra depth
 
 	auto yFor = [&](int v) -> float {
 		if (depth[v] == 0)
