@@ -182,7 +182,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	// Setup: construct instanced meshes
 	Text::TextParams tp{Fonts::ArialBold, 32};
 	nodeName = make_unique<Text>(this, persp, screenParams, tp);
-	wireName = make_unique<Text>(this, persp, screenParams, tp);
+	wireId = make_unique<Text>(this, persp, screenParams, tp);
 
 	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
 	nodes->onMouseEnter = [&]() {
@@ -688,7 +688,9 @@ void Main::swapChainUpdate() {
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
 	persp.view = lookAt(camPos, camTarget, camUp);
 	persp.proj = perspective(fovY, aspect, nearP, farP);
+
 	nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
+	wireId->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
 
 	// ---- draw nodes ----
 	const float nodeScale = 2.0f;
@@ -759,14 +761,14 @@ void Main::updateUniformBuffers() {
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);
 	nodeName->updateUniformBuffer(std::nullopt, persp.view);
-	wireName->updateUniformBuffer(std::nullopt, persp.view);
+	wireId->updateUniformBuffer(std::nullopt, persp.view);
 }
 
 void Main::renderPass() {
 	nodes->render();
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
-	float wireTextLength = wireName->getPixelWidth(wireLabel);
+	float wireTextLength = wireId->getPixelWidth(wireLabel);
 	nodeName->renderBillboard(nodeLabel, Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}}, Colors::Orange);
-	wireName->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
+	wireId->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
 }

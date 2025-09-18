@@ -67,7 +67,7 @@ class Main : public Scene {
 	vec3 nodePos;
 	string nodeLabel;
 
-	unique_ptr<Text> wireName;
+	unique_ptr<Text> wireId;
 	vec3 wirePos;
 	string wireLabel;
 
