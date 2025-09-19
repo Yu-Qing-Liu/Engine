@@ -83,7 +83,7 @@ void Overlay::swapChainUpdate() {
     for (int i = 0; i != static_cast<int>(Kind::End); i++) {
         Kind k = static_cast<Kind>(i);
         vec4 color = Graph::colorFor(k);
-        legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, color));
+        legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, Colors::Black));
         y += 60.0f;
     }
     legend->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
