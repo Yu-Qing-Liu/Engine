@@ -117,7 +117,7 @@ void Scene::firstPersonMouseControls() {
 	lookAtCoords = camPos + f * lookDist;
 }
 
-void Scene::firstPersonKeyboardControls(float dt) {
+void Scene::firstPersonKeyboardControls(float sensitivity) {
 	GLFWwindow *win = Engine::window;
 	if (!win)
 		return;
@@ -145,11 +145,10 @@ void Scene::firstPersonKeyboardControls(float dt) {
 		moveZ -= 1.f;
 
 	// speed modifiers (same as before)
-	float kbSens = 0.24f;
 	if (down(GLFW_KEY_LEFT_CONTROL) || down(GLFW_KEY_RIGHT_CONTROL))
-		kbSens *= 5.0f;
+		sensitivity *= 5.0f;
 	if (down(GLFW_KEY_LEFT_ALT) || down(GLFW_KEY_RIGHT_ALT))
-		kbSens *= 0.2f;
+		sensitivity *= 0.2f;
 
 	// ------- build camera-aligned basis from current aim (cursor) -------
 	const glm::vec3 worldUp(0, 0, 1);
@@ -173,7 +172,7 @@ void Scene::firstPersonKeyboardControls(float dt) {
 	glm::vec3 delta = moveX * right + moveY * f + moveZ * up;
 
 	if (glm::dot(delta, delta) > 0.0f) {
-		delta = glm::normalize(delta) * (camSpeed * kbSens * (dt > 0 ? dt : 1.f));
+		delta = glm::normalize(delta) * (camSpeed * sensitivity * (Engine::deltaTime * 100 > 0 ? Engine::deltaTime * 100 : 1.f));
 		camPos += delta;
 		lookAtCoords += delta; // pan the *actual* aim point you render with
 		camTarget += delta;	   // keep in sync if you still use camTarget elsewhere

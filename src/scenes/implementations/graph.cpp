@@ -576,7 +576,7 @@ void Graph::computePass() {}
 
 void Graph::updateUniformBuffers() {
 	firstPersonMouseControls();
-	firstPersonKeyboardControls(1.0f);
+	firstPersonKeyboardControls();
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
 	nodes->updateUniformBuffer(std::nullopt, persp.view);
 	edges->updateUniformBuffer(std::nullopt, persp.view);

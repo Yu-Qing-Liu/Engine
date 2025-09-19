@@ -40,6 +40,31 @@ class Graph : public Scene {
 		End
 	};
 
+	static string stringFor(Kind k) {
+		switch (k) {
+		case Kind::PCGH:
+			return "PCGH";
+		case Kind::Drainage:
+			return "Drainage"; // 0
+		case Kind::BJ_Primary_Installed:
+			return "BJ Primary Installed"; // 1 (SPN-*)
+		case Kind::BJ_Primary_NotInstalled:
+			return "BJ Primary Not Installed"; // 2
+		case Kind::BJ_Primary_InstalledConnected:
+			return "BJ Primary Installed Connected"; // 3
+		case Kind::BJ_AdductionWater:
+			return "BJ Adduction Water"; // 4
+		case Kind::BJ_Secondary_NotHeated:
+			return "BJ Secondary Not Heated"; // 5
+		case Kind::BJ_Secondary_InstalledConnected:
+			return "BJ Secondary Installed Connected"; // 6
+		case Kind::SensorTTC:
+			return "Sensor TTC"; // 7
+		default:
+			return "Unknown"; // 8
+		}
+	}
+
 	static glm::vec4 colorFor(Kind k) {
 		switch (k) {
 		case Kind::PCGH:

@@ -34,6 +34,7 @@ class Overlay : public Scene {
 	bool is3D = true;
 
 	unique_ptr<InstancedPolygon> legend;
+	vector<unique_ptr<Text>> legendLabels;
 
 	unique_ptr<Texture> crosshair;
 	unique_ptr<Button> perspectiveBtn;

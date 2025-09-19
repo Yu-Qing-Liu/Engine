@@ -27,6 +27,25 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
     });
 
     legend = Shapes::pentagons(this, orthographic, screenParams, 10 /*node types*/);
+    float legendIconSize = 50.0f;
+    float y = 50.0f;
+    for (int i = 0; i != static_cast<int>(Kind::End); i++) {
+        Kind k = static_cast<Kind>(i);
+        vec4 color = Graph::colorFor(k);
+        legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, Colors::Black));
+
+        unique_ptr<Text> label = make_unique<Text>(this, orthographic, screenParams, tp);
+        string labelContent = Graph::stringFor(k);
+        float labelWidth = label->getPixelWidth(labelContent);
+        label->color = Colors::Gray;
+        label->text = labelContent; 
+        label->updateUniformBuffer(
+            translate(mat4(1.0f), vec3(100 + labelWidth / 2, y, 0))
+        );
+        legendLabels.push_back(std::move(label));
+
+        y += 60.0f;
+    }
 }
 
 void Overlay::updateScreenParams() {
@@ -78,15 +97,10 @@ void Overlay::swapChainUpdate() {
         orthographic.proj
     );
 
-    float legendIconSize = 50.0f;
-    float y = 50.0f;
-    for (int i = 0; i != static_cast<int>(Kind::End); i++) {
-        Kind k = static_cast<Kind>(i);
-        vec4 color = Graph::colorFor(k);
-        legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, Colors::Black));
-        y += 60.0f;
-    }
     legend->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
+    for (const auto &l : legendLabels) {
+        l->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
+    }
 }
 
 void Overlay::updateComputeUniformBuffers() {}
@@ -98,6 +112,9 @@ void Overlay::updateUniformBuffers() {}
 void Overlay::renderPass() {
     perspectiveBtn->render();
     legend->render();
+    for (const auto &l : legendLabels) {
+        l->render();
+    }
     if (is3D) {
         crosshair->render(); 
         perspectiveBtn->styleParams.text = "3D";

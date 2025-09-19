@@ -59,6 +59,6 @@ class Scene {
 
 	void disableMouseMode();
 	void enableMouseMode();
-	void firstPersonKeyboardControls(float dt);
 	void firstPersonMouseControls();
+	void firstPersonKeyboardControls(float sensitivity = 1.0f);
 };

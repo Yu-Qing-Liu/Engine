@@ -84,6 +84,11 @@ class Text : public Model {
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
 
+    string text = "Some text!";
+    vec4 color = Colors::Red;
+
+    void render() override;
+
 	// 1) normal (no caret, no selection) – existing one calls this behavior
 	void renderText(const std::string &text, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
 

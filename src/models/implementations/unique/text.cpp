@@ -717,6 +717,11 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), (uint32_t)idx.size(), 1, 0, 0, 0);
 }
 
+void Text::render() {
+	static const std::vector<std::pair<size_t, size_t>> none;
+	renderTextEx(text, std::nullopt, 1.0f, color, none, glm::vec4(0, 0, 0, 0), std::nullopt);
+}
+
 // 1) normal
 void Text::renderText(const std::string &text, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
 	static const std::vector<std::pair<size_t, size_t>> none;
