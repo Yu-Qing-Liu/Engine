@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "graph3d.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -168,7 +168,7 @@ static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId)
 }
 
 // ------------ Main ------------
-Main::Main(Scenes &scenes) : Scene(scenes) {
+Graph3D::Graph3D(Scenes &scenes) : Scene(scenes) {
     // Enable controls
     disableMouseMode();
 
@@ -250,7 +250,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	Events::keyboardCallbacks.push_back(kbState);
 }
 
-void Main::updateScreenParams() {
+void Graph3D::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -261,7 +261,7 @@ void Main::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void Main::swapChainUpdate() {
+void Graph3D::swapChainUpdate() {
 	if (!circuit)
 		return;
 
@@ -608,11 +608,11 @@ void Main::swapChainUpdate() {
 	edges->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
-void Main::updateComputeUniformBuffers() {}
+void Graph3D::updateComputeUniformBuffers() {}
 
-void Main::computePass() {}
+void Graph3D::computePass() {}
 
-void Main::updateUniformBuffers() {
+void Graph3D::updateUniformBuffers() {
 	firstPersonMouseControls();
 	firstPersonKeyboardControls(1.0f);
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
@@ -622,7 +622,7 @@ void Main::updateUniformBuffers() {
 	wireId->updateUniformBuffer(std::nullopt, persp.view);
 }
 
-void Main::renderPass() {
+void Graph3D::renderPass() {
 	nodes->render();
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);

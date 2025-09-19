@@ -5,16 +5,16 @@
 #include "shapes.hpp"
 #include "text.hpp"
 
-class Main : public Scene {
+class Graph3D : public Scene {
   public:
-	Main(Scenes &scenes);
-	Main(Main &&) = default;
-	Main(const Main &) = delete;
-	Main &operator=(Main &&) = delete;
-	Main &operator=(const Main &) = delete;
-	~Main() = default;
+	Graph3D(Scenes &scenes);
+	Graph3D(Graph3D &&) = default;
+	Graph3D(const Graph3D &) = delete;
+	Graph3D &operator=(Graph3D &&) = delete;
+	Graph3D &operator=(const Graph3D &) = delete;
+	~Graph3D() = default;
 
-	std::string getName() override { return "Main"; }
+	std::string getName() override { return "Graph3D"; }
 
 	void updateScreenParams() override;
 

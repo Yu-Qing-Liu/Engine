@@ -15,10 +15,10 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			if (is3D) {
                 is3D = false;
-                this->scenes.hideScene("Main");
+                this->scenes.hideScene("Graph3D");
             } else {
                 is3D = true;
-                this->scenes.showScene("Main");
+                this->scenes.showScene("Graph3D");
                 disableMouseMode();
             }
 		}
