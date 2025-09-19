@@ -2,7 +2,11 @@
 #include "scenes.hpp"
 #include "assets.hpp"
 #include "colors.hpp"
+#include "shapes.hpp"
 #include "textures.hpp"
+#include "graph.hpp"
+
+using Kind = Graph::Kind;
 
 Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 	crosshair = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/crosshair/crosshair.png");
@@ -15,14 +19,14 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			if (is3D) {
                 is3D = false;
-                this->scenes.hideScene("Graph3D");
             } else {
                 is3D = true;
-                this->scenes.showScene("Graph3D");
                 disableMouseMode();
             }
 		}
     });
+
+    legend = Shapes::pentagons(this, orthographic, screenParams, 10 /*node types*/);
 }
 
 void Overlay::updateScreenParams() {
@@ -73,6 +77,16 @@ void Overlay::swapChainUpdate() {
         std::nullopt,
         orthographic.proj
     );
+
+    float legendIconSize = 50.0f;
+    float y = 50.0f;
+    for (int i = 0; i != static_cast<int>(Kind::End); i++) {
+        Kind k = static_cast<Kind>(i);
+        vec4 color = Graph::colorFor(k);
+        legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, color));
+        y += 60.0f;
+    }
+    legend->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
 }
 
 void Overlay::updateComputeUniformBuffers() {}
@@ -83,6 +97,7 @@ void Overlay::updateUniformBuffers() {}
 
 void Overlay::renderPass() {
     perspectiveBtn->render();
+    legend->render();
     if (is3D) {
         crosshair->render(); 
         perspectiveBtn->styleParams.text = "3D";

@@ -1,9 +1,9 @@
 #include "scenes.hpp"
-#include "graph3d.hpp"
+#include "graph.hpp"
 #include "overlay.hpp"
 
 Scenes::Scenes() {
-    scenesContainer.emplace_back(make_shared<Graph3D>(*this));
+    scenesContainer.emplace_back(make_shared<Graph>(*this));
     scenesContainer.emplace_back(make_shared<Overlay>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};

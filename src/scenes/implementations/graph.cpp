@@ -1,4 +1,4 @@
-#include "graph3d.hpp"
+#include "graph.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -17,6 +17,7 @@
 #include "fonts.hpp"
 
 using std::unordered_set;
+using Kind = Graph::Kind;
 
 // ------------ helpers ------------
 static inline glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
@@ -59,45 +60,6 @@ static std::string normalizedId(std::string s) {
 static bool startsWith(const std::string &upId, const char *upPrefix) {
 	const size_t n = std::strlen(upPrefix);
 	return upId.size() >= n && std::memcmp(upId.data(), upPrefix, n) == 0;
-}
-
-// ---------- 8-color classifier ----------
-enum class Kind {
-	PCGH,							 // Purple
-	Drainage,						 // DarkBlue
-	BJ_Primary_Installed,			 // Turquoise (SPN-*)
-	BJ_Primary_NotInstalled,		 // Orange (BJ-297* or text flags)
-	BJ_Primary_InstalledConnected,	 // Green (BJ-295/287* + generic BJ-*)
-	BJ_AdductionWater,				 // Pink (BJ-192* or text flags)
-	BJ_Secondary_NotHeated,			 // DeepPink (BJ-291* except 291B)
-	BJ_Secondary_InstalledConnected, // Blue (BJ-291B)
-	SensorTTC,						 // Yellow (TTC-*)
-	Unknown
-};
-
-static glm::vec4 colorFor(Kind k) {
-	switch (k) {
-	case Kind::PCGH:
-		return Colors::Purple;
-	case Kind::Drainage:
-		return Colors::DarkBlue; // 0
-	case Kind::BJ_Primary_Installed:
-		return Colors::Turquoise; // 1 (SPN-*)
-	case Kind::BJ_Primary_NotInstalled:
-		return Colors::Orange; // 2
-	case Kind::BJ_Primary_InstalledConnected:
-		return Colors::Green; // 3
-	case Kind::BJ_AdductionWater:
-		return Colors::Pink; // 4
-	case Kind::BJ_Secondary_NotHeated:
-		return Colors::DeepPink; // 5
-	case Kind::BJ_Secondary_InstalledConnected:
-		return Colors::Blue; // 6
-	case Kind::SensorTTC:
-		return Colors::Yellow; // 7
-	default:
-		return Colors::Red; // 8
-	}
 }
 
 static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId) {
@@ -168,7 +130,7 @@ static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId)
 }
 
 // ------------ Main ------------
-Graph3D::Graph3D(Scenes &scenes) : Scene(scenes) {
+Graph::Graph(Scenes &scenes) : Scene(scenes) {
     // Enable controls
     disableMouseMode();
 
@@ -250,7 +212,7 @@ Graph3D::Graph3D(Scenes &scenes) : Scene(scenes) {
 	Events::keyboardCallbacks.push_back(kbState);
 }
 
-void Graph3D::updateScreenParams() {
+void Graph::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -261,7 +223,7 @@ void Graph3D::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void Graph3D::swapChainUpdate() {
+void Graph::swapChainUpdate() {
 	if (!circuit)
 		return;
 
@@ -608,11 +570,11 @@ void Graph3D::swapChainUpdate() {
 	edges->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
-void Graph3D::updateComputeUniformBuffers() {}
+void Graph::updateComputeUniformBuffers() {}
 
-void Graph3D::computePass() {}
+void Graph::computePass() {}
 
-void Graph3D::updateUniformBuffers() {
+void Graph::updateUniformBuffers() {
 	firstPersonMouseControls();
 	firstPersonKeyboardControls(1.0f);
 	persp.view = lookAt(camPos, lookAtCoords, camUp);
@@ -622,7 +584,7 @@ void Graph3D::updateUniformBuffers() {
 	wireId->updateUniformBuffer(std::nullopt, persp.view);
 }
 
-void Graph3D::renderPass() {
+void Graph::renderPass() {
 	nodes->render();
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);

@@ -34,7 +34,7 @@ inline unique_ptr<Polygon> cube(Scene *scene, const UBO &ubo, ScreenParams &scre
 								});
 }
 
-inline unique_ptr<InstancedPolygon> cubes(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> cubes(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
 	shared_ptr<unordered_map<int, InstancedPolygonData>> polygonInstances = make_shared<unordered_map<int, InstancedPolygonData>>(instances);
 	return make_unique<InstancedPolygon>(scene, ubo, screenParams,
 										 std::vector<InstancedPolygon::Vertex>{
@@ -111,7 +111,7 @@ inline unique_ptr<Polygon> sphere(Scene *scene, const UBO &ubo, ScreenParams &sc
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> spheres(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
+inline unique_ptr<InstancedPolygon> spheres(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
 	// Clamp to reasonable minimums
 	latitudeSegments = std::max<uint32_t>(latitudeSegments, 2);
 	longitudeSegments = std::max<uint32_t>(longitudeSegments, 3);
@@ -173,7 +173,7 @@ inline unique_ptr<InstancedPolygon> spheres(Scene* scene, const UBO &ubo, Screen
 
 inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenParams &screenParams) {
 	float phi = (1.0f + std::sqrt(5.0f)) * 0.5f; // φ
-	float invphi = 1.0f / phi;				   // 1/φ
+	float invphi = 1.0f / phi;					 // 1/φ
 	// All listed coordinates have the same radius √3; scale to radius 0.5
 	float s = 0.5f / std::sqrt(3.0f);
 
@@ -234,7 +234,7 @@ inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenPara
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> dodecahedra(Scene* scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> dodecahedra(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
 	float phi = (1.0f + std::sqrt(5.0f)) * 0.5f;
 	float invphi = 1.0f / phi;
 	float s = 0.5f / std::sqrt(3.0f);
@@ -284,6 +284,47 @@ inline unique_ptr<InstancedPolygon> dodecahedra(Scene* scene, const UBO &ubo, Sc
 		const uint32_t a = f[0], b = f[1], c = f[2], d = f[3], e = f[4];
 		indices.insert(indices.end(), {a, b, c, a, c, d, a, d, e});
 	}
+
+	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
+
+	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
+}
+
+inline std::unique_ptr<Polygon> pentagon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, float radius = 0.5f) {
+	using V = Polygon::Vertex;
+	std::vector<V> vertices;
+	vertices.reserve(5);
+
+	// Centered at origin, CCW around +Z
+	const float twoPi = 6.283185307179586f;
+	// Start angle so a point is "up" (nice for UI): -90° = -π/2
+	const float start = -0.5f * 3.14159265358979323846f;
+
+	for (int i = 0; i < 5; ++i) {
+		float a = start + (twoPi * i) / 5.0f;
+		vertices.push_back({{radius * std::cos(a), radius * std::sin(a), 0.0f}, {1, 1, 1, 1}});
+	}
+
+	// Triangulate as fan: (0,1,2), (0,2,3), (0,3,4)
+	std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3, 0, 3, 4};
+
+	return std::make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
+}
+
+inline std::unique_ptr<InstancedPolygon> pentagons(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, float radius = 0.5f) {
+	using V = InstancedPolygon::Vertex;
+	std::vector<V> vertices;
+	vertices.reserve(5);
+
+	const float twoPi = 6.283185307179586f;
+	const float start = -0.5f * 3.14159265358979323846f;
+
+	for (int i = 0; i < 5; ++i) {
+		float a = start + (twoPi * i) / 5.0f;
+		vertices.push_back({{radius * std::cos(a), radius * std::sin(a), 0.0f}, {1, 1, 1, 1}});
+	}
+
+	std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3, 0, 3, 4};
 
 	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
 

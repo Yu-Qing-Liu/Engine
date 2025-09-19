@@ -133,7 +133,8 @@ void Texture::setupGraphicsPipeline() {
 	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
 	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_FALSE;
+
+	depthStencil.depthWriteEnable = isOrtho() ? VK_FALSE : VK_TRUE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
