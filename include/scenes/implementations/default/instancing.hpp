@@ -12,7 +12,7 @@ using std::unordered_map;
 class Instancing : public Scene {
   public:
 	Instancing(Scenes &scenes);
-	Instancing(Instancing &&) = default;
+	Instancing(Instancing &&) = delete;
 	Instancing(const Instancing &) = delete;
 	Instancing &operator=(Instancing &&) = delete;
 	Instancing &operator=(const Instancing &) = delete;

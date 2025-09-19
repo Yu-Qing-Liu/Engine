@@ -148,7 +148,7 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	nodeName = make_unique<Text>(this, persp, screenParams, tp);
 	wireId = make_unique<Text>(this, persp, screenParams, tp);
 
-	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
+	nodes = Shapes::dodecahedra(this, persp, screenParams);
 	nodes->onMouseEnter = [&]() {
 		if (!nodes->hitMapped) {
 			return;
@@ -176,7 +176,7 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	};
 	nodes->setRayTraceEnabled(true);
 
-	edges = Shapes::cubes(this, persp, screenParams, 4000);
+	edges = Shapes::cubes(this, persp, screenParams);
 	edges->onMouseEnter = [&]() {
 		if (!edges->hitMapped) {
 			return;

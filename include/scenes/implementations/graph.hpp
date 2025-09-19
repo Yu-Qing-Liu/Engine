@@ -8,7 +8,7 @@
 class Graph : public Scene {
   public:
 	Graph(Scenes &scenes);
-	Graph(Graph &&) = default;
+	Graph(Graph &&) = delete;
 	Graph(const Graph &) = delete;
 	Graph &operator=(Graph &&) = delete;
 	Graph &operator=(const Graph &) = delete;
@@ -92,7 +92,6 @@ class Graph : public Scene {
 
   private:
 	Model::UBO persp{};
-	Model::UBO orthographic{};
 
 	unique_ptr<Circuit> circuit;
 	unique_ptr<InstancedPolygon> nodes;

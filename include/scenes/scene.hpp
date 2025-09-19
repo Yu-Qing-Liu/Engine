@@ -11,7 +11,7 @@ class Scenes;
 class Scene {
   public:
 	Scene(Scenes &scenes);
-	Scene(Scene &&) = default;
+	Scene(Scene &&) = delete;
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;

@@ -11,7 +11,7 @@ using std::make_unique;
 class Overlay : public Scene {
   public:
 	Overlay(Scenes &scenes);
-	Overlay(Overlay &&) = default;
+	Overlay(Overlay &&) = delete;
 	Overlay(const Overlay &) = delete;
 	Overlay &operator=(Overlay &&) = delete;
 	Overlay &operator=(const Overlay &) = delete;
