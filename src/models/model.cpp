@@ -21,6 +21,22 @@ Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const str
 }
 
 Model::~Model() {
+    if (scene) {
+        auto &v = scene->models;
+        v.erase(std::remove(v.begin(), v.end(), this), v.end());
+        scene = nullptr;
+    }
+
+    onMouseEnter = nullptr;
+    onMouseExit  = nullptr;
+    {
+        if (watcher.joinable()) {
+            watcher.request_stop();
+            cv.notify_all();
+            watcher.join();
+        }
+    }
+
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
 		vkDestroyShaderModule(Engine::device, shaderProgram.computeShader, nullptr);
 	}
