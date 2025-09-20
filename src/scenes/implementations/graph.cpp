@@ -502,7 +502,9 @@ void Graph::swapChainUpdate() {
 	float sceneRadius = 1.f;
 	for (auto &p : pos)
 		sceneRadius = std::max(sceneRadius, glm::length(p));
-	const float aspect = screenParams.viewport.width / screenParams.viewport.height;
+    const float w = screenParams.viewport.width;
+    const float h = screenParams.viewport.height;
+	const float aspect = w / h;
 	const float fovY = radians(45.0f);
 	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
@@ -510,8 +512,19 @@ void Graph::swapChainUpdate() {
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
     if (!Scene::mouseMode) {
         mvp.view = lookAt(camPos, camTarget, camUp);
+        mvp.proj = perspective(fovY, aspect, nearP, farP);
+    } else {
+        const float fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
+        const float fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
+
+        const float visibleHeight = 2.0f * 100.0f * std::tan(fovV * 0.5f);
+        const float visibleWidth  = visibleHeight * aspect;
+
+        const float orthoScale = (aspect >= 1.0f) ? visibleWidth : visibleHeight;
+
+        UBO ortho = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view);
+        mvp.proj = ortho.proj;
     }
-    mvp.proj = perspective(fovY, aspect, nearP, farP);
 
 	nodeName->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
 	wireId->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
