@@ -50,6 +50,7 @@ class Application {
 		glfwSetKeyCallback(window, Events::handleKeyboardCallbacks);
 		glfwSetCharCallback(window, Events::handleCharacterInputCallbacks);
 		glfwSetWindowFocusCallback(window, Events::handleWindowFocusedCallbacks);
+		glfwSetScrollCallback(window, Events::handleScrollCallbacks);
 
 		glfwSetCursorPosCallback(window, [](GLFWwindow *, double x, double y) {
 			Events::pointerX = (float)x;

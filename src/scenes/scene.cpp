@@ -1,4 +1,5 @@
 #include "scene.hpp"
+#include "events.hpp"
 #include "scenes.hpp"
 
 bool Scene::mouseMode = true;
@@ -12,7 +13,7 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.maxDepth = 1.0f;
 	screenParams.scissor.offset = {0, 0};
 	screenParams.scissor.extent = Engine::swapChainExtent;
-    
+
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {
 			if (action == GLFW_PRESS)
@@ -25,7 +26,7 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 }
 
 void Scene::disableMouseMode() {
-    Scene::mouseMode = false;
+	Scene::mouseMode = false;
 
 	GLFWwindow *win = Engine::window;
 	if (win) {
@@ -58,7 +59,7 @@ void Scene::disableMouseMode() {
 }
 
 void Scene::enableMouseMode() {
-    Scene::mouseMode = true;
+	Scene::mouseMode = true;
 
 	GLFWwindow *win = Engine::window;
 	if (Engine::window) {
@@ -66,6 +67,9 @@ void Scene::enableMouseMode() {
 		if (glfwRawMouseMotionSupported())
 			glfwSetInputMode(Engine::window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
 	}
+
+	lastPointerX = -1.0;
+	lastPointerY = -1.0;
 }
 
 void Scene::firstPersonMouseControls() {
@@ -120,6 +124,120 @@ void Scene::firstPersonMouseControls() {
 
 	// drive the existing lookAt target
 	lookAtCoords = camPos + f * lookDist;
+}
+
+void Scene::mapMouseControls() {
+	GLFWwindow *win = Engine::window;
+	if (!win || !Scene::mouseMode || !glfwGetWindowAttrib(win, GLFW_FOCUSED))
+		return;
+
+	static bool s_hookedScroll = false;
+	if (!s_hookedScroll) {
+		Events::scrollCallbacks.push_back([&](double /*xoff*/, double yoff) {
+			GLFWwindow *w = Engine::window;
+			if (!w)
+				return;
+			if (baseH == 0.0f || baseW == 0.0f)
+				return; // not initialized yet
+
+			// Use WINDOW size to match glfwGetCursorPos space
+			int winW = 0, winH = 0;
+			glfwGetWindowSize(w, &winW, &winH);
+			if (winW <= 0 || winH <= 0)
+				return;
+
+			double mxD = 0.0, myD = 0.0;
+			glfwGetCursorPos(w, &mxD, &myD);
+
+			// NDC in window space: x in [-1,+1], y in [+1,-1] (up positive)
+			const float ndcX = 2.0f * float(mxD) / float(winW) - 1.0f;
+			const float ndcY = 1.0f - 2.0f * float(myD) / float(winH);
+
+			// Recompute aspect from viewport each frame (safe if window resized)
+			const float winWf = screenParams.viewport.width;
+			const float winHf = screenParams.viewport.height;
+			const float aspect = (winHf > 0.0f) ? (winWf / winHf) : 1.0f;
+
+			// Visible size BEFORE zoom (match your orthoScale rule)
+			const float oldZoom = zoom;
+			const float visH_b = baseH / oldZoom;
+			const float visW_b = baseW / oldZoom;
+
+			float effW_b, effH_b;
+			if (aspect >= 1.0f) { // orthoScale = visW
+				effW_b = visW_b;
+				effH_b = visW_b / aspect;
+			} else { // orthoScale = visH
+				effW_b = visH_b * aspect;
+				effH_b = visH_b;
+			}
+
+			// Apply zoom (exponential feel)
+			const float zoomSpeed = 0.12f;
+			zoom *= std::exp(float(yoff) * zoomSpeed);
+			zoom = glm::clamp(zoom, 0.05f, 20.0f);
+
+			const float zoom_ratio = oldZoom / zoom;
+
+			// Shift ortho camera so cursor world-point stays pinned
+			camPosOrtho.x += ndcX * (effW_b * 0.5f) * (1.0f - zoom_ratio);
+			camPosOrtho.y += ndcY * (effH_b * 0.5f) * (1.0f - zoom_ratio);
+
+			// Rebuild matrices
+			swapChainUpdate();
+		});
+		s_hookedScroll = true;
+	}
+
+	double mx = 0.0, my = 0.0;
+	glfwGetCursorPos(win, &mx, &my);
+	const bool lmb = glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+	if (lastPointerX < 0.0 || lastPointerY < 0.0) {
+		lastPointerX = mx;
+		lastPointerY = my;
+		return;
+	}
+
+	const double dx = mx - lastPointerX;
+	const double dy = my - lastPointerY;
+	lastPointerX = mx;
+	lastPointerY = my;
+
+	if (!lmb)
+		return;
+
+	// Window size in the same space as glfwGetCursorPos
+	int winW = 0, winH = 0;
+	glfwGetWindowSize(win, &winW, &winH);
+	if (winW <= 0 || winH <= 0)
+		return;
+
+	// Compute current visible world width/height from your ortho rule
+	const float aspect = screenParams.viewport.height > 0.f ? (screenParams.viewport.width / screenParams.viewport.height) : 1.0f;
+
+	const float visH = baseH / glm::max(zoom, 1e-6f);
+	const float visW = baseW / glm::max(zoom, 1e-6f);
+
+	float effW, effH;
+	if (aspect >= 1.0f) { // orthoScale = visW
+		effW = visW;
+		effH = visW / aspect;
+	} else { // orthoScale = visH
+		effW = visH * aspect;
+		effH = visH;
+	}
+
+	// World units per screen pixel
+	const float worldPerPxX = effW / float(winW);
+	const float worldPerPxY = effH / float(winH);
+
+	// Map mouse pixel delta to world delta (keep your original signs)
+	glm::vec3 pan = (-float(dx) * worldPerPxX) * glm::vec3(1, 0, 0) + (float(dy) * worldPerPxY) * glm::vec3(0, 1, 0);
+
+	camPosOrtho += pan;
+	lookAtCoords += pan;
+	camTarget += pan;
 }
 
 void Scene::firstPersonKeyboardControls(float sensitivity) {
@@ -181,6 +299,38 @@ void Scene::firstPersonKeyboardControls(float sensitivity) {
 		lookAtCoords += delta; // pan the *actual* aim point you render with
 		camTarget += delta;	   // keep in sync if you still use camTarget elsewhere
 	}
+}
+
+void Scene::mapKeyboardControls() {
+	GLFWwindow *win = Engine::window;
+	if (!win || !Scene::mouseMode || !glfwGetWindowAttrib(win, GLFW_FOCUSED))
+		return;
+	auto down = [&](int k) { return glfwGetKey(win, k) == GLFW_PRESS; };
+
+	float panX = 0.f, panY = 0.f, zoom = 0.f;
+	if (down(GLFW_KEY_D) || down(GLFW_KEY_RIGHT))
+		panX += 1.f;
+	if (down(GLFW_KEY_A) || down(GLFW_KEY_LEFT))
+		panX -= 1.f;
+	if (down(GLFW_KEY_W) || down(GLFW_KEY_UP))
+		panY += 1.f;
+	if (down(GLFW_KEY_S) || down(GLFW_KEY_DOWN))
+		panY -= 1.f;
+
+	float sens = 2.0f;
+	if (down(GLFW_KEY_LEFT_CONTROL) || down(GLFW_KEY_RIGHT_CONTROL))
+		sens *= 5.0f;
+	if (down(GLFW_KEY_LEFT_ALT) || down(GLFW_KEY_RIGHT_ALT))
+		sens *= 0.2f;
+
+	const float alt = glm::max(0.1f, camPos.z - 0.0f);
+	const float step = camSpeed * sens * alt * (Engine::deltaTime > 0 ? Engine::deltaTime : 1.f / 60.f);
+
+	// XY pan
+	glm::vec3 pan = panX * glm::vec3(1, 0, 0) * step + panY * glm::vec3(0, 1, 0) * step;
+	camPosOrtho += pan;
+	lookAtCoords += pan;
+	camTarget += pan;
 }
 
 void Scene::updateRayTraceUniformBuffers() {

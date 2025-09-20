@@ -4,5 +4,6 @@ mkdir -p ./build/
 cd build/
 cmake ..
 make -j $(nproc)
-gdb --args ../bin/Engine
+cd ../bin
+gdb --args ./Engine
 

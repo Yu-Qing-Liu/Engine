@@ -5,7 +5,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <optional>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -45,15 +44,19 @@ inline bool endsWith(const std::string &s, const std::string &suffix) {
 #endif
 
 // ===================== Centralized repo paths =====================
+#if ANDROID_VK
+// Android: these point at project assets; runtime will remap/hydrate to <files>/...
 inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/shaders";
 inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/textures";
 inline std::string modelRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/meshes";
 inline std::string fontRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/fonts";
-
-#if ANDROID_VK
-inline std::string shaderCachePath; // runtime set to "<files>/shaders"
+inline std::string shaderCachePath; // set at runtime to "<files>/shaders"
 #else
-inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/spirv";
+inline std::string shaderRootPath = "./assets/shaders";
+inline std::string textureRootPath = "./assets/textures";
+inline std::string modelRootPath = "./assets/meshes";
+inline std::string fontRootPath = "./assets/fonts";
+inline std::string shaderCachePath = "./assets/spirv";
 #endif
 
 // --------------------------- helpers ---------------------------
@@ -538,13 +541,98 @@ inline ShaderModules compileShaderProgram(const std::string &shaderRootDir) {
 	return modules;
 }
 
+// ---------- helpers: executable dir & directory copy ----------
+#if !ANDROID_VK
+inline std::string executableDir() {
+#if defined(_WIN32)
+	char buf[MAX_PATH];
+	DWORD len = GetModuleFileNameA(nullptr, buf, MAX_PATH);
+	std::string p(buf, (len ? len : 0));
+	auto pos = p.find_last_of("\\/");
+	return (pos == std::string::npos) ? std::string(".") : p.substr(0, pos);
+#elif defined(__APPLE__)
+	char buf[4096];
+	uint32_t size = sizeof(buf);
+	std::string p;
+	if (_NSGetExecutablePath(buf, &size) == 0) {
+		p.assign(buf);
+	} else {
+		std::vector<char> dyn(size);
+		if (_NSGetExecutablePath(dyn.data(), &size) == 0)
+			p.assign(dyn.data());
+	}
+	auto pos = p.find_last_of('/');
+	return (pos == std::string::npos) ? std::string(".") : p.substr(0, pos);
+#else // Linux / BSD
+	char buf[4096];
+	ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+	if (n <= 0)
+		return ".";
+	buf[n] = '\0';
+	std::string p(buf);
+	auto pos = p.find_last_of('/');
+	return (pos == std::string::npos) ? std::string(".") : p.substr(0, pos);
+#endif
+}
+
+inline void copyDirRecursive(const fs::path &src, const fs::path &dst) {
+	std::error_code ec;
+
+	if (!fs::exists(src, ec) || !fs::is_directory(src, ec))
+		return;
+
+	fs::create_directories(dst, ec);
+
+	for (auto it = fs::recursive_directory_iterator(src, ec); it != fs::recursive_directory_iterator(); ++it) {
+		if (ec)
+			break;
+
+		const fs::path rel = fs::relative(it->path(), src, ec);
+		const fs::path out = dst / rel;
+
+		if (it->is_directory(ec)) {
+			fs::create_directories(out, ec);
+		} else if (it->is_regular_file(ec)) {
+			// Only copy if missing or source is newer
+			bool doCopy = true;
+			if (fs::exists(out, ec)) {
+				auto tSrc = fs::last_write_time(it->path(), ec);
+				auto tDst = fs::last_write_time(out, ec);
+				if (!ec && tDst >= tSrc)
+					doCopy = false;
+			}
+			if (doCopy) {
+				fs::create_directories(out.parent_path(), ec);
+				fs::copy_file(it->path(), out, fs::copy_options::overwrite_existing, ec);
+			}
+		}
+	}
+}
+#endif // !ANDROID_VK
+
 inline void initialize() {
 #if !ANDROID_VK
+	// Always ensure the configured roots exist
 	ensureDir(shaderRootPath);
 	ensureDir(textureRootPath);
 	ensureDir(modelRootPath);
 	ensureDir(fontRootPath);
-#endif
+
+	const fs::path binDir = executableDir();
+	const fs::path outRoot = binDir / "assets";
+
+	const fs::path dstShaders = outRoot / "shaders";
+	const fs::path dstTextures = outRoot / "textures";
+	const fs::path dstMeshes = outRoot / "meshes";
+	const fs::path dstFonts = outRoot / "fonts";
+	const fs::path dstSpirv = outRoot / "spirv";
+
+	copyDirRecursive(shaderRootPath, dstShaders);
+	copyDirRecursive(textureRootPath, dstTextures);
+	copyDirRecursive(modelRootPath, dstMeshes);
+	copyDirRecursive(fontRootPath, dstFonts);
+	copyDirRecursive(shaderCachePath, dstSpirv);
+#endif // !ANDROID_VK
 	ensureDir(shaderCachePath);
 }
 

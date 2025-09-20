@@ -24,22 +24,15 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 				return;
 
 			if (is3D) {
-				is3D = false;
-				auto &u = graph->getMVP();
-				const float w = screenParams.viewport.width;
-				const float h = screenParams.viewport.height;
-
-				// Place the camera above the scene looking down
-				const float dist = 10.0f;
-				u.view = glm::lookAt(glm::vec3(0.0f, 0.0f, dist),  // eye
-									 glm::vec3(0.0f, 0.0f, 0.0f),  // center
-									 glm::vec3(0.0f, 1.0f, 0.0f)); // up (must NOT be colinear with view)
-
-                graph->swapChainUpdate();
+                is3D = false;
+				graph->is3D = false;
+				enableMouseMode(); // capture cursor, go back to FPS controls
+				graph->swapChainUpdate();
 			} else {
-				is3D = true;
+                is3D = true;
+				graph->is3D = true;
 				disableMouseMode(); // capture cursor, go back to FPS controls
-                graph->swapChainUpdate();
+				graph->swapChainUpdate();
 			}
 		}
 	});

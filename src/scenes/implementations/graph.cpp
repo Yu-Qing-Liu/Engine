@@ -125,22 +125,21 @@ static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId)
 	if (touches([](const std::string &s) { return s.find("ADDUCTION") != std::string::npos || s.find("WATER") != std::string::npos || s.find("EAU") != std::string::npos; }))
 		return Kind::BJ_AdductionWater;
 
-	std::cout << id << std::endl;
 	return Kind::Unknown;
 }
 
 // ------------ Main ------------
 Graph::Graph(Scenes &scenes) : Scene(scenes) {
-    // Enable controls
-    disableMouseMode();
+	// Enable controls
+	disableMouseMode();
 
 	// Make sure screenParams are valid before constructing drawables
 	updateScreenParams();
 
 	// Set an initial camera (will be resized in swapChainUpdate)
-    if (!Scene::mouseMode) {
-        mvp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
-    }
+	if (!Scene::mouseMode) {
+		mvp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
+	}
 
 	// Circuit: default ctor loads the correct path (as you said)
 	circuit = std::make_unique<Circuit>();
@@ -207,9 +206,9 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	edges->setRayTraceEnabled(true);
 
 	auto kbState = [this](int key, int, int action, int) {
-        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
-            enableMouseMode();
-        }
+		if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
+			enableMouseMode();
+		}
 	};
 	Events::keyboardCallbacks.push_back(kbState);
 }
@@ -502,29 +501,32 @@ void Graph::swapChainUpdate() {
 	float sceneRadius = 1.f;
 	for (auto &p : pos)
 		sceneRadius = std::max(sceneRadius, glm::length(p));
-    const float w = screenParams.viewport.width;
-    const float h = screenParams.viewport.height;
+	const float w = screenParams.viewport.width;
+	const float h = screenParams.viewport.height;
 	const float aspect = w / h;
 	const float fovY = radians(45.0f);
 	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
 	camPos = dir * desiredDist;
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
-    if (!Scene::mouseMode) {
-        mvp.view = lookAt(camPos, camTarget, camUp);
-        mvp.proj = perspective(fovY, aspect, nearP, farP);
-    } else {
-        const float fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
-        const float fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
+	if (!Scene::mouseMode) {
+		mvp.view = lookAt(camPos, camTarget, camUp);
+		mvp.proj = perspective(fovY, aspect, nearP, farP);
+	} else {
+		glm::mat4 view = glm::lookAt(camPosOrtho, camPosOrtho + glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+		const float yOffsetLocal = -10.0f;
+		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffsetLocal, 0.0f)) * view;
 
-        const float visibleHeight = 2.0f * 100.0f * std::tan(fovV * 0.5f);
-        const float visibleWidth  = visibleHeight * aspect;
+		fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
+		fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
+		baseH = 2.0f * 125.0f * std::tan(fovV * 0.5f);
+		baseW = baseH * aspect;
 
-        const float orthoScale = (aspect >= 1.0f) ? visibleWidth : visibleHeight;
-
-        UBO ortho = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view);
-        mvp.proj = ortho.proj;
-    }
+		const float visH = baseH / zoom;
+		const float visW = baseW / zoom;
+		const float orthoScale = (aspect >= 1.0f) ? visW : visH;
+		mvp.proj = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view).proj;
+	}
 
 	nodeName->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
 	wireId->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
@@ -592,11 +594,18 @@ void Graph::updateComputeUniformBuffers() {}
 void Graph::computePass() {}
 
 void Graph::updateUniformBuffers() {
-	firstPersonMouseControls();
-	firstPersonKeyboardControls();
-    if (!Scene::mouseMode) {
-        mvp.view = lookAt(camPos, lookAtCoords, camUp);
-    }
+	if (!Scene::mouseMode) {
+		firstPersonMouseControls();
+		firstPersonKeyboardControls();
+		mvp.view = lookAt(camPos, lookAtCoords, camUp);
+	} else if (!is3D) {
+		mapMouseControls();
+		mapKeyboardControls();
+		glm::mat4 view = glm::lookAt(camPosOrtho, camPosOrtho + glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+		const float yOffset = -10.0f;
+		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffset, 0.0f)) * view;
+	}
+
 	nodes->updateUniformBuffer(std::nullopt, mvp.view);
 	edges->updateUniformBuffer(std::nullopt, mvp.view);
 	nodeName->updateUniformBuffer(std::nullopt, mvp.view);
