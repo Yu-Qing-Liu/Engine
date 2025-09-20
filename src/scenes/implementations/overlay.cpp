@@ -25,13 +25,12 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 
 			if (is3D) {
 				is3D = false;
-				// --- Top-down view (keep perspective proj) ---
 				auto &u = graph->getMVP();
 				const float w = screenParams.viewport.width;
 				const float h = screenParams.viewport.height;
 
 				// Place the camera above the scene looking down
-				const float dist = 200.0f;						   // pick something that shows your whole graph
+				const float dist = 50.0f;
 				u.view = glm::lookAt(glm::vec3(0.0f, 0.0f, dist),  // eye
 									 glm::vec3(0.0f, 0.0f, 0.0f),  // center
 									 glm::vec3(0.0f, 1.0f, 0.0f)); // up (must NOT be colinear with view)

@@ -138,7 +138,9 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	updateScreenParams();
 
 	// Set an initial camera (will be resized in swapChainUpdate)
-	mvp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
+    if (!Scene::mouseMode) {
+        mvp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
+    }
 
 	// Circuit: default ctor loads the correct path (as you said)
 	circuit = std::make_unique<Circuit>();
@@ -506,8 +508,10 @@ void Graph::swapChainUpdate() {
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
 	camPos = dir * desiredDist;
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
-	mvp.view = lookAt(camPos, camTarget, camUp);
-	mvp.proj = perspective(fovY, aspect, nearP, farP);
+    if (!Scene::mouseMode) {
+        mvp.view = lookAt(camPos, camTarget, camUp);
+    }
+    mvp.proj = perspective(fovY, aspect, nearP, farP);
 
 	nodeName->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
 	wireId->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
