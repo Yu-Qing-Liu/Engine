@@ -1,9 +1,9 @@
 #include "scenes.hpp"
-#include "main.hpp"
+#include "graph.hpp"
 #include "overlay.hpp"
 
 Scenes::Scenes() {
-    scenesContainer.emplace_back(make_shared<Main>(*this));
+    scenesContainer.emplace_back(make_shared<Graph>(*this));
     scenesContainer.emplace_back(make_shared<Overlay>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
@@ -16,6 +16,10 @@ void Scenes::showScene(const string &sceneName) {
 
 void Scenes::hideScene(const string &sceneName) {
     scenes[sceneName].show = false;
+}
+
+shared_ptr<Scene> Scenes::getScene(const string &sceneName) {
+    return scenes[sceneName].scene;
 }
 
 void Scenes::updateComputeUniformBuffers() {

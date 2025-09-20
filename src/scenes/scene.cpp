@@ -1,6 +1,8 @@
 #include "scene.hpp"
 #include "scenes.hpp"
 
+bool Scene::mouseMode = true;
+
 Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
@@ -10,7 +12,7 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.maxDepth = 1.0f;
 	screenParams.scissor.offset = {0, 0};
 	screenParams.scissor.extent = Engine::swapChainExtent;
-
+    
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {
 			if (action == GLFW_PRESS)
@@ -20,12 +22,13 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 		}
 	};
 	Events::keyboardCallbacks.push_back(kbState);
+}
+
+void Scene::disableMouseMode() {
+    Scene::mouseMode = false;
 
 	GLFWwindow *win = Engine::window;
 	if (win) {
-		glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // capture/hide
-		glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);  // smoother deltas (if supported)
-		// initialize the cursor center reference
 		int ww, hh;
 		glfwGetWindowSize(win, &ww, &hh);
 		lastPointerX = ww * 0.5;
@@ -35,13 +38,16 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 
 	// Initialize yaw/pitch from current view direction so we face the scene
 	{
-		glm::vec3 f0 = glm::normalize(lookAtCoords - camPos); // if lookAtCoords==origin, this points to origin
-		f0 = glm::normalize(glm::vec3(-1, -1, -1));
+		glm::vec3 f0 = glm::normalize(lookAtCoords - camPos);
+		// fallback if lookAtCoords==camPos
+		if (!glm::all(glm::greaterThan(glm::abs(f0), glm::vec3(1e-6f))))
+			f0 = glm::normalize(glm::vec3(-1, -1, -1)); // only as fallback, not always
+
 		yaw = atan2f(f0.y, f0.x);
 		pitch = asinf(glm::clamp(f0.z, -1.0f, 1.0f));
 	}
 
-	// Capture the cursor
+	// capture cursor
 	if (Engine::window) {
 		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		if (glfwRawMouseMotionSupported())
@@ -51,9 +57,22 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	}
 }
 
+void Scene::enableMouseMode() {
+    Scene::mouseMode = true;
+
+	GLFWwindow *win = Engine::window;
+	if (Engine::window) {
+		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		if (glfwRawMouseMotionSupported())
+			glfwSetInputMode(Engine::window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+	}
+}
+
 void Scene::firstPersonMouseControls() {
 	GLFWwindow *win = Engine::window;
 	if (!win)
+		return;
+	if (Scene::mouseMode)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;
@@ -103,9 +122,11 @@ void Scene::firstPersonMouseControls() {
 	lookAtCoords = camPos + f * lookDist;
 }
 
-void Scene::firstPersonKeyboardControls(float dt) {
+void Scene::firstPersonKeyboardControls(float sensitivity) {
 	GLFWwindow *win = Engine::window;
 	if (!win)
+		return;
+	if (Scene::mouseMode)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;
@@ -128,11 +149,10 @@ void Scene::firstPersonKeyboardControls(float dt) {
 		moveZ -= 1.f;
 
 	// speed modifiers (same as before)
-	float kbSens = 0.24f;
 	if (down(GLFW_KEY_LEFT_CONTROL) || down(GLFW_KEY_RIGHT_CONTROL))
-		kbSens *= 5.0f;
+		sensitivity *= 5.0f;
 	if (down(GLFW_KEY_LEFT_ALT) || down(GLFW_KEY_RIGHT_ALT))
-		kbSens *= 0.2f;
+		sensitivity *= 0.2f;
 
 	// ------- build camera-aligned basis from current aim (cursor) -------
 	const glm::vec3 worldUp(0, 0, 1);
@@ -156,7 +176,7 @@ void Scene::firstPersonKeyboardControls(float dt) {
 	glm::vec3 delta = moveX * right + moveY * f + moveZ * up;
 
 	if (glm::dot(delta, delta) > 0.0f) {
-		delta = glm::normalize(delta) * (camSpeed * kbSens * (dt > 0 ? dt : 1.f));
+		delta = glm::normalize(delta) * (camSpeed * sensitivity * (Engine::deltaTime * 100 > 0 ? Engine::deltaTime * 100 : 1.f));
 		camPos += delta;
 		lookAtCoords += delta; // pan the *actual* aim point you render with
 		camTarget += delta;	   // keep in sync if you still use camTarget elsewhere

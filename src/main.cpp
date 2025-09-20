@@ -82,10 +82,12 @@ class Application {
 	}
 
 	void mainLoop() {
+		double lastTime = glfwGetTime();
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
 			drawFrame();
 			double currentTime = glfwGetTime();
+			deltaTime = currentTime - lastTime;
 			lastFrameTime = (currentTime - lastTime) * 1000.0;
 			Engine::time = currentTime - startTime;
 			lastTime = currentTime;

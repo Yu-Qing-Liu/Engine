@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "graph.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -14,10 +14,10 @@
 #include "camera.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
-#include "events.hpp"
 #include "fonts.hpp"
 
 using std::unordered_set;
+using Kind = Graph::Kind;
 
 // ------------ helpers ------------
 static inline glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
@@ -60,45 +60,6 @@ static std::string normalizedId(std::string s) {
 static bool startsWith(const std::string &upId, const char *upPrefix) {
 	const size_t n = std::strlen(upPrefix);
 	return upId.size() >= n && std::memcmp(upId.data(), upPrefix, n) == 0;
-}
-
-// ---------- 8-color classifier ----------
-enum class Kind {
-	PCGH,							 // Purple
-	Drainage,						 // DarkBlue
-	BJ_Primary_Installed,			 // Turquoise (SPN-*)
-	BJ_Primary_NotInstalled,		 // Orange (BJ-297* or text flags)
-	BJ_Primary_InstalledConnected,	 // Green (BJ-295/287* + generic BJ-*)
-	BJ_AdductionWater,				 // Pink (BJ-192* or text flags)
-	BJ_Secondary_NotHeated,			 // DeepPink (BJ-291* except 291B)
-	BJ_Secondary_InstalledConnected, // Blue (BJ-291B)
-	SensorTTC,						 // Yellow (TTC-*)
-	Unknown
-};
-
-static glm::vec4 colorFor(Kind k) {
-	switch (k) {
-	case Kind::PCGH:
-		return Colors::Purple;
-	case Kind::Drainage:
-		return Colors::DarkBlue; // 0
-	case Kind::BJ_Primary_Installed:
-		return Colors::Turquoise; // 1 (SPN-*)
-	case Kind::BJ_Primary_NotInstalled:
-		return Colors::Orange; // 2
-	case Kind::BJ_Primary_InstalledConnected:
-		return Colors::Green; // 3
-	case Kind::BJ_AdductionWater:
-		return Colors::Pink; // 4
-	case Kind::BJ_Secondary_NotHeated:
-		return Colors::DeepPink; // 5
-	case Kind::BJ_Secondary_InstalledConnected:
-		return Colors::Blue; // 6
-	case Kind::SensorTTC:
-		return Colors::Yellow; // 7
-	default:
-		return Colors::Red; // 8
-	}
 }
 
 static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId) {
@@ -169,22 +130,27 @@ static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId)
 }
 
 // ------------ Main ------------
-Main::Main(Scenes &scenes) : Scene(scenes) {
+Graph::Graph(Scenes &scenes) : Scene(scenes) {
+    // Enable controls
+    disableMouseMode();
+
 	// Make sure screenParams are valid before constructing drawables
 	updateScreenParams();
 
 	// Set an initial camera (will be resized in swapChainUpdate)
-	persp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
+    if (!Scene::mouseMode) {
+        mvp = Camera::blenderPerspectiveMVP(screenParams.viewport.width, screenParams.viewport.height, lookAt(vec3(12.0f, 12.0f, 12.0f), vec3(0.0f), vec3(0.0f, 0.0f, 1.0f)));
+    }
 
 	// Circuit: default ctor loads the correct path (as you said)
 	circuit = std::make_unique<Circuit>();
 
 	// Setup: construct instanced meshes
 	Text::TextParams tp{Fonts::ArialBold, 32};
-	nodeName = make_unique<Text>(this, persp, screenParams, tp);
-	wireId = make_unique<Text>(this, persp, screenParams, tp);
+	nodeName = make_unique<Text>(this, mvp, screenParams, tp);
+	wireId = make_unique<Text>(this, mvp, screenParams, tp);
 
-	nodes = Shapes::dodecahedra(this, persp, screenParams, 4000);
+	nodes = Shapes::dodecahedra(this, mvp, screenParams);
 	nodes->onMouseEnter = [&]() {
 		if (!nodes->hitMapped) {
 			return;
@@ -212,7 +178,7 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 	};
 	nodes->setRayTraceEnabled(true);
 
-	edges = Shapes::cubes(this, persp, screenParams, 4000);
+	edges = Shapes::cubes(this, mvp, screenParams);
 	edges->onMouseEnter = [&]() {
 		if (!edges->hitMapped) {
 			return;
@@ -239,9 +205,16 @@ Main::Main(Scenes &scenes) : Scene(scenes) {
 		wireLabel = "";
 	};
 	edges->setRayTraceEnabled(true);
+
+	auto kbState = [this](int key, int, int action, int) {
+        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
+            enableMouseMode();
+        }
+	};
+	Events::keyboardCallbacks.push_back(kbState);
 }
 
-void Main::updateScreenParams() {
+void Graph::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -252,7 +225,7 @@ void Main::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void Main::swapChainUpdate() {
+void Graph::swapChainUpdate() {
 	if (!circuit)
 		return;
 
@@ -529,17 +502,32 @@ void Main::swapChainUpdate() {
 	float sceneRadius = 1.f;
 	for (auto &p : pos)
 		sceneRadius = std::max(sceneRadius, glm::length(p));
-	const float aspect = screenParams.viewport.width / screenParams.viewport.height;
+    const float w = screenParams.viewport.width;
+    const float h = screenParams.viewport.height;
+	const float aspect = w / h;
 	const float fovY = radians(45.0f);
 	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
 	camPos = dir * desiredDist;
 	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
-	persp.view = lookAt(camPos, camTarget, camUp);
-	persp.proj = perspective(fovY, aspect, nearP, farP);
+    if (!Scene::mouseMode) {
+        mvp.view = lookAt(camPos, camTarget, camUp);
+        mvp.proj = perspective(fovY, aspect, nearP, farP);
+    } else {
+        const float fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
+        const float fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
 
-	nodeName->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
-	wireId->updateUniformBuffer(std::nullopt, persp.view, persp.proj);
+        const float visibleHeight = 2.0f * 100.0f * std::tan(fovV * 0.5f);
+        const float visibleWidth  = visibleHeight * aspect;
+
+        const float orthoScale = (aspect >= 1.0f) ? visibleWidth : visibleHeight;
+
+        UBO ortho = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view);
+        mvp.proj = ortho.proj;
+    }
+
+	nodeName->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
+	wireId->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
 
 	// ---- draw nodes ----
 	const float nodeScale = 2.0f;
@@ -548,7 +536,7 @@ void Main::swapChainUpdate() {
 		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), colorFor(kind), Colors::Black));
 		nodeMap[i] = {ids[i]};
 	}
-	nodes->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+	nodes->updateUniformBuffer(std::nullopt, std::nullopt, mvp.proj);
 
 	// ---- wires ----
 	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
@@ -596,24 +584,26 @@ void Main::swapChainUpdate() {
 		}
 	}
 
-	edges->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+	edges->updateUniformBuffer(std::nullopt, std::nullopt, mvp.proj);
 }
 
-void Main::updateComputeUniformBuffers() {}
+void Graph::updateComputeUniformBuffers() {}
 
-void Main::computePass() {}
+void Graph::computePass() {}
 
-void Main::updateUniformBuffers() {
+void Graph::updateUniformBuffers() {
 	firstPersonMouseControls();
-	firstPersonKeyboardControls(1.0f);
-	persp.view = lookAt(camPos, lookAtCoords, camUp);
-	nodes->updateUniformBuffer(std::nullopt, persp.view);
-	edges->updateUniformBuffer(std::nullopt, persp.view);
-	nodeName->updateUniformBuffer(std::nullopt, persp.view);
-	wireId->updateUniformBuffer(std::nullopt, persp.view);
+	firstPersonKeyboardControls();
+    if (!Scene::mouseMode) {
+        mvp.view = lookAt(camPos, lookAtCoords, camUp);
+    }
+	nodes->updateUniformBuffer(std::nullopt, mvp.view);
+	edges->updateUniformBuffer(std::nullopt, mvp.view);
+	nodeName->updateUniformBuffer(std::nullopt, mvp.view);
+	wireId->updateUniformBuffer(std::nullopt, mvp.view);
 }
 
-void Main::renderPass() {
+void Graph::renderPass() {
 	nodes->render();
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);

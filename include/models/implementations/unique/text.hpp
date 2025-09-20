@@ -2,6 +2,7 @@
 
 #include "colors.hpp"
 #include "model.hpp"
+#include "fonts.hpp"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <vulkan/vulkan_core.h>
@@ -15,8 +16,8 @@ class Text : public Model {
 	~Text() override;
 
 	struct TextParams {
-		string fontPath;
-		uint32_t pixelHeight = 48;
+		string fontPath = Fonts::Arial;
+		uint32_t pixelHeight = 24;
 		vector<uint32_t> codepoints;
 		uint32_t maxAtlasWidth = 2048;
 		uint32_t padding = 1;
@@ -82,6 +83,11 @@ class Text : public Model {
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
+
+    string text = "Some text!";
+    vec4 color = Colors::Red;
+
+    void render() override;
 
 	// 1) normal (no caret, no selection) – existing one calls this behavior
 	void renderText(const std::string &text, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
