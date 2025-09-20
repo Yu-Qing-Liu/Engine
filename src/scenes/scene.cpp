@@ -72,8 +72,7 @@ void Scene::firstPersonMouseControls() {
 	GLFWwindow *win = Engine::window;
 	if (!win)
 		return;
-	const bool captured = glfwGetInputMode(win, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-	if (!captured)
+	if (Scene::mouseMode)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;
@@ -127,8 +126,7 @@ void Scene::firstPersonKeyboardControls(float sensitivity) {
 	GLFWwindow *win = Engine::window;
 	if (!win)
 		return;
-	const bool captured = glfwGetInputMode(win, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-	if (!captured)
+	if (Scene::mouseMode)
 		return;
 	if (!glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;
