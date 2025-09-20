@@ -33,13 +33,15 @@ class Scene {
 	virtual void renderPass();
 	virtual void swapChainUpdate();
 
+	Model::UBO &getMVP() { return mvp; }
+
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
 
 	Model::UBO mvp{};
 
-	bool mouseMode = true;
+	static bool mouseMode;
 
 	// Camera state (meters)
 	glm::vec3 camPos{12.0f, 12.0f, 12.0f};

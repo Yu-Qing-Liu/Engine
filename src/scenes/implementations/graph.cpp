@@ -577,7 +577,9 @@ void Graph::computePass() {}
 void Graph::updateUniformBuffers() {
 	firstPersonMouseControls();
 	firstPersonKeyboardControls();
-	mvp.view = lookAt(camPos, lookAtCoords, camUp);
+    if (!Scene::mouseMode) {
+        mvp.view = lookAt(camPos, lookAtCoords, camUp);
+    }
 	nodes->updateUniformBuffer(std::nullopt, mvp.view);
 	edges->updateUniformBuffer(std::nullopt, mvp.view);
 	nodeName->updateUniformBuffer(std::nullopt, mvp.view);

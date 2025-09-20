@@ -1,6 +1,8 @@
 #include "scene.hpp"
 #include "scenes.hpp"
 
+bool Scene::mouseMode = true;
+
 Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
@@ -10,7 +12,7 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 	screenParams.viewport.maxDepth = 1.0f;
 	screenParams.scissor.offset = {0, 0};
 	screenParams.scissor.extent = Engine::swapChainExtent;
-
+    
 	auto kbState = [this](int key, int, int action, int) {
 		if (key >= 0 && key <= GLFW_KEY_LAST) {
 			if (action == GLFW_PRESS)
@@ -23,7 +25,7 @@ Scene::Scene(Scenes &scenes) : scenes(scenes) {
 }
 
 void Scene::disableMouseMode() {
-	mouseMode = false;
+    Scene::mouseMode = false;
 
 	GLFWwindow *win = Engine::window;
 	if (win) {
@@ -36,12 +38,16 @@ void Scene::disableMouseMode() {
 
 	// Initialize yaw/pitch from current view direction so we face the scene
 	{
-		glm::vec3 f0 = glm::normalize(lookAtCoords - camPos); // if lookAtCoords==origin, this points to origin
-		f0 = glm::normalize(glm::vec3(-1, -1, -1));
+		glm::vec3 f0 = glm::normalize(lookAtCoords - camPos);
+		// fallback if lookAtCoords==camPos
+		if (!glm::all(glm::greaterThan(glm::abs(f0), glm::vec3(1e-6f))))
+			f0 = glm::normalize(glm::vec3(-1, -1, -1)); // only as fallback, not always
+
 		yaw = atan2f(f0.y, f0.x);
 		pitch = asinf(glm::clamp(f0.z, -1.0f, 1.0f));
 	}
 
+	// capture cursor
 	if (Engine::window) {
 		glfwSetInputMode(Engine::window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		if (glfwRawMouseMotionSupported())
@@ -52,7 +58,7 @@ void Scene::disableMouseMode() {
 }
 
 void Scene::enableMouseMode() {
-	mouseMode = true;
+    Scene::mouseMode = true;
 
 	GLFWwindow *win = Engine::window;
 	if (Engine::window) {
