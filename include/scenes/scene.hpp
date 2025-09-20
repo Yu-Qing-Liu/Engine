@@ -37,6 +37,8 @@ class Scene {
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
 
+	Model::UBO mvp{};
+
 	bool mouseMode = true;
 
 	// Camera state (meters)

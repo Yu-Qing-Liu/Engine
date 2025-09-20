@@ -91,8 +91,6 @@ class Graph : public Scene {
 	}
 
   private:
-	Model::UBO persp{};
-
 	unique_ptr<Circuit> circuit;
 	unique_ptr<InstancedPolygon> nodes;
 	unique_ptr<InstancedPolygon> edges;

@@ -18,6 +18,10 @@ void Scenes::hideScene(const string &sceneName) {
     scenes[sceneName].show = false;
 }
 
+shared_ptr<Scene> Scenes::getScene(const string &sceneName) {
+    return scenes[sceneName].scene;
+}
+
 void Scenes::updateComputeUniformBuffers() {
     for (const auto &sc : scenes) {
         if (sc.second.show) {
