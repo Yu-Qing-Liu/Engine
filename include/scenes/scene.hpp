@@ -20,6 +20,7 @@ class Scene {
 	virtual std::string getName() = 0;
 
 	vector<Model *> models;
+	bool is3D = true;
 
 	void updateRayTraceUniformBuffers();
 	void rayTraces();
@@ -33,18 +34,22 @@ class Scene {
 	virtual void renderPass();
 	virtual void swapChainUpdate();
 
-	Model::UBO &getMVP() { return mvp; }
-
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
 
 	Model::UBO mvp{};
 
+	float fovH = 0.0f;
+	float fovV = 0.0f;
+	float baseH = 0.0f;
+	float baseW = 0.0f;
+
 	static bool mouseMode;
 
 	// Camera state (meters)
 	glm::vec3 camPos{12.0f, 12.0f, 12.0f};
+	glm::vec3 camPosOrtho{12.0f, 12.0f, 12.0f};
 	glm::vec3 camTarget{0.0f, 0.0f, 0.0f};
 	glm::vec3 camUp{0.0f, 0.0f, 1.0f};
 	float camSpeed = 1.0f;
@@ -59,10 +64,19 @@ class Scene {
 	double lastPointerX = -1.0;
 	double lastPointerY = -1.0;
 
+	vec2 viewCenter = vec2{0.0f};
+	float zoom = 1.0f;
+
 	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
 
 	void disableMouseMode();
 	void enableMouseMode();
+
 	void firstPersonMouseControls();
 	void firstPersonKeyboardControls(float sensitivity = 1.0f);
+
+	void mapMouseControls();
+	void mapKeyboardControls();
+
+	std::function<void(double)> mouseScrollCallback;
 };
