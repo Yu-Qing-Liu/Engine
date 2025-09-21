@@ -52,12 +52,14 @@ inline std::string modelRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/mai
 inline std::string fontRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/fonts";
 inline std::string shaderCachePath; // set at runtime to "<files>/shaders"
 #else
-inline std::string shaderRootPath = "./assets/shaders";
-inline std::string textureRootPath = "./assets/textures";
-inline std::string modelRootPath = "./assets/meshes";
-inline std::string fontRootPath = "./assets/fonts";
-inline std::string shaderCachePath = "./assets/spirv";
+inline std::string shaderRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/shaders";
+inline std::string textureRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/textures";
+inline std::string modelRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/meshes";
+inline std::string fontRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/fonts";
+inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/spirv";
 #endif
+
+inline std::string appdataPath = std::string(PROJECT_ROOT_DIR) + "/src/appdata";
 
 // --------------------------- helpers ---------------------------
 inline std::string joinPath(const std::string &a, const std::string &b) {
@@ -617,6 +619,7 @@ inline void initialize() {
 	ensureDir(textureRootPath);
 	ensureDir(modelRootPath);
 	ensureDir(fontRootPath);
+    ensureDir(appdataPath);
 
 	const fs::path binDir = executableDir();
 	const fs::path outRoot = binDir / "assets";
@@ -626,12 +629,21 @@ inline void initialize() {
 	const fs::path dstMeshes = outRoot / "meshes";
 	const fs::path dstFonts = outRoot / "fonts";
 	const fs::path dstSpirv = outRoot / "spirv";
+    const fs::path dstAppdata = binDir / "appdata";
 
 	copyDirRecursive(shaderRootPath, dstShaders);
 	copyDirRecursive(textureRootPath, dstTextures);
 	copyDirRecursive(modelRootPath, dstMeshes);
 	copyDirRecursive(fontRootPath, dstFonts);
 	copyDirRecursive(shaderCachePath, dstSpirv);
+    copyDirRecursive(appdataPath, dstAppdata);
+
+    shaderRootPath = "./assets/shaders";
+    textureRootPath = "./assets/textures";
+    modelRootPath = "./assets/meshes";
+    fontRootPath = "./assets/fonts";
+    shaderCachePath = "./assets/spirv";
+    appdataPath = "./appdata";
 #endif // !ANDROID_VK
 	ensureDir(shaderCachePath);
 }

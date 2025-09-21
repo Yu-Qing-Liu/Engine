@@ -1,4 +1,5 @@
 #include "circuit.hpp"
+#include "assets.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -82,7 +83,7 @@ static bool parseCableParentChild(const std::string &cableName, std::string &par
 // -----------------------------------------------------------------------------
 // Public: load default file
 // -----------------------------------------------------------------------------
-Circuit::Circuit() { readFromFile(std::string(PROJECT_ROOT_DIR) + "/src/circuit/data.csv"); }
+Circuit::Circuit() { readFromFile(Assets::appdataPath + "/data.csv"); }
 
 // -----------------------------------------------------------------------------
 // CSV helpers
