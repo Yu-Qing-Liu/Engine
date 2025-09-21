@@ -2,11 +2,12 @@
 
 #include "object.hpp"
 #include "scene.hpp"
+#include "texture.hpp"
 
 class Background : public Scene {
   public:
 	Background(Scenes &scenes);
-	Background(Background &&) = default;
+	Background(Background &&) = delete;
 	Background(const Background &) = delete;
 	Background &operator=(Background &&) = delete;
 	Background &operator=(const Background &) = delete;
@@ -24,8 +25,6 @@ class Background : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	Model::UBO kitchenUBO{};
-
-	std::unique_ptr<Object> kitchen;
-	std::unique_ptr<Object> walls;
+	unique_ptr<Model> particles;
+	unique_ptr<Texture> backgroundImage;
 };

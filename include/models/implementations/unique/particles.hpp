@@ -16,6 +16,14 @@ class Particles : public Model {
 		vec2 position;
 		vec2 velocity;
 		vec4 color;
+		float size;
+		float speedScale;
+		float sizeFreq;
+		float sizePhase;
+		float baseSize;
+		float _pad0; // 52..55
+		float _pad1; // 56..59
+		float _pad2; // 60..63
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -26,8 +34,8 @@ class Particles : public Model {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -39,12 +47,24 @@ class Particles : public Model {
 			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(Particle, color);
 
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Particle, size);
+
+			attributeDescriptions[3].binding = 0;
+			attributeDescriptions[3].location = 3;
+			attributeDescriptions[3].format = VK_FORMAT_R32_SFLOAT;
+			attributeDescriptions[3].offset = offsetof(Particle, baseSize);
+
 			return attributeDescriptions;
 		}
 	};
 
 	struct UniformBufferObject {
 		float deltatime = 1.0f;
+		uint32_t particleCount;
+		uint32_t _pad0 = 0, _pat1 = 0;
 	};
 
 	void updateComputeUniformBuffer() override;
