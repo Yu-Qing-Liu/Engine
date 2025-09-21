@@ -1,3 +1,5 @@
+#pragma once
+
 #include "model.hpp"
 #include <cmath>
 #include <glm/glm.hpp>

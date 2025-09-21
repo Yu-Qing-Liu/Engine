@@ -7,7 +7,7 @@
 class RayTracing : public Scene {
   public:
 	RayTracing(Scenes &scenes);
-	RayTracing(RayTracing &&) = default;
+	RayTracing(RayTracing &&) = delete;
 	RayTracing(const RayTracing &) = delete;
 	RayTracing &operator=(RayTracing &&) = delete;
 	RayTracing &operator=(const RayTracing &) = delete;

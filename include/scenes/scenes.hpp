@@ -4,8 +4,8 @@
 #include <map>
 
 using std::make_shared;
-using std::string;
 using std::shared_ptr;
+using std::string;
 
 class Scenes {
   public:
@@ -28,6 +28,7 @@ class Scenes {
 	void renderPass();
 	void swapChainUpdate();
 
+	shared_ptr<Scene> getScene(const string &sceneName);
 	void showScene(const string &sceneName);
 	void hideScene(const string &sceneName);
 

@@ -80,6 +80,11 @@ class Model {
 	std::function<void()> onMouseEnter;
 	std::function<void()> onMouseExit;
 
+	bool isOrtho() {
+		constexpr float epsilon = 1e-5f;
+		return std::abs(ubo.proj[3][2]) < epsilon && std::abs(ubo.proj[3][3] - 1.0f) < epsilon;
+	};
+
 	void setOnMouseClick(std::function<void(int, int, int)> cb);
 	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
