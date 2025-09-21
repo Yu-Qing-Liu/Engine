@@ -52,7 +52,7 @@ target_include_directories(SOURCES PUBLIC
         "${REPO_ROOT}/include/models/implementations/instanced"
         "${REPO_ROOT}/include/scenes"
         "${REPO_ROOT}/include/scenes/implementations"
-        "${REPO_ROOT}/include/scenes/default"
+        "${REPO_ROOT}/include/scenes/implementations/default"
         "${REPO_ROOT}/include/ui"
         "${REPO_ROOT}/include/ui/implementations"
 )
@@ -65,6 +65,46 @@ target_compile_definitions(SOURCES PUBLIC PROJECT_ROOT_DIR="${REPO_ROOT}")
 # Keep it tiny: no PNG/BZip2/Brotli/Harfbuzz/zlib (optional)
 # ------------------------------
 set(THIRD_PARTY_DIR "${CMAKE_SOURCE_DIR}/third_party")
+
+# ------------------------------
+# Auto-clone third_party deps if missing
+# ------------------------------
+find_package(Git QUIET)
+if (NOT GIT_FOUND)
+  message(FATAL_ERROR "Git is required to fetch third_party dependencies automatically.")
+endif()
+
+function(clone_if_missing name url tag out_dir)
+  if (EXISTS "${out_dir}/CMakeLists.txt")
+    message(STATUS "[vendor] ${name} found at ${out_dir}")
+    return()
+  endif()
+
+  file(MAKE_DIRECTORY "${THIRD_PARTY_DIR}")
+  message(STATUS "[vendor] Cloning ${name} (${tag}) into ${out_dir}")
+  execute_process(
+    COMMAND "${GIT_EXECUTABLE}" clone --depth 1 --branch "${tag}" "${url}" "${out_dir}"
+    WORKING_DIRECTORY "${THIRD_PARTY_DIR}"
+    RESULT_VARIABLE GIT_CLONE_RES
+  )
+  if (NOT GIT_CLONE_RES EQUAL 0)
+    message(FATAL_ERROR "[vendor] Failed to clone ${name} (${url} @ ${tag})")
+  endif()
+endfunction()
+
+# Pinned versions (adjust as you like)
+set(FREETYPE_TAG  VER-2-13-2)   # FreeType 2.13.2
+set(ASSIMP_TAG    v5.4.3)       # Assimp 5.4.3
+set(GLM_TAG       1.0.1)        # GLM 1.0.1
+
+# Targets (where we want them on disk)
+set(FREETYPE_DIR  "${THIRD_PARTY_DIR}/freetype")
+set(ASSIMP_DIR    "${THIRD_PARTY_DIR}/assimp")
+set(GLM_DIR       "${THIRD_PARTY_DIR}/glm")
+
+clone_if_missing("freetype" "https://github.com/freetype/freetype.git" "${FREETYPE_TAG}" "${FREETYPE_DIR}")
+clone_if_missing("assimp"   "https://github.com/assimp/assimp.git"     "${ASSIMP_TAG}"   "${ASSIMP_DIR}")
+clone_if_missing("glm"      "https://github.com/g-truc/glm.git"        "${GLM_TAG}"      "${GLM_DIR}")
 
 set(FT_DISABLE_PNG      ON CACHE BOOL "" FORCE)
 set(FT_DISABLE_BZIP2    ON CACHE BOOL "" FORCE)

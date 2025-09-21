@@ -1,6 +1,8 @@
 # MISC
 .gcroots/
 .idea/
+AppDir/
+*.AppImage
 
 ##### Windows
 # Windows thumbnail cache files

@@ -9,7 +9,7 @@
 class Buttons : public Scene {
   public:
 	Buttons(Scenes &scenes);
-	Buttons(Buttons &&) = default;
+	Buttons(Buttons &&) = delete;
 	Buttons(const Buttons &) = delete;
 	Buttons &operator=(Buttons &&) = delete;
 	Buttons &operator=(const Buttons &) = delete;
