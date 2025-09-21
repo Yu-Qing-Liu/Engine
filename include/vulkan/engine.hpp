@@ -59,6 +59,7 @@ inline VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
 inline VkImageView depthImageView = VK_NULL_HANDLE;
 
 inline float startTime = 0.0f;
+inline float deltaTime = 0.0f;
 inline float lastFrameTime = 0.0f;
 inline double lastTime = 0.0;
 inline float time = 0.0f;
