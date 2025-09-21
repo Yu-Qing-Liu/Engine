@@ -8,7 +8,7 @@
 class Default : public Scene {
   public:
 	Default(Scenes &scenes);
-	Default(Default &&) = default;
+	Default(Default &&) = delete;
 	Default(const Default &) = delete;
 	Default &operator=(Default &&) = delete;
 	Default &operator=(const Default &) = delete;

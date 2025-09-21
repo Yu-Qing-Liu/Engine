@@ -3,15 +3,15 @@
 #include "model.hpp"
 #include <memory>
 
-using std::unique_ptr;
 using std::make_unique;
+using std::unique_ptr;
 
 class Scenes;
 
 class Scene {
   public:
 	Scene(Scenes &scenes);
-	Scene(Scene &&) = default;
+	Scene(Scene &&) = delete;
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
 	Scene &operator=(const Scene &) = delete;
@@ -20,6 +20,7 @@ class Scene {
 	virtual std::string getName() = 0;
 
 	vector<Model *> models;
+	bool is3D = true;
 
 	void updateRayTraceUniformBuffers();
 	void rayTraces();
@@ -36,4 +37,46 @@ class Scene {
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
+
+	Model::UBO mvp{};
+
+	float fovH = 0.0f;
+	float fovV = 0.0f;
+	float baseH = 0.0f;
+	float baseW = 0.0f;
+
+	static bool mouseMode;
+
+	// Camera state (meters)
+	glm::vec3 camPos{12.0f, 12.0f, 12.0f};
+	glm::vec3 camPosOrtho{12.0f, 12.0f, 12.0f};
+	glm::vec3 camTarget{0.0f, 0.0f, 0.0f};
+	glm::vec3 camUp{0.0f, 0.0f, 1.0f};
+	float camSpeed = 1.0f;
+
+	// FPS mouselook state
+	float yaw = 0.0f;		  // radians, wraps freely
+	float pitch = 0.0f;		  // radians, clamp to ~(-89°, +89°)
+	float mouseSens = 0.001f; // tweak to taste
+	vec3 lookAtCoords = {0.0f, 0.0f, 0.0f};
+
+	// mouse-aim state
+	double lastPointerX = -1.0;
+	double lastPointerY = -1.0;
+
+	vec2 viewCenter = vec2{0.0f};
+	float zoom = 1.0f;
+
+	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
+
+	void disableMouseMode();
+	void enableMouseMode();
+
+	void firstPersonMouseControls();
+	void firstPersonKeyboardControls(float sensitivity = 1.0f);
+
+	void mapMouseControls();
+	void mapKeyboardControls();
+
+	std::function<void(double)> mouseScrollCallback;
 };

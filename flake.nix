@@ -76,6 +76,7 @@
           glfw3_DIR = "${pkgs.glfw}/lib/cmake/glfw3";
           assimp_DIR = "${pkgs.assimp.dev}/lib/cmake/assimp-5.4";
           OpenSSL_DIR = "${pkgs.openssl.dev}";
+          freetype_DIR = "${pkgs.freetype.dev}";
         };
       });
 }

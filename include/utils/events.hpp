@@ -19,6 +19,7 @@ using KeyboardCallback = std::function<void(int /*key*/, int /*scancode*/, int /
 using CharacterInputCallback = std::function<void(unsigned int codepoint)>;
 using WindowFocusedCallback = std::function<void(GLFWwindow* win, int focused)>;
 using CursorCallback = std::function<void(float x, float y)>;
+using ScrollCallback = std::function<void(double xoff, double yoff)>;
 
 namespace Events {
 
@@ -33,6 +34,7 @@ inline std::vector<KeyboardCallback> keyboardCallbacks{};
 inline std::vector<CharacterInputCallback> characterInputCallbacks{};
 inline std::vector<WindowFocusedCallback> windowFocusedCallbacks{};
 inline std::vector<CursorCallback> cursorCallbacks{};
+inline std::vector<ScrollCallback> scrollCallbacks{};
 
 inline float pointerX = 0.0f;
 inline float pointerY = 0.0f;
@@ -63,6 +65,11 @@ inline void dispatchCursorCallback(float x, float y) {
         cb(x, y);
 }
 
+inline void dispatchScrollCallback(double xoff, double yoff) {
+    for (const auto &cb : scrollCallbacks)
+        cb(xoff, yoff);
+}
+
 inline void setAndroidApp(void *) {}
 
 #if !ANDROID_VK
@@ -75,6 +82,8 @@ inline void handleKeyboardCallbacks(GLFWwindow * /*window*/, int key, int scanco
 inline void handleCharacterInputCallbacks(GLFWwindow *, unsigned int codepoint) { dispatchCharacter(codepoint); }
 
 inline void handleWindowFocusedCallbacks(GLFWwindow * win, int focused) { dispatchWindowFocused(win, focused); }
+
+inline void handleScrollCallbacks(GLFWwindow * win, double xoff, double yoff) { dispatchScrollCallback(xoff, yoff); }
 
 #else
 // ======================= Android (NativeActivity) =======================

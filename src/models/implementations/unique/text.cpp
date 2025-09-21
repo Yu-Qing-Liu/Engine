@@ -608,7 +608,7 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 		if (origin.has_value()) {
 			buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
 		} else {
-			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() * scale / 4.0f, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
+			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() / 3.3 * scale, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
 		}
 	} else {
 		buildGeometryTaggedUTF8(text, {/*origin*/ 0, 0, 0}, scale, selRanges, caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt, caretOpt ? caretOpt->px : 0.0f, verts, idx);
@@ -715,6 +715,11 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PC), &pc);
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), (uint32_t)idx.size(), 1, 0, 0, 0);
+}
+
+void Text::render() {
+	static const std::vector<std::pair<size_t, size_t>> none;
+	renderTextEx(text, std::nullopt, 1.0f, color, none, glm::vec4(0, 0, 0, 0), std::nullopt);
 }
 
 // 1) normal

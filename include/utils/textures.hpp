@@ -1,0 +1,33 @@
+#pragma once
+
+#include "model.hpp"
+#include "texture.hpp"
+#include <memory>
+
+using std::make_unique;
+using std::unique_ptr;
+
+using UBO = Model::UBO;
+using ScreenParams = Model::ScreenParams;
+
+namespace Textures {
+
+inline unique_ptr<Texture> icon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath) {
+	return make_unique<Texture>(scene, ubo, screenParams, texturePath,
+								std::vector<Texture::Vertex>{
+									{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+									{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+									{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+									{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+								},
+								std::vector<uint32_t>{
+									0,
+									1,
+									2,
+									2,
+									3,
+									0,
+								});
+}
+
+} // namespace Textures
