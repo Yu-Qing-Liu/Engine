@@ -1,5 +1,6 @@
 #pragma once
 
+#include "rectangle.hpp"
 #include "scene.hpp"
 
 class NavBar : public Scene {
@@ -23,4 +24,5 @@ class NavBar : public Scene {
 	void swapChainUpdate() override;
 
   private:
+	unique_ptr<Rectangle> bar;
 };
