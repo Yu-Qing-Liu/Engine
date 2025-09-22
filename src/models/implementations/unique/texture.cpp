@@ -30,6 +30,18 @@ Texture::Texture(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const
 }
 
 Texture::~Texture() {
+	for (size_t i = 0; i < paramsBuf.size(); ++i) {
+		if (paramsMem[i]) {
+			if (paramsMapped[i]) {
+				vkUnmapMemory(Engine::device, paramsMem[i]);
+			}
+			vkFreeMemory(Engine::device, paramsMem[i], nullptr);
+		}
+		if (paramsBuf[i]) {
+			vkDestroyBuffer(Engine::device, paramsBuf[i], nullptr);
+		}
+	}
+
 	if (textureImage != VK_NULL_HANDLE) {
 		vkDestroyImage(Engine::device, textureImage, nullptr);
 	}
