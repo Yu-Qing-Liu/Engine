@@ -1,6 +1,7 @@
 #pragma once
 
 #include "object.hpp"
+#include "particles.hpp"
 #include "scene.hpp"
 #include "texture.hpp"
 
@@ -25,6 +26,6 @@ class Background : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<Model> particles;
+	unique_ptr<Particles> particles;
 	unique_ptr<Texture> backgroundImage;
 };

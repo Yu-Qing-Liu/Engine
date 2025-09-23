@@ -20,15 +20,10 @@ InstancedRectangle::InstancedRectangle(Scene* scene, const MVP &ubo, ScreenParam
 
 	// Graphics pipeline with 2 bindings
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 void InstancedRectangle::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void InstancedRectangle::createBindingDescriptions() {

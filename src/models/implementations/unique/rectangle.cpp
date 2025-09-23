@@ -9,7 +9,6 @@ Rectangle::Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams) :
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
-	createParamsBuffer();
 	createDescriptorPool();
 	createDescriptorSets();
 
@@ -18,11 +17,6 @@ Rectangle::Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams) :
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Rectangle::~Rectangle() {
@@ -40,7 +34,7 @@ Rectangle::~Rectangle() {
 }
 
 void Rectangle::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void Rectangle::createBindingDescriptions() {
@@ -84,16 +78,9 @@ void Rectangle::createDescriptorPool() {
 	}
 }
 
-void Rectangle::createParamsBuffer() {
-	VkDeviceSize sz = sizeof(Params);
-	paramsBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
-		Engine::createBuffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, paramsBuffers[i], paramsBuffersMemory[i]);
-		vkMapMemory(Engine::device, paramsBuffersMemory[i], 0, sz, 0, &paramsBuffersMapped[i]);
-	}
+void Rectangle::createUniformBuffers() {
+    Model::createUniformBuffers();
+    Model::createUniformBuffers<Params>(paramsBuffers, paramsBuffersMemory, paramsBuffersMapped);
 }
 
 void Rectangle::createDescriptorSets() {

@@ -21,15 +21,10 @@ InstancedPolygon::InstancedPolygon(Scene* scene, const MVP &ubo, ScreenParams &s
 
 	// Graphics pipeline with 2 bindings
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 void InstancedPolygon::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void InstancedPolygon::createBindingDescriptions() {

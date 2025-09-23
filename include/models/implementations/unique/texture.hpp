@@ -68,8 +68,7 @@ class Texture : public Model {
 	void createTextureImageView();
 	void createTextureSampler();
 
-	void createParamsBuffer();
-
+	void createUniformBuffers() override;
 	void createDescriptorSetLayout() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
@@ -80,9 +79,9 @@ class Texture : public Model {
 	string texturePath;
 	aiTexture embeddedTex;
 
-	std::vector<VkBuffer> paramsBuf;
-	std::vector<VkDeviceMemory> paramsMem;
-	std::vector<void *> paramsMapped;
+	std::vector<VkBuffer> paramsBuffers;
+	std::vector<VkDeviceMemory> paramsBuffersMemory;
+	std::vector<void *> paramsBuffersMapped;
 
 	VkDescriptorSetLayoutBinding paramsBinding{};
 	VkImage textureImage = VK_NULL_HANDLE;

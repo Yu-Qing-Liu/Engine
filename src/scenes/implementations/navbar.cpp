@@ -21,7 +21,7 @@ void NavBar::swapChainUpdate() {
 	float h = screenParams.viewport.height;
     mvp.proj = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 
-    bar->updateUniformBuffer(
+    bar->updateMVP(
         translate(mat4(1.0f), vec3(w * 0.5f, 0, 0.0f)) * scale(mat4(1.0f), vec3(w, h * 0.1, 1.0)),
         std::nullopt,
         mvp.proj

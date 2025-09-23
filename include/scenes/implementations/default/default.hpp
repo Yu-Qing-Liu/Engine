@@ -2,6 +2,7 @@
 
 #include "engine.hpp"
 #include "object.hpp"
+#include "particles.hpp"
 #include "scene.hpp"
 #include "text.hpp"
 
@@ -32,7 +33,7 @@ class Default : public Scene {
 
 	unique_ptr<Model> triangle;
 	unique_ptr<Model> example;
-	unique_ptr<Model> particles;
+	unique_ptr<Particles> particles;
 
 	unique_ptr<Object> room;
 	unique_ptr<Text> text;

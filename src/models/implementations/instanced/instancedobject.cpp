@@ -24,11 +24,6 @@ InstancedObject::InstancedObject(Scene* scene, const MVP &ubo, ScreenParams &scr
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 InstancedObject::~InstancedObject() {
@@ -52,7 +47,7 @@ InstancedObject::~InstancedObject() {
 }
 
 void InstancedObject::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 // ---------- small helpers ----------

@@ -67,8 +67,8 @@ class Particles : public Model {
 		uint32_t _pad0 = 0, _pat1 = 0;
 	};
 
-	void updateComputeUniformBuffer() override;
-	void compute() override;
+	void updateComputeUniformBuffer();
+	void compute();
 	void render() override;
 
   protected:
@@ -80,12 +80,18 @@ class Particles : public Model {
 	vector<VkDeviceMemory> shaderStorageBuffersMemory;
 	vector<VkDescriptorSet> computeDescriptorSets;
 
-	void createComputeDescriptorSetLayout() override;
+	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+	VkPipeline computePipeline = VK_NULL_HANDLE;
+	VkDescriptorPool computePool = VK_NULL_HANDLE;
+	VkDescriptorSet computeDescriptorSet = VK_NULL_HANDLE;
+
+	void createComputeDescriptorSetLayout();
 	void createBindingDescriptions() override;
-	void createComputePipeline() override;
-	void createShaderStorageBuffers() override;
+	void createComputePipeline();
+	void createShaderStorageBuffers();
 	void createUniformBuffers() override;
 	void createDescriptorPool() override;
-	void createComputeDescriptorSets() override;
+	void createComputeDescriptorSets();
 	void setupGraphicsPipeline() override;
 };

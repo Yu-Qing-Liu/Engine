@@ -9,7 +9,6 @@ Polygon::Polygon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
-	createParamsBuffer();
 	createDescriptorPool();
 	createDescriptorSets();
 
@@ -18,11 +17,6 @@ Polygon::Polygon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Polygon::~Polygon() {
@@ -40,7 +34,7 @@ Polygon::~Polygon() {
 }
 
 void Polygon::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void Polygon::createBindingDescriptions() {
@@ -84,16 +78,9 @@ void Polygon::createDescriptorPool() {
 	}
 }
 
-void Polygon::createParamsBuffer() {
-	VkDeviceSize sz = sizeof(Params);
-	paramsBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
-		Engine::createBuffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, paramsBuffers[i], paramsBuffersMemory[i]);
-		vkMapMemory(Engine::device, paramsBuffersMemory[i], 0, sz, 0, &paramsBuffersMapped[i]);
-	}
+void Polygon::createUniformBuffers() {
+    Model::createUniformBuffers();
+    Model::createUniformBuffers<Params>(paramsBuffers, paramsBuffersMemory, paramsBuffersMapped);
 }
 
 void Polygon::createDescriptorSets() {

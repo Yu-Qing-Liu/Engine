@@ -53,6 +53,7 @@ class Rectangle : public Model {
   protected:
 	void buildBVH() override;
 	void createDescriptorSetLayout() override;
+	void createUniformBuffers() override;
 	void createBindingDescriptions() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;

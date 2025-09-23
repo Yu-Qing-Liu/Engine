@@ -22,11 +22,6 @@ Object::Object(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const s
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Object::~Object() {
@@ -50,7 +45,7 @@ Object::~Object() {
 }
 
 void Object::buildBVH() {
-	Model::buildBVH<Vertex>(vertices);
+	rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 // ---------- small helpers ----------

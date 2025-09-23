@@ -26,6 +26,19 @@ Particles::~Particles() {
 			shaderStorageBuffersMemory[i] = VK_NULL_HANDLE;
 		}
 	}
+
+	if (computePipeline != VK_NULL_HANDLE) {
+		vkDestroyPipeline(Engine::device, computePipeline, nullptr);
+	}
+	if (computePipelineLayout != VK_NULL_HANDLE) {
+		vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
+	}
+	if (computePool != VK_NULL_HANDLE) {
+		vkDestroyDescriptorPool(Engine::device, computePool, nullptr);
+	}
+	if (computeDescriptorSetLayout != VK_NULL_HANDLE) {
+		vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
+	}
 }
 
 void Particles::createComputeDescriptorSetLayout() {
@@ -160,16 +173,7 @@ void Particles::createShaderStorageBuffers() {
 }
 
 void Particles::createUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	mvpBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	mvpBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	mvpBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mvpBuffers[i], mvpBuffersMemory[i]);
-		vkMapMemory(Engine::device, mvpBuffersMemory[i], 0, bufferSize, 0, &mvpBuffersMapped[i]);
-	}
+    Model::createUniformBuffers<UniformBufferObject>(mvpBuffers, mvpBuffersMemory, mvpBuffersMapped);
 }
 
 void Particles::createDescriptorPool() {

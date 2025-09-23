@@ -7,12 +7,12 @@
 using std::make_unique;
 using std::unique_ptr;
 
-using UBO = Model::MVP;
+using MVP = Model::MVP;
 using ScreenParams = Model::ScreenParams;
 
 namespace Textures {
 
-inline unique_ptr<Texture> icon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath) {
+inline unique_ptr<Texture> icon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath) {
 	return make_unique<Texture>(scene, ubo, screenParams, texturePath,
 								std::vector<Texture::Vertex>{
 									{{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},

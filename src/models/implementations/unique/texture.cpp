@@ -13,7 +13,6 @@ Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const
 	createTextureSampler();
 
 	computeAspectUV();
-	createParamsBuffer();
 
 	createUniformBuffers();
 	createDescriptorPool();
@@ -22,23 +21,18 @@ Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const
 	createIndexBuffer();
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Texture::~Texture() {
-	for (size_t i = 0; i < paramsBuf.size(); ++i) {
-		if (paramsMem[i]) {
-			if (paramsMapped[i]) {
-				vkUnmapMemory(Engine::device, paramsMem[i]);
+	for (size_t i = 0; i < paramsBuffers.size(); ++i) {
+		if (paramsBuffersMemory[i]) {
+			if (paramsBuffersMapped[i]) {
+				vkUnmapMemory(Engine::device, paramsBuffersMemory[i]);
 			}
-			vkFreeMemory(Engine::device, paramsMem[i], nullptr);
+			vkFreeMemory(Engine::device, paramsBuffersMemory[i], nullptr);
 		}
-		if (paramsBuf[i]) {
-			vkDestroyBuffer(Engine::device, paramsBuf[i], nullptr);
+		if (paramsBuffers[i]) {
+			vkDestroyBuffer(Engine::device, paramsBuffers[i], nullptr);
 		}
 	}
 
@@ -56,19 +50,13 @@ Texture::~Texture() {
 	}
 }
 
-void Texture::buildBVH() { Model::buildBVH<Vertex>(vertices); }
+void Texture::buildBVH() {
+    rayTracing->buildBVH<Vertex>(vertices, indices); 
+}
 
-void Texture::createParamsBuffer() {
-	VkDeviceSize sz = sizeof(Params);
-	paramsBuf.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsMem.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
-		Engine::createBuffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, paramsBuf[i], paramsMem[i]);
-		vkMapMemory(Engine::device, paramsMem[i], 0, sz, 0, &paramsMapped[i]);
-		std::memcpy(paramsMapped[i], &params, sizeof(Params));
-	}
+void Texture::createUniformBuffers() {
+    Model::createUniformBuffers();
+    Model::createUniformBuffers<Params>(paramsBuffers, paramsBuffersMemory, paramsBuffersMapped);
 }
 
 void Texture::createDescriptorSetLayout() {
@@ -143,7 +131,7 @@ void Texture::createDescriptorSets() {
 		imageInfo.sampler = textureSampler;
 
 		VkDescriptorBufferInfo paramsInfo{};
-		paramsInfo.buffer = paramsBuf[i];
+		paramsInfo.buffer = paramsBuffers[i];
 		paramsInfo.offset = 0;
 		paramsInfo.range = sizeof(Params);
 
@@ -215,8 +203,8 @@ void Texture::computeAspectUV() {
 	params.uvOffset = vec2(0.0f); // no bars; offset not needed
 
 	// upload to all frames
-	for (size_t i = 0; i < paramsMapped.size(); ++i) {
-		std::memcpy(paramsMapped[i], &params, sizeof(Params));
+	for (size_t i = 0; i < paramsBuffersMapped.size(); ++i) {
+		std::memcpy(paramsBuffersMapped[i], &params, sizeof(Params));
 	}
 }
 
