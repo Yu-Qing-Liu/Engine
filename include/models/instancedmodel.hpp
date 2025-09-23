@@ -15,7 +15,7 @@ template <typename T> class InstancedModel : public Model {
 	InstancedModel &operator=(InstancedModel &&) = delete;
 	InstancedModel &operator=(const InstancedModel &) = delete;
 
-	InstancedModel(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) { createInstanceBuffers(); }
+	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) { createInstanceBuffers(); }
 	~InstancedModel() override {
 		for (size_t i = 0; i < instanceBuffers.size(); ++i) {
 			if (instanceMapped[i]) {

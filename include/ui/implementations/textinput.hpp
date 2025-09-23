@@ -29,12 +29,12 @@ class TextInput : public Widget {
 		vec4 activeTextColor{Colors::Green};
 	};
 
-	TextInput(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
+	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams);
 
 	void utf8_append(std::string &out, unsigned int cp, size_t position);
 	void utf8_pop_back(std::string &s, size_t position);
 
-	void updateUniformBuffers(const Model::UBO &ubo) override;
+	void updateUniformBuffers(const Model::MVP &ubo) override;
 	void setParams(const StyleParams &params);
 
 	void render() override;

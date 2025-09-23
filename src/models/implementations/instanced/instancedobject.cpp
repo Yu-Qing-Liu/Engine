@@ -6,7 +6,7 @@
 #include <assimp/scene.h>
 #include <stb_image.hpp>
 
-InstancedObject::InstancedObject(Scene* scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedobject", std::move(instances), maxInstances) {
+InstancedObject::InstancedObject(Scene* scene, const MVP &ubo, ScreenParams &screenParams, const std::string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances) : objPath(objPath), InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedobject", std::move(instances), maxInstances) {
 	loadModel();
 
 	createDescriptorSetLayout();

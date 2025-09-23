@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
+Polygon::Polygon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
 	expandForOutlines<Vertex>(vertices, indices, this->vertices, this->indices);
 
 	createDescriptorSetLayout();
@@ -50,17 +50,17 @@ void Polygon::createBindingDescriptions() {
 }
 
 void Polygon::createDescriptorSetLayout() {
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	paramsBinding.binding = 1;
 	paramsBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	paramsBinding.descriptorCount = 1;
 	paramsBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, paramsBinding};
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = {mvpLayoutBinding, paramsBinding};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = (uint32_t)bindings.size();
 	layoutInfo.pBindings = bindings.data();
@@ -110,7 +110,7 @@ void Polygon::createDescriptorSets() {
 	}
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo uboInfo{uniformBuffers[i], 0, sizeof(UBO)};
+		VkDescriptorBufferInfo uboInfo{mvpBuffers[i], 0, sizeof(MVP)};
 		VkDescriptorBufferInfo paramsInfo{paramsBuffers[i], 0, sizeof(Params)};
 
 		std::array<VkWriteDescriptorSet, 2> writes{};

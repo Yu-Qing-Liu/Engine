@@ -32,7 +32,7 @@ class Model {
 	Model &operator=(Model &&) = delete;
 	Model &operator=(const Model &) = delete;
 
-	struct UBO {
+	struct MVP {
 		mat4 model;
 		mat4 view;
 		mat4 proj;
@@ -43,8 +43,8 @@ class Model {
 		VkRect2D scissor{{1, 1}, {1, 1}};
 	};
 
-	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath);
-	Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices);
+	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath);
+	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices);
 	virtual ~Model();
 
 	/*
@@ -69,7 +69,7 @@ class Model {
 	bool mouseIsOver{false};
 	bool selected{false};
 
-	UBO ubo{};
+	MVP ubo{};
 	ScreenParams &screenParams;
 
 	optional<vec3> hitPos;
@@ -105,7 +105,7 @@ class Model {
 	 * */
 
 	void updateUniformBuffer(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void updateUniformBuffer(const UBO &ubo);
+	void updateUniformBuffer(const MVP &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
 	void copyUBO();
 	virtual void render();
@@ -295,7 +295,7 @@ class Model {
 	vector<VkVertexInputAttributeDescription> attributeDescriptions;
 	vector<VkDescriptorSet> descriptorSets;
 
-	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	VkDescriptorPoolSize poolSize{};
 	VkDescriptorPoolCreateInfo poolInfo{};
@@ -316,9 +316,9 @@ class Model {
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 
 	vector<uint32_t> indices;
-	vector<VkBuffer> uniformBuffers;
-	vector<VkDeviceMemory> uniformBuffersMemory;
-	vector<void *> uniformBuffersMapped;
+	vector<VkBuffer> mvpBuffers;
+	vector<VkDeviceMemory> mvpBuffersMemory;
+	vector<void *> mvpBuffersMapped;
 
 	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
@@ -332,15 +332,23 @@ class Model {
 
 	virtual void createDescriptorSetLayout();
 	virtual void createUniformBuffers();
+	template <typename U> void createUniformBuffers(vector<VkBuffer> &uniformBuffers, vector<VkDeviceMemory> &uniformBuffersMemory, vector<void *> &uniformBuffersMapped) {
+		VkDeviceSize bufferSize = sizeof(U);
+
+		uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+		uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+		uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
+			Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+			vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+		}
+	}
+
 	virtual void createDescriptorPool();
 	virtual void createDescriptorSets();
+
 	virtual void createVertexBuffer();
-	virtual void createIndexBuffer();
-	virtual void createBindingDescriptions() = 0;
-	virtual void setupGraphicsPipeline();
-
-	void createGraphicsPipeline();
-
 	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
 		if (vertices.empty())
 			throw std::runtime_error("Create Vertex Buffer: No vertices");
@@ -362,6 +370,12 @@ class Model {
 		vkDestroyBuffer(Engine::device, stg, nullptr);
 		vkFreeMemory(Engine::device, stgMem, nullptr);
 	}
+
+	virtual void createIndexBuffer();
+	virtual void createBindingDescriptions() = 0;
+	virtual void setupGraphicsPipeline();
+
+	void createGraphicsPipeline();
 
   private:
 	std::mutex m;

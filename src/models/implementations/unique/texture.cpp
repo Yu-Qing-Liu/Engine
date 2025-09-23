@@ -5,7 +5,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
 
-Texture::Texture(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", indices) {
+Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", indices) {
 	createDescriptorSetLayout();
 
 	createTextureImageFromFile();
@@ -72,11 +72,11 @@ void Texture::createParamsBuffer() {
 }
 
 void Texture::createDescriptorSetLayout() {
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorCount = 1;
@@ -90,7 +90,7 @@ void Texture::createDescriptorSetLayout() {
 	paramsBinding.pImmutableSamplers = nullptr;
 	paramsBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 3> bindings = {uboLayoutBinding, samplerLayoutBinding, paramsBinding};
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings = {mvpLayoutBinding, samplerLayoutBinding, paramsBinding};
 
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -133,9 +133,9 @@ void Texture::createDescriptorSets() {
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.buffer = mvpBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UBO);
+		bufferInfo.range = sizeof(MVP);
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

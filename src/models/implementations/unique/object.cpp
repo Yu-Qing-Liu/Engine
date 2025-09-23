@@ -4,7 +4,7 @@
 #include <stb_image.hpp>
 
 // ---------- ctor/dtor ----------
-Object::Object(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/object") {
+Object::Object(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const std::string &objPath) : objPath(objPath), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/object") {
     loadModel();
 
 	createDescriptorSetLayout();		 // set=0

@@ -7,7 +7,7 @@
 using std::make_unique;
 using std::unique_ptr;
 
-using UBO = Model::UBO;
+using UBO = Model::MVP;
 using ScreenParams = Model::ScreenParams;
 
 namespace Textures {

@@ -7,13 +7,13 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
+Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
 	this->ubo.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
 	}
 }
-Model::Model(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
+Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
 	this->ubo.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
@@ -62,11 +62,11 @@ Model::~Model() {
 	}
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		if (uniformBuffers[i] != VK_NULL_HANDLE) {
-			vkDestroyBuffer(Engine::device, uniformBuffers[i], nullptr);
+		if (mvpBuffers[i] != VK_NULL_HANDLE) {
+			vkDestroyBuffer(Engine::device, mvpBuffers[i], nullptr);
 		}
-		if (uniformBuffersMemory[i] != VK_NULL_HANDLE) {
-			vkFreeMemory(Engine::device, uniformBuffersMemory[i], nullptr);
+		if (mvpBuffersMemory[i] != VK_NULL_HANDLE) {
+			vkFreeMemory(Engine::device, mvpBuffersMemory[i], nullptr);
 		}
 	}
 
@@ -132,7 +132,7 @@ Model::~Model() {
 	D(hitBuf, hitMem);
 }
 
-void Model::copyUBO() { memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
+void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 	auto callback = [this, cb](int button, int action, int mods) {
@@ -217,7 +217,7 @@ void Model::updateUniformBuffer(optional<mat4> model, optional<mat4> view, optio
 	}
 }
 
-void Model::updateUniformBuffer(const UBO &ubo) {
+void Model::updateUniformBuffer(const MVP &ubo) {
 	this->ubo = ubo;
 	this->ubo.proj[1][1] *= -1;
 }
@@ -524,15 +524,15 @@ void Model::rayTrace() {
  * */
 
 void Model::createDescriptorSetLayout() {
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;
 
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &uboLayoutBinding;
+	layoutInfo.pBindings = &mvpLayoutBinding;
 
 	if (vkCreateDescriptorSetLayout(Engine::device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
@@ -564,15 +564,15 @@ void Model::createIndexBuffer() {
 }
 
 void Model::createUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(UBO);
+	VkDeviceSize bufferSize = sizeof(MVP);
 
-	uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-		vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mvpBuffers[i], mvpBuffersMemory[i]);
+		vkMapMemory(Engine::device, mvpBuffersMemory[i], 0, bufferSize, 0, &mvpBuffersMapped[i]);
 	}
 }
 
@@ -605,9 +605,9 @@ void Model::createDescriptorSets() {
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.buffer = mvpBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UBO);
+		bufferInfo.range = sizeof(MVP);
 
 		VkWriteDescriptorSet descriptorWrite{};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

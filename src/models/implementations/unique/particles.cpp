@@ -4,7 +4,7 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(Scene *scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/particle") {
+Particles::Particles(Scene *scene, const MVP &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/particle") {
 	createComputeDescriptorSetLayout();
 	createShaderStorageBuffers();
 	createUniformBuffers();
@@ -162,13 +162,13 @@ void Particles::createShaderStorageBuffers() {
 void Particles::createUniformBuffers() {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-	uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
+	mvpBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-		vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, mvpBuffers[i], mvpBuffersMemory[i]);
+		vkMapMemory(Engine::device, mvpBuffersMemory[i], 0, bufferSize, 0, &mvpBuffersMapped[i]);
 	}
 }
 
@@ -206,7 +206,7 @@ void Particles::createComputeDescriptorSets() {
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo uniformBufferInfo{};
-		uniformBufferInfo.buffer = uniformBuffers[i];
+		uniformBufferInfo.buffer = mvpBuffers[i];
 		uniformBufferInfo.offset = 0;
 		uniformBufferInfo.range = sizeof(UniformBufferObject);
 
@@ -253,7 +253,7 @@ void Particles::updateComputeUniformBuffer() {
 	UniformBufferObject ubo{};
 	ubo.deltatime = Engine::lastFrameTime * 0.001f;
 	ubo.particleCount = particleCount;
-	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+	memcpy(mvpBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
 }
 
 void Particles::compute() {
