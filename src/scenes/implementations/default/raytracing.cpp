@@ -61,7 +61,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
         std::cout << "Mouse Exited" << std::endl;
         cube1->params.outlineColor = cube1->params.color;
     };
-    cube1->setRayTraceEnabled(true);
+    cube1->enableRayTracing(true);
 
     cube2 = make_unique<Polygon>(
         this,
@@ -115,7 +115,7 @@ RayTracing::RayTracing(Scenes &scenes) : Scene(scenes) {
         std::cout << "Mouse Exited" << std::endl;
         cube2->params.outlineColor = cube2->params.color;
     };
-    cube2->setRayTraceEnabled(true);
+    cube2->enableRayTracing(true);
 }
 
 void RayTracing::updateScreenParams() {
@@ -131,8 +131,8 @@ void RayTracing::updateScreenParams() {
 
 void RayTracing::swapChainUpdate() {
     persp.proj = perspective(radians(45.0f), screenParams.viewport.width / screenParams.viewport.height, 0.1f, 10.0f);
-    cube1->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
-    cube2->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
+    cube1->updateMVP(std::nullopt, std::nullopt, persp.proj);
+    cube2->updateMVP(std::nullopt, std::nullopt, persp.proj);
 }
 
 void RayTracing::updateComputeUniformBuffers() {}
@@ -140,12 +140,12 @@ void RayTracing::updateComputeUniformBuffers() {}
 void RayTracing::computePass() {}
 
 void RayTracing::updateUniformBuffers() {
-    cube1->updateUniformBuffer(
+    cube1->updateMVP(
         translate(persp.model, vec3(0.0, -1.0, 0.0)) *
         scale(persp.model, vec3(2.0f, 2.0f, 2.0f)) *
         rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f))
     );
-    cube2->updateUniformBuffer(
+    cube2->updateMVP(
         translate(persp.model, vec3(0.0, 1.0, 0.0)) *
         scale(persp.model, vec3(2.0f, 2.0f, 2.0f)) *
         rotate(mat4(1.0f), Engine::time * radians(90.0f), vec3(0.0f, 0.0f, 1.0f))

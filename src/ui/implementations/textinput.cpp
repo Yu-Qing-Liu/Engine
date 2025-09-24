@@ -60,7 +60,7 @@ static inline size_t cp_right(const std::string& s, size_t pos) {
 
 } // namespace
 
-TextInput::TextInput(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams)
+TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams)
 	: Widget(scene, ubo, screenParams) {
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
 
@@ -185,7 +185,7 @@ void TextInput::utf8_pop_back(std::string &s, size_t position) {
 	caret.byte = i;
 }
 
-void TextInput::updateUniformBuffers(const Model::UBO &ubo) {
+void TextInput::updateUniformBuffers(const Model::MVP &ubo) {
 	Widget::updateUniformBuffers(ubo);
 	textModel->updateUniformBuffer(ubo);
 }
@@ -196,8 +196,8 @@ void TextInput::setParams(const StyleParams &p) {
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
 	container->params.borderRadius = p.borderRadius;
-	container->updateUniformBuffer(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)));
-	textModel->updateUniformBuffer(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
+	container->updateMVP(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)));
+	textModel->updateMVP(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
 }
 
 void TextInput::render() {

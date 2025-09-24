@@ -5,14 +5,14 @@
 
 class Widget {
   public:
-	Widget(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams);
+	Widget(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams);
 	Widget(Widget &&) = delete;
 	Widget(const Widget &) = delete;
 	Widget &operator=(Widget &&) = delete;
 	Widget &operator=(const Widget &) = delete;
 	~Widget() = default;
 
-	virtual void updateUniformBuffers(const Model::UBO &ubo);
+	virtual void updateUniformBuffers(const Model::MVP &ubo);
 	virtual void render();
 
 	virtual void setOnMouseHover(std::function<void()> cb);

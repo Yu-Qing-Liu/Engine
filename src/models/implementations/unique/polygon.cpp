@@ -4,12 +4,11 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
+Polygon::Polygon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/polygon") {
 	expandForOutlines<Vertex>(vertices, indices, this->vertices, this->indices);
 
 	createDescriptorSetLayout();
 	createUniformBuffers();
-	createParamsBuffer();
 	createDescriptorPool();
 	createDescriptorSets();
 
@@ -18,11 +17,6 @@ Polygon::Polygon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const
 
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Polygon::~Polygon() {
@@ -40,7 +34,7 @@ Polygon::~Polygon() {
 }
 
 void Polygon::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void Polygon::createBindingDescriptions() {
@@ -50,17 +44,17 @@ void Polygon::createBindingDescriptions() {
 }
 
 void Polygon::createDescriptorSetLayout() {
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	paramsBinding.binding = 1;
 	paramsBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	paramsBinding.descriptorCount = 1;
 	paramsBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, paramsBinding};
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = {mvpLayoutBinding, paramsBinding};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = (uint32_t)bindings.size();
 	layoutInfo.pBindings = bindings.data();
@@ -84,16 +78,9 @@ void Polygon::createDescriptorPool() {
 	}
 }
 
-void Polygon::createParamsBuffer() {
-	VkDeviceSize sz = sizeof(Params);
-	paramsBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	paramsBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
-		Engine::createBuffer(sz, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, paramsBuffers[i], paramsBuffersMemory[i]);
-		vkMapMemory(Engine::device, paramsBuffersMemory[i], 0, sz, 0, &paramsBuffersMapped[i]);
-	}
+void Polygon::createUniformBuffers() {
+    Model::createUniformBuffers();
+    Model::createUniformBuffers<Params>(paramsBuffers, paramsBuffersMemory, paramsBuffersMapped);
 }
 
 void Polygon::createDescriptorSets() {
@@ -110,7 +97,7 @@ void Polygon::createDescriptorSets() {
 	}
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo uboInfo{uniformBuffers[i], 0, sizeof(UBO)};
+		VkDescriptorBufferInfo uboInfo{mvpBuffers[i], 0, sizeof(MVP)};
 		VkDescriptorBufferInfo paramsInfo{paramsBuffers[i], 0, sizeof(Params)};
 
 		std::array<VkWriteDescriptorSet, 2> writes{};

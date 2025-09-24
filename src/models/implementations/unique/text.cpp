@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const TextParams &textParams) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text") {
+Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const TextParams &textParams) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text") {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
@@ -479,17 +479,17 @@ float Text::getPixelHeight() { return float(textParams.pixelHeight); }
 
 void Text::createDescriptorSetLayout() {
 	// binding 0: UBO (MVP); binding 1: atlas
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings{uboLayoutBinding, samplerLayoutBinding};
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings{mvpLayoutBinding, samplerLayoutBinding};
 	layoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
@@ -525,9 +525,9 @@ void Text::createDescriptorSets() {
 	}
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; ++i) {
 		VkDescriptorBufferInfo buf{};
-		buf.buffer = uniformBuffers[i];
+		buf.buffer = mvpBuffers[i];
 		buf.offset = 0;
-		buf.range = sizeof(UBO);
+		buf.range = sizeof(MVP);
 		VkDescriptorImageInfo img{};
 		img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		img.imageView = atlasView;

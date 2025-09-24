@@ -1,9 +1,11 @@
 #include "background.hpp"
-#include "assets.hpp"
-#include "camera.hpp"
+#include "particles.hpp"
+#include "textures.hpp"
 
 Background::Background(Scenes &scenes) : Scene(scenes) {
-    kitchen = make_unique<Object>(this, kitchenUBO, screenParams, Assets::modelRootPath + "/kitchen/kitchen.obj"); 
+	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
+	particles = make_unique<Particles>(this, mvp, screenParams, 16, screenParams.viewport.width, screenParams.viewport.height);
+	backgroundImage = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/background/basil.jpg");
 }
 
 void Background::updateScreenParams() {
@@ -18,20 +20,40 @@ void Background::updateScreenParams() {
 }
 
 void Background::swapChainUpdate() {
-    kitchenUBO = Camera::blenderPerspectiveMVP(
-        screenParams.viewport.width,
-        screenParams.viewport.height,
-        lookAt(vec3(0.44584f, 1.0074f, 0.09592f), vec3(0.2928f, 0.0f, -0.047457f), vec3(0.0f, 0.0f, 1.0f))
-    );
-	kitchen->updateUniformBuffer(kitchenUBO);
+	float w = screenParams.viewport.width;
+	float h = screenParams.viewport.height;
+
+	mvp.proj = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
+	particles->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+
+	float texW = (float)backgroundImage->texW; // expose getters if private
+	float texH = (float)backgroundImage->texH;
+
+	float screenAspect = w / h;
+	float texAspect = texW / texH;
+
+	float quadW, quadH; // keep image aspect, fill screen (cover)
+	if (screenAspect > texAspect) {
+		quadW = w;
+		quadH = w / texAspect; // taller than screen → cropped vertically
+	} else {
+		quadH = h;
+		quadW = h * texAspect; // wider than screen → cropped horizontally
+	}
+
+	mat4 model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(quadW, quadH, 1.0f));
+
+    backgroundImage->computeAspectUV();
+	backgroundImage->updateMVP(model, std::nullopt, mvp.proj);
 }
 
-void Background::updateComputeUniformBuffers() {}
+void Background::updateComputeUniformBuffers() { particles->updateComputeUniformBuffer(); }
 
-void Background::computePass() {}
+void Background::computePass() { particles->compute(); }
 
 void Background::updateUniformBuffers() {}
 
-void Background::renderPass() { 
-    kitchen->render(); 
+void Background::renderPass() {
+	backgroundImage->render();
+	particles->render();
 }

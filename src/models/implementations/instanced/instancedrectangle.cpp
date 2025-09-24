@@ -2,7 +2,7 @@
 #include "assets.hpp"
 #include <cstring>
 
-InstancedRectangle::InstancedRectangle(Scene* scene, const UBO &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances) : InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedrectangle", instances, maxInstances) {
+InstancedRectangle::InstancedRectangle(Scene* scene, const MVP &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances) : InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedrectangle", instances, maxInstances) {
 	indices = {0, 1, 2, 2, 3, 0};
 
 	// Geometry
@@ -20,15 +20,10 @@ InstancedRectangle::InstancedRectangle(Scene* scene, const UBO &ubo, ScreenParam
 
 	// Graphics pipeline with 2 bindings
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 void InstancedRectangle::buildBVH() {
-    Model::buildBVH<Vertex>(vertices);
+    rayTracing->buildBVH<Vertex>(vertices, indices);
 }
 
 void InstancedRectangle::createBindingDescriptions() {
