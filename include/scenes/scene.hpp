@@ -38,7 +38,7 @@ class Scene {
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
 
-	Model::MVP mvp{};
+	Model::UBO mvp{};
 
 	float fovH = 0.0f;
 	float fovV = 0.0f;

@@ -336,7 +336,7 @@ void Scene::mapKeyboardControls() {
 void Scene::updateRayTraceUniformBuffers() {
 	for (const auto &m : models) {
 		if (m->rayTracingEnabled) {
-			m->rayTracing->updateComputeUniformBuffer();
+			m->updateRayTraceUniformBuffer();
 		}
 	}
 }
@@ -344,7 +344,7 @@ void Scene::updateRayTraceUniformBuffers() {
 void Scene::rayTraces() {
 	for (auto *m : models) {
 		if (m && m->rayTracingEnabled) {
-			m->rayTracing->compute();
+			m->rayTrace();
 		}
 	}
 
@@ -358,10 +358,10 @@ void Scene::rayTraces() {
 		if (!m->rayTracingEnabled) {
 			continue;
 		}
-		if (!m->rayTracing->rayLength.has_value()) {
+		if (!m->rayLength.has_value()) {
 			continue;
 		}
-		float d = *m->rayTracing->rayLength;
+		float d = *m->rayLength;
 		if (d < bestLen) {
 			bestLen = d;
 			closest = m;

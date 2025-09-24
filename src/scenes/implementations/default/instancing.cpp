@@ -75,20 +75,20 @@ void Instancing::swapChainUpdate() {
     grid->updateInstance(1, InstancedRectangleData(screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.75f, {100, 100}));
     grid->updateInstance(2, InstancedRectangleData(screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f, {100, 100}));
     grid->updateInstance(3, InstancedRectangleData(screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.75f, {100, 100}));
-    grid->updateMVP(std::nullopt, std::nullopt, orthographic.proj);
+    grid->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
 
     const vec3 size = vec3(0.9f); // scale cubes a bit
 	polygons->updateInstance(0, InstancedPolygonData(vec3(-1.0f, -1.0f, 0.0f), size, Colors::Green, Colors::Black));
 	polygons->updateInstance(1, InstancedPolygonData(vec3(1.0f, -1.0f, 0.0f), size, Colors::Red, Colors::Black));
 	polygons->updateInstance(2, InstancedPolygonData(vec3(-1.0f, 1.0f, 0.0f), size, Colors::Purple, Colors::Black));
 	polygons->updateInstance(3, InstancedPolygonData(vec3(1.0f, 1.0f, 0.0f), size, Colors::Yellow, Colors::Black));
-    polygons->updateMVP(std::nullopt, std::nullopt, persp.proj);
+    polygons->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 
 	rooms->updateInstance(0, InstancedObjectData(vec3(-1.0f, -1.0f, 0.0f), size));
 	rooms->updateInstance(1, InstancedObjectData(vec3(1.0f, -1.0f, 0.0f), size));
 	rooms->updateInstance(2, InstancedObjectData(vec3(-1.0f, 1.0f, 0.0f), size));
 	rooms->updateInstance(3, InstancedObjectData(vec3(1.0f, 1.0f, 0.0f), size));
-    rooms->updateMVP(std::nullopt, std::nullopt, persp.proj);
+    rooms->updateUniformBuffer(std::nullopt, std::nullopt, persp.proj);
 }
 
 void Instancing::updateComputeUniformBuffers() {}
