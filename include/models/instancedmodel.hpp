@@ -18,6 +18,7 @@ template <typename T> class InstancedModel : public Model {
 
 	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) {
 		createInstanceBuffers();
+		rayTracing.reset();
 		rayTracing = std::make_unique<RayTraycesPipeline>(this, instMapped, idMapped, instCPU, idsCPU, instanceCount, maxInstances);
 	}
 
@@ -205,12 +206,14 @@ template <typename T> class InstancedModel : public Model {
 			idsCPU[i] = slotToKey[i]; // external id you want to read back
 		}
 
-		// memcpy into persistently-mapped ranges
-		const size_t xSz = sizeof(RayTraycesPipeline::InstanceXformGPU) * instanceCount;
-		const size_t iSz = sizeof(int) * instanceCount;
+		if (rayTracing->initialized) {
+			// memcpy into persistently-mapped ranges
+			const size_t xSz = sizeof(RayTraycesPipeline::InstanceXformGPU) * instanceCount;
+			const size_t iSz = sizeof(int) * instanceCount;
 
-		std::memcpy(instMapped, instCPU.data(), xSz);
-		std::memcpy(idMapped, idsCPU.data(), iSz);
+			std::memcpy(instMapped, instCPU.data(), xSz);
+			std::memcpy(idMapped, idsCPU.data(), iSz);
+		}
 
 		frameDirty[cf] = false;
 	}

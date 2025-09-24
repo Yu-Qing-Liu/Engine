@@ -15,9 +15,9 @@ class ComputePipeline {
 	virtual void updateComputeUniformBuffer() {};
 	virtual void compute() {};
 
-  protected:
 	bool initialized = false;
 
+  protected:
 	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
 	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
 	VkPipeline computePipeline = VK_NULL_HANDLE;
