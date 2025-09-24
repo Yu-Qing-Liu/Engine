@@ -3,7 +3,6 @@
 #include "instancedpolygon.hpp"
 #include "model.hpp"
 #include "polygon.hpp"
-#include "texture.hpp"
 #include <cmath>
 
 using std::make_shared;
@@ -11,12 +10,12 @@ using std::make_unique;
 using std::shared_ptr;
 using std::unique_ptr;
 using std::unordered_map;
-using UBO = Model::UBO;
+using MVP = Model::MVP;
 using ScreenParams = Model::ScreenParams;
 
 namespace Shapes {
 
-inline unique_ptr<Polygon> cube(Scene *scene, const UBO &ubo, ScreenParams &screenParams) {
+inline unique_ptr<Polygon> cube(Scene *scene, const MVP &ubo, ScreenParams &screenParams) {
 	return make_unique<Polygon>(scene, ubo, screenParams,
 								std::vector<Polygon::Vertex>{
 									// idx, position                 // color (RGBA)
@@ -34,7 +33,7 @@ inline unique_ptr<Polygon> cube(Scene *scene, const UBO &ubo, ScreenParams &scre
 								});
 }
 
-inline unique_ptr<InstancedPolygon> cubes(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> cubes(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536) {
 	shared_ptr<unordered_map<int, InstancedPolygonData>> polygonInstances = make_shared<unordered_map<int, InstancedPolygonData>>(instances);
 	return make_unique<InstancedPolygon>(scene, ubo, screenParams,
 										 std::vector<InstancedPolygon::Vertex>{
@@ -54,7 +53,7 @@ inline unique_ptr<InstancedPolygon> cubes(Scene *scene, const UBO &ubo, ScreenPa
 										 polygonInstances, instances);
 }
 
-inline unique_ptr<Polygon> sphere(Scene *scene, const UBO &ubo, ScreenParams &screenParams, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
+inline unique_ptr<Polygon> sphere(Scene *scene, const MVP &ubo, ScreenParams &screenParams, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
 	// Clamp to sane minimums so we can form triangles
 	latitudeSegments = std::max<uint32_t>(latitudeSegments, 2);
 	longitudeSegments = std::max<uint32_t>(longitudeSegments, 3);
@@ -111,7 +110,7 @@ inline unique_ptr<Polygon> sphere(Scene *scene, const UBO &ubo, ScreenParams &sc
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> spheres(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
+inline unique_ptr<InstancedPolygon> spheres(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536, uint32_t latitudeSegments = 16, uint32_t longitudeSegments = 32, float radius = 0.5f) {
 	// Clamp to reasonable minimums
 	latitudeSegments = std::max<uint32_t>(latitudeSegments, 2);
 	longitudeSegments = std::max<uint32_t>(longitudeSegments, 3);
@@ -171,7 +170,7 @@ inline unique_ptr<InstancedPolygon> spheres(Scene *scene, const UBO &ubo, Screen
 	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
 }
 
-inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenParams &screenParams) {
+inline unique_ptr<Polygon> dodecahedron(Scene *scene, const MVP &ubo, ScreenParams &screenParams) {
 	float phi = (1.0f + std::sqrt(5.0f)) * 0.5f; // φ
 	float invphi = 1.0f / phi;					 // 1/φ
 	// All listed coordinates have the same radius √3; scale to radius 0.5
@@ -234,7 +233,7 @@ inline unique_ptr<Polygon> dodecahedron(Scene *scene, const UBO &ubo, ScreenPara
 	return make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline unique_ptr<InstancedPolygon> dodecahedra(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536) {
+inline unique_ptr<InstancedPolygon> dodecahedra(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536) {
 	float phi = (1.0f + std::sqrt(5.0f)) * 0.5f;
 	float invphi = 1.0f / phi;
 	float s = 0.5f / std::sqrt(3.0f);
@@ -290,7 +289,7 @@ inline unique_ptr<InstancedPolygon> dodecahedra(Scene *scene, const UBO &ubo, Sc
 	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
 }
 
-inline std::unique_ptr<Polygon> pentagon(Scene *scene, const UBO &ubo, ScreenParams &screenParams, float radius = 0.5f) {
+inline std::unique_ptr<Polygon> pentagon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, float radius = 0.5f) {
 	using V = Polygon::Vertex;
 	std::vector<V> vertices;
 	vertices.reserve(5);
@@ -311,7 +310,7 @@ inline std::unique_ptr<Polygon> pentagon(Scene *scene, const UBO &ubo, ScreenPar
 	return std::make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
 }
 
-inline std::unique_ptr<InstancedPolygon> pentagons(Scene *scene, const UBO &ubo, ScreenParams &screenParams, int instances = 65536, float radius = 0.5f) {
+inline std::unique_ptr<InstancedPolygon> pentagons(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536, float radius = 0.5f) {
 	using V = InstancedPolygon::Vertex;
 	std::vector<V> vertices;
 	vertices.reserve(5);

@@ -151,10 +151,10 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 
 	nodes = Shapes::dodecahedra(this, mvp, screenParams);
 	nodes->onMouseEnter = [&]() {
-		if (!nodes->hitMapped) {
+		if (!nodes->rayTracing->hitMapped) {
 			return;
 		}
-		int id = nodes->hitMapped->primId;
+		int id = nodes->rayTracing->hitMapped->primId;
 		InstancedPolygonData prev = nodes->getInstance(id);
 		prev.outlineColor = Colors::inverse(prev.color);
 		prev.outlineWidth = 4.0f;
@@ -164,10 +164,10 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 		nodeLabel = nodeMap[id].name;
 	};
 	nodes->onMouseExit = [&]() {
-		if (!nodes->hitMapped) {
+		if (!nodes->rayTracing->hitMapped) {
 			return;
 		}
-		int id = nodes->hitMapped->primId;
+		int id = nodes->rayTracing->hitMapped->primId;
 		InstancedPolygonData prev = nodes->getInstance(id);
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
@@ -175,14 +175,14 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 
 		nodeLabel = "";
 	};
-	nodes->setRayTraceEnabled(true);
+	nodes->enableRayTracing(true);
 
 	edges = Shapes::cubes(this, mvp, screenParams);
 	edges->onMouseEnter = [&]() {
-		if (!edges->hitMapped) {
+		if (!edges->rayTracing->hitMapped) {
 			return;
 		}
-		int id = edges->hitMapped->primId;
+		int id = edges->rayTracing->hitMapped->primId;
 		InstancedPolygonData prev = edges->getInstance(id);
 		prev.outlineColor = Colors::Yellow;
 		prev.outlineWidth = 4.0f;
@@ -192,10 +192,10 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 		wireLabel = "#" + std::to_string(edgeMap[id].cableId);
 	};
 	edges->onMouseExit = [&]() {
-		if (!edges->hitMapped) {
+		if (!edges->rayTracing->hitMapped) {
 			return;
 		}
-		int id = edges->hitMapped->primId;
+		int id = edges->rayTracing->hitMapped->primId;
 		InstancedPolygonData prev = edges->getInstance(id);
 		prev.outlineColor = Colors::Black;
 		prev.outlineWidth = 1.0f;
@@ -203,7 +203,7 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 
 		wireLabel = "";
 	};
-	edges->setRayTraceEnabled(true);
+	edges->enableRayTracing(true);
 
 	auto kbState = [this](int key, int, int action, int) {
 		if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
@@ -528,8 +528,8 @@ void Graph::swapChainUpdate() {
 		mvp.proj = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view).proj;
 	}
 
-	nodeName->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
-	wireId->updateUniformBuffer(std::nullopt, mvp.view, mvp.proj);
+	nodeName->updateMVP(std::nullopt, mvp.view, mvp.proj);
+	wireId->updateMVP(std::nullopt, mvp.view, mvp.proj);
 
 	// ---- draw nodes ----
 	const float nodeScale = 2.0f;
@@ -538,7 +538,7 @@ void Graph::swapChainUpdate() {
 		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), colorFor(kind), Colors::Black));
 		nodeMap[i] = {ids[i]};
 	}
-	nodes->updateUniformBuffer(std::nullopt, std::nullopt, mvp.proj);
+	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
 	// ---- wires ----
 	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
@@ -586,7 +586,7 @@ void Graph::swapChainUpdate() {
 		}
 	}
 
-	edges->updateUniformBuffer(std::nullopt, std::nullopt, mvp.proj);
+	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 }
 
 void Graph::updateComputeUniformBuffers() {}
@@ -606,10 +606,10 @@ void Graph::updateUniformBuffers() {
 		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffset, 0.0f)) * view;
 	}
 
-	nodes->updateUniformBuffer(std::nullopt, mvp.view);
-	edges->updateUniformBuffer(std::nullopt, mvp.view);
-	nodeName->updateUniformBuffer(std::nullopt, mvp.view);
-	wireId->updateUniformBuffer(std::nullopt, mvp.view);
+	nodes->updateMVP(std::nullopt, mvp.view);
+	edges->updateMVP(std::nullopt, mvp.view);
+	nodeName->updateMVP(std::nullopt, mvp.view);
+	wireId->updateMVP(std::nullopt, mvp.view);
 }
 
 void Graph::renderPass() {

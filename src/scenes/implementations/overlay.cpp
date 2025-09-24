@@ -50,7 +50,7 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 		float labelWidth = label->getPixelWidth(labelContent);
 		label->color = Colors::Gray;
 		label->text = labelContent;
-		label->updateUniformBuffer(translate(mat4(1.0f), vec3(100 + labelWidth / 2, y, 0)));
+		label->updateMVP(translate(mat4(1.0f), vec3(100 + labelWidth / 2, y, 0)));
 		legendLabels.push_back(std::move(label));
 
 		y += 60.0f;
@@ -74,7 +74,7 @@ void Overlay::swapChainUpdate() {
 	orthographic.proj = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 
 	float crosshairSize = 50.0f;
-	crosshair->updateUniformBuffer(translate(mat4(1.0f), vec3(w * 0.5, h * 0.5, 0.0)) * scale(mat4(1.0f), vec3(crosshairSize)), std::nullopt, orthographic.proj);
+	crosshair->updateMVP(translate(mat4(1.0f), vec3(w * 0.5, h * 0.5, 0.0)) * scale(mat4(1.0f), vec3(crosshairSize)), std::nullopt, orthographic.proj);
 
 	perspectiveBtn->updateUniformBuffers(orthographic);
 	Button::StyleParams bp;
@@ -91,12 +91,12 @@ void Overlay::swapChainUpdate() {
 	perspectiveBtn->setParams(bp);
 
 	float perspIconSize = 50.0f;
-	btn3DIcon->updateUniformBuffer(translate(mat4(1.0f), vec3(w - 50.0f, 50.0f, 0.0)) * scale(mat4(1.0f), vec3(perspIconSize)), std::nullopt, orthographic.proj);
-	btn2DIcon->updateUniformBuffer(translate(mat4(1.0f), vec3(w - 50.0f, 50.0f, 0.0)) * scale(mat4(1.0f), vec3(perspIconSize)), std::nullopt, orthographic.proj);
+	btn3DIcon->updateMVP(translate(mat4(1.0f), vec3(w - 50.0f, 50.0f, 0.0)) * scale(mat4(1.0f), vec3(perspIconSize)), std::nullopt, orthographic.proj);
+	btn2DIcon->updateMVP(translate(mat4(1.0f), vec3(w - 50.0f, 50.0f, 0.0)) * scale(mat4(1.0f), vec3(perspIconSize)), std::nullopt, orthographic.proj);
 
-	legend->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
+	legend->updateMVP(std::nullopt, std::nullopt, orthographic.proj);
 	for (const auto &l : legendLabels) {
-		l->updateUniformBuffer(std::nullopt, std::nullopt, orthographic.proj);
+		l->updateMVP(std::nullopt, std::nullopt, orthographic.proj);
 	}
 }
 
