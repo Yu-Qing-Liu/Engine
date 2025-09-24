@@ -12,6 +12,13 @@ class Texture : public Model {
 	Texture &operator=(const Texture &) = delete;
 	~Texture() override;
 
+	struct Params {
+		vec2 uvScale;
+		vec2 uvOffset;
+		int mode = 1;
+		float _pad[3];
+	};
+
 	struct Vertex {
 		vec3 pos;
 		vec4 color;
@@ -48,7 +55,11 @@ class Texture : public Model {
 		}
 	};
 
-	Texture(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices);
+	Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices);
+	Params params{};
+	int texW = 0, texH = 0;
+
+	void computeAspectUV();
 
   protected:
 	void buildBVH() override;
@@ -57,6 +68,7 @@ class Texture : public Model {
 	void createTextureImageView();
 	void createTextureSampler();
 
+	void createUniformBuffers() override;
 	void createDescriptorSetLayout() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;
@@ -67,6 +79,11 @@ class Texture : public Model {
 	string texturePath;
 	aiTexture embeddedTex;
 
+	std::vector<VkBuffer> paramsBuffers;
+	std::vector<VkDeviceMemory> paramsBuffersMemory;
+	std::vector<void *> paramsBuffersMapped;
+
+	VkDescriptorSetLayoutBinding paramsBinding{};
 	VkImage textureImage = VK_NULL_HANDLE;
 	VkImageView textureImageView = VK_NULL_HANDLE;
 	VkSampler textureSampler = VK_NULL_HANDLE;

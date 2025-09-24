@@ -14,7 +14,7 @@ using std::unique_ptr;
 
 class Object : public Model {
   public:
-	Object(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &objPath);
+	Object(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &objPath);
 	Object(Object &&) = delete;
 	Object(const Object &) = delete;
 	Object &operator=(Object &&) = delete;

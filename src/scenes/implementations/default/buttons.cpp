@@ -63,7 +63,7 @@ void Buttons::swapChainUpdate() {
     auto width = screenParams.viewport.width;
     auto height = screenParams.viewport.height;
     float size = 1000.0f;
-    background->updateUniformBuffer(translate(mat4(1.0f), vec3((float) width / 2.0f, (float) height / 2.0f, 0.0f)) * scale(mat4(1.0f), vec3(size, size, 1.0f)), std::nullopt, orthographic.proj);
+    background->updateMVP(translate(mat4(1.0f), vec3((float) width / 2.0f, (float) height / 2.0f, 0.0f)) * scale(mat4(1.0f), vec3(size, size, 1.0f)), std::nullopt, orthographic.proj);
 
 	button->updateUniformBuffers(orthographic);
 	Button::StyleParams bp;

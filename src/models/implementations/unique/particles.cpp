@@ -4,7 +4,7 @@
 #include <random>
 #include <vulkan/vulkan_core.h>
 
-Particles::Particles(Scene *scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/particle") {
+Particles::Particles(Scene *scene, const MVP &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height) : particleCount(particleCount), width(width), height(height), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/particle") {
 	createComputeDescriptorSetLayout();
 	createShaderStorageBuffers();
 	createUniformBuffers();
@@ -25,6 +25,19 @@ Particles::~Particles() {
 			vkFreeMemory(Engine::device, shaderStorageBuffersMemory[i], nullptr);
 			shaderStorageBuffersMemory[i] = VK_NULL_HANDLE;
 		}
+	}
+
+	if (computePipeline != VK_NULL_HANDLE) {
+		vkDestroyPipeline(Engine::device, computePipeline, nullptr);
+	}
+	if (computePipelineLayout != VK_NULL_HANDLE) {
+		vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
+	}
+	if (computePool != VK_NULL_HANDLE) {
+		vkDestroyDescriptorPool(Engine::device, computePool, nullptr);
+	}
+	if (computeDescriptorSetLayout != VK_NULL_HANDLE) {
+		vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
 	}
 }
 
@@ -65,13 +78,19 @@ void Particles::createBindingDescriptions() {
 }
 
 void Particles::setupGraphicsPipeline() {
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
 	depthStencil.depthTestEnable = VK_FALSE;
 	depthStencil.depthWriteEnable = VK_FALSE;
 
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_TRUE;
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	pipelineLayoutInfo.setLayoutCount = 0;
 	pipelineLayoutInfo.pSetLayouts = nullptr;
@@ -107,18 +126,25 @@ void Particles::createComputePipeline() {
 
 void Particles::createShaderStorageBuffers() {
 	std::default_random_engine rndEngine((unsigned)std::time(nullptr));
-	std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
+	std::uniform_real_distribution<float> rng(0.0f, 1.0f);
 
 	// Initial particle positions on a circle
 	std::vector<Particle> particles(particleCount);
 	for (auto &particle : particles) {
-		float r = 0.25f * sqrt(rndDist(rndEngine));
-		float theta = rndDist(rndEngine) * 2.0f * 3.14159265358979323846f;
-		float x = r * cos(theta) * height / width;
-		float y = r * sin(theta);
-		particle.position = glm::vec2(x, y);
-		particle.velocity = glm::normalize(glm::vec2(x, y)) * 0.00025f;
-		particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
+		particle.position = glm::vec2(rng(rndEngine) * 2.0f - 1.0f, // uniform X in [-1,1]
+									  rng(rndEngine) * 2.0f - 1.0f	// uniform Y in [-1,1]
+		);
+		particle.velocity = glm::normalize(particle.position) * 0.00025f;
+		float color = rng(rndEngine);
+		particle.color = glm::vec4(color, color, color, 0.2);
+
+		float size = 24.0f + rng(rndEngine) * 48.0f;
+		float baseSize = 24.0f + rng(rndEngine) * 48.0f;
+		particle.size = size;
+		particle.baseSize = baseSize;
+		particle.speedScale = (0.5f + rng(rndEngine) * 1.5f) * 0.2;
+		particle.sizeFreq = 0.5f + rng(rndEngine) * 1.5f;
+		particle.sizePhase = rng(rndEngine) * 6.28318530718f;
 	}
 
 	VkDeviceSize bufferSize = sizeof(Particle) * particleCount;
@@ -147,16 +173,7 @@ void Particles::createShaderStorageBuffers() {
 }
 
 void Particles::createUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-		vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
-	}
+    Model::createUniformBuffers<UniformBufferObject>(mvpBuffers, mvpBuffersMemory, mvpBuffersMapped);
 }
 
 void Particles::createDescriptorPool() {
@@ -193,7 +210,7 @@ void Particles::createComputeDescriptorSets() {
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo uniformBufferInfo{};
-		uniformBufferInfo.buffer = uniformBuffers[i];
+		uniformBufferInfo.buffer = mvpBuffers[i];
 		uniformBufferInfo.offset = 0;
 		uniformBufferInfo.range = sizeof(UniformBufferObject);
 
@@ -238,8 +255,9 @@ void Particles::createComputeDescriptorSets() {
 
 void Particles::updateComputeUniformBuffer() {
 	UniformBufferObject ubo{};
-	ubo.deltatime = Engine::lastFrameTime * 2.0f;
-	memcpy(uniformBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
+	ubo.deltatime = Engine::lastFrameTime * 0.001f;
+	ubo.particleCount = particleCount;
+	memcpy(mvpBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo));
 }
 
 void Particles::compute() {
@@ -247,11 +265,13 @@ void Particles::compute() {
 
 	vkCmdBindDescriptorSets(Engine::currentComputeCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSets[Engine::currentFrame], 0, nullptr);
 
-	vkCmdDispatch(Engine::currentComputeCommandBuffer(), particleCount / 256, 1, 1);
+	const uint32_t localSize = 256;
+	uint32_t groups = (particleCount + localSize - 1) / localSize;
+	vkCmdDispatch(Engine::currentComputeCommandBuffer(), groups, 1, 1);
 }
 
 void Particles::render() {
-    copyUBO();
+	copyUBO();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 

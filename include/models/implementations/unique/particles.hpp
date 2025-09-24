@@ -5,7 +5,7 @@
 
 class Particles : public Model {
   public:
-	Particles(Scene *scene, const UBO &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height);
+	Particles(Scene *scene, const MVP &ubo, ScreenParams &screenParams, uint32_t particleCount, uint32_t width, uint32_t height);
 	Particles(Particles &&) = delete;
 	Particles(const Particles &) = delete;
 	Particles &operator=(Particles &&) = delete;
@@ -16,6 +16,14 @@ class Particles : public Model {
 		vec2 position;
 		vec2 velocity;
 		vec4 color;
+		float size;
+		float speedScale;
+		float sizeFreq;
+		float sizePhase;
+		float baseSize;
+		float _pad0; // 52..55
+		float _pad1; // 56..59
+		float _pad2; // 60..63
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -26,8 +34,8 @@ class Particles : public Model {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -39,16 +47,28 @@ class Particles : public Model {
 			attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(Particle, color);
 
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Particle, size);
+
+			attributeDescriptions[3].binding = 0;
+			attributeDescriptions[3].location = 3;
+			attributeDescriptions[3].format = VK_FORMAT_R32_SFLOAT;
+			attributeDescriptions[3].offset = offsetof(Particle, baseSize);
+
 			return attributeDescriptions;
 		}
 	};
 
 	struct UniformBufferObject {
 		float deltatime = 1.0f;
+		uint32_t particleCount;
+		uint32_t _pad0 = 0, _pat1 = 0;
 	};
 
-	void updateComputeUniformBuffer() override;
-	void compute() override;
+	void updateComputeUniformBuffer();
+	void compute();
 	void render() override;
 
   protected:
@@ -60,12 +80,18 @@ class Particles : public Model {
 	vector<VkDeviceMemory> shaderStorageBuffersMemory;
 	vector<VkDescriptorSet> computeDescriptorSets;
 
-	void createComputeDescriptorSetLayout() override;
+	VkDescriptorSetLayout computeDescriptorSetLayout = VK_NULL_HANDLE;
+	VkPipelineLayout computePipelineLayout = VK_NULL_HANDLE;
+	VkPipeline computePipeline = VK_NULL_HANDLE;
+	VkDescriptorPool computePool = VK_NULL_HANDLE;
+	VkDescriptorSet computeDescriptorSet = VK_NULL_HANDLE;
+
+	void createComputeDescriptorSetLayout();
 	void createBindingDescriptions() override;
-	void createComputePipeline() override;
-	void createShaderStorageBuffers() override;
+	void createComputePipeline();
+	void createShaderStorageBuffers();
 	void createUniformBuffers() override;
 	void createDescriptorPool() override;
-	void createComputeDescriptorSets() override;
+	void createComputeDescriptorSets();
 	void setupGraphicsPipeline() override;
 };

@@ -1,11 +1,11 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene *scene, const Model::UBO &ubo, Model::ScreenParams &screenParams) {
+Widget::Widget(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams) {
 	container = std::make_unique<Rectangle>(scene, ubo, screenParams);
-	container->setRayTraceEnabled(true);
+	container->enableRayTracing(true);
 }
 
-void Widget::updateUniformBuffers(const Model::UBO &ubo) {
+void Widget::updateUniformBuffers(const Model::MVP &ubo) {
     container->updateUniformBuffer(ubo);
 }
 
