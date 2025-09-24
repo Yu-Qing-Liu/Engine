@@ -24,7 +24,7 @@ class InstancedObject : public InstancedModel<InstancedObjectData> {
 	InstancedObject &operator=(InstancedObject &&) = delete;
 	InstancedObject &operator=(const InstancedObject &) = delete;
 
-	InstancedObject(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances = 65536);
+	InstancedObject(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &objPath, shared_ptr<unordered_map<int, InstancedObjectData>> instances, uint32_t maxInstances = 65536);
 	~InstancedObject();
 
 	struct Vertex {

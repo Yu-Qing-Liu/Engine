@@ -29,7 +29,7 @@ class Overlay : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	Model::UBO orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
+	Model::MVP orthographic{mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
 	unique_ptr<InstancedPolygon> legend;
 	vector<unique_ptr<Text>> legendLabels;

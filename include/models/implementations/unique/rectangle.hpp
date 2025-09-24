@@ -12,7 +12,7 @@ class Rectangle : public Model {
 	Rectangle &operator=(const Rectangle &) = delete;
 	~Rectangle();
 
-	Rectangle(Scene *scene, const UBO &ubo, ScreenParams &screenParams);
+	Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams);
 
 	void render() override;
 
@@ -53,6 +53,7 @@ class Rectangle : public Model {
   protected:
 	void buildBVH() override;
 	void createDescriptorSetLayout() override;
+	void createUniformBuffers() override;
 	void createBindingDescriptions() override;
 	void createDescriptorPool() override;
 	void createDescriptorSets() override;

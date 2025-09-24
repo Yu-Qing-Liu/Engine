@@ -5,12 +5,14 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
 
-Texture::Texture(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", indices) {
+Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", indices) {
 	createDescriptorSetLayout();
 
 	createTextureImageFromFile();
 	createTextureImageView();
 	createTextureSampler();
+
+	computeAspectUV();
 
 	createUniformBuffers();
 	createDescriptorPool();
@@ -19,14 +21,21 @@ Texture::Texture(Scene *scene, const UBO &ubo, ScreenParams &screenParams, const
 	createIndexBuffer();
 	createBindingDescriptions();
 	createGraphicsPipeline();
-
-	createComputeDescriptorSetLayout();
-	createShaderStorageBuffers();
-	createComputeDescriptorSets();
-	createComputePipeline();
 }
 
 Texture::~Texture() {
+	for (size_t i = 0; i < paramsBuffers.size(); ++i) {
+		if (paramsBuffersMemory[i]) {
+			if (paramsBuffersMapped[i]) {
+				vkUnmapMemory(Engine::device, paramsBuffersMemory[i]);
+			}
+			vkFreeMemory(Engine::device, paramsBuffersMemory[i], nullptr);
+		}
+		if (paramsBuffers[i]) {
+			vkDestroyBuffer(Engine::device, paramsBuffers[i], nullptr);
+		}
+	}
+
 	if (textureImage != VK_NULL_HANDLE) {
 		vkDestroyImage(Engine::device, textureImage, nullptr);
 	}
@@ -41,14 +50,21 @@ Texture::~Texture() {
 	}
 }
 
-void Texture::buildBVH() { Model::buildBVH<Vertex>(vertices); }
+void Texture::buildBVH() {
+    rayTracing->buildBVH<Vertex>(vertices, indices); 
+}
+
+void Texture::createUniformBuffers() {
+    Model::createUniformBuffers();
+    Model::createUniformBuffers<Params>(paramsBuffers, paramsBuffersMemory, paramsBuffersMapped);
+}
 
 void Texture::createDescriptorSetLayout() {
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	mvpLayoutBinding.binding = 0;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.pImmutableSamplers = nullptr;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorCount = 1;
@@ -56,7 +72,14 @@ void Texture::createDescriptorSetLayout() {
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	array<VkDescriptorSetLayoutBinding, 2> bindings = {uboLayoutBinding, samplerLayoutBinding};
+	paramsBinding.binding = 2;
+	paramsBinding.descriptorCount = 1;
+	paramsBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	paramsBinding.pImmutableSamplers = nullptr;
+	paramsBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings = {mvpLayoutBinding, samplerLayoutBinding, paramsBinding};
+
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
@@ -69,7 +92,7 @@ void Texture::createDescriptorSetLayout() {
 void Texture::createDescriptorPool() {
 	array<VkDescriptorPoolSize, 2> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = static_cast<uint32_t>(Engine::MAX_FRAMES_IN_FLIGHT);
+	poolSizes[0].descriptorCount = static_cast<uint32_t>(Engine::MAX_FRAMES_IN_FLIGHT * 2);
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[1].descriptorCount = static_cast<uint32_t>(Engine::MAX_FRAMES_IN_FLIGHT);
 
@@ -98,16 +121,21 @@ void Texture::createDescriptorSets() {
 
 	for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.buffer = mvpBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UBO);
+		bufferInfo.range = sizeof(MVP);
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = textureImageView;
 		imageInfo.sampler = textureSampler;
 
-		array<VkWriteDescriptorSet, 2> descriptorWrites{};
+		VkDescriptorBufferInfo paramsInfo{};
+		paramsInfo.buffer = paramsBuffers[i];
+		paramsInfo.offset = 0;
+		paramsInfo.range = sizeof(Params);
+
+		array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -125,6 +153,14 @@ void Texture::createDescriptorSets() {
 		descriptorWrites[1].descriptorCount = 1;
 		descriptorWrites[1].pImageInfo = &imageInfo;
 
+		descriptorWrites[2] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+		descriptorWrites[2].dstSet = descriptorSets[i];
+		descriptorWrites[2].dstBinding = 2;
+		descriptorWrites[2].dstArrayElement = 0;
+		descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[2].descriptorCount = 1;
+		descriptorWrites[2].pBufferInfo = &paramsInfo;
+
 		vkUpdateDescriptorSets(Engine::device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
 }
@@ -132,8 +168,7 @@ void Texture::createDescriptorSets() {
 void Texture::setupGraphicsPipeline() {
 	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
-	depthStencil.depthTestEnable = VK_TRUE;
-
+	depthStencil.depthTestEnable = isOrtho() ? VK_FALSE : VK_TRUE;
 	depthStencil.depthWriteEnable = isOrtho() ? VK_FALSE : VK_TRUE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
@@ -153,6 +188,26 @@ void Texture::createBindingDescriptions() {
 	attributeDescriptions = vector<VkVertexInputAttributeDescription>(attrs.begin(), attrs.end());
 }
 
+void Texture::computeAspectUV() {
+	const float vw = screenParams.viewport.width;
+	const float vh = screenParams.viewport.height;
+	if (vw <= 0.0f || vh <= 0.0f || texW <= 0 || texH <= 0)
+		return;
+
+	const float screenAspect = vw / vh;
+	const float texAspect = float(texW) / float(texH);
+	const float r = screenAspect / texAspect;
+
+	// UV-only "cover": one axis >1, the other =1. Centered.
+	params.uvScale = (r > 1.0f) ? vec2(1.0f, r) : vec2(1.0f / r, 1.0f);
+	params.uvOffset = vec2(0.0f); // no bars; offset not needed
+
+	// upload to all frames
+	for (size_t i = 0; i < paramsBuffersMapped.size(); ++i) {
+		std::memcpy(paramsBuffersMapped[i], &params, sizeof(Params));
+	}
+}
+
 void Texture::createTextureImageFromFile() {
 	int texWidth = 0, texHeight = 0, texChannels = 0;
 	stbi_uc *pixels = nullptr;
@@ -168,6 +223,9 @@ void Texture::createTextureImageFromFile() {
 	if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
 	}
+
+	texW = texWidth;
+	texH = texHeight;
 
 	const VkDeviceSize imageSize = static_cast<VkDeviceSize>(texWidth) * static_cast<VkDeviceSize>(texHeight) * 4;
 
@@ -203,9 +261,9 @@ void Texture::createTextureSampler() {
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;
 	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	samplerInfo.anisotropyEnable = VK_TRUE;
 	samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
