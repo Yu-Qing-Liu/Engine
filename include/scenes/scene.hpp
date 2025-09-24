@@ -32,6 +32,7 @@ class Scene {
 
 	virtual void updateUniformBuffers();
 	virtual void renderPass();
+	virtual void renderPass1();
 	virtual void swapChainUpdate();
 
   protected:

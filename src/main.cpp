@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 using namespace Engine;
 using namespace Pipeline;
@@ -71,10 +72,8 @@ class Application {
 		Pipeline::pickPhysicalDevice();
 		Pipeline::createLogicalDevice();
 		Pipeline::createSwapChain();
-		Pipeline::createImageViews();
-		Pipeline::createRenderPass();
-		Pipeline::createDepthResources();
-		Pipeline::createFramebuffers();
+		Pipeline::createRenderPasses();
+		Pipeline::createSwapchainDependent();
 		Pipeline::createCommandPool();
 		Pipeline::createCommandBuffers();
 		Pipeline::createComputeCommandBuffers();
@@ -100,6 +99,7 @@ class Application {
 	void cleanup() {
 		Pipeline::cleanupSwapChain();
 		vkDestroyRenderPass(device, renderPass, nullptr);
+		vkDestroyRenderPass(device, renderPass1, nullptr);
 
 		// Destroy synchronization objects
 		Pipeline::cleanupSyncObjects();
@@ -137,41 +137,56 @@ class Application {
 		}
 	}
 
-	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-		VkCommandBufferBeginInfo beginInfo{};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	void recordCommandBuffer(VkCommandBuffer cmd, uint32_t imageIndex) {
+		Engine::currentImageIndex = imageIndex;
 
-		if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-			throw std::runtime_error("failed to begin recording command buffer!");
-		}
+		VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+		if (vkBeginCommandBuffer(cmd, &bi) != VK_SUCCESS)
+			throw std::runtime_error("begin cmd");
 
-		VkRenderPassBeginInfo renderPassInfo{};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = renderPass;
-		renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
-		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = swapChainExtent;
+		// --- PASS A: Scene (sceneColor + depth) ---
+		std::array<VkClearValue, 2> clearA{};
+		clearA[0].color = {{0, 0, 0, 0}};
+		clearA[1].depthStencil = {1.0f, 0};
 
-		VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
+		VkRenderPassBeginInfo rpA{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+		rpA.renderPass = renderPass;
+		rpA.framebuffer = sceneFramebuffers[imageIndex];
+		rpA.renderArea.offset = {0, 0};
+		rpA.renderArea.extent = swapChainExtent;
+		rpA.clearValueCount = (uint32_t)clearA.size();
+		rpA.pClearValues = clearA.data();
 
-		std::array<VkClearValue, 2> clearValues{};
-		clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-		clearValues[1].depthStencil = {1.0f, 0};
-
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(cmd, &rpA, VK_SUBPASS_CONTENTS_INLINE);
 
 		scenes->renderPass();
+		vkCmdEndRenderPass(cmd);
 
-		vkCmdEndRenderPass(commandBuffer);
+		// --- Build mip chain for sceneColor[imageIndex] ---
+		const uint32_t mips = calcMipLevels(swapChainExtent.width, swapChainExtent.height);
+		buildMipsForImage(cmd, sceneColorImages[imageIndex], sceneColorFormat, swapChainExtent.width, swapChainExtent.height, mips);
 
-		if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-			throw std::runtime_error("failed to record command buffer!");
-		}
+		// --- PASS B: UI (swapchain), sampling uScene with mips ---
+		VkClearValue clearB{};
+		clearB.color = {{0, 0, 0, 1}};
+
+		VkRenderPassBeginInfo rpB{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+		rpB.renderPass = renderPass1;
+		rpB.framebuffer = uiFramebuffers[imageIndex];
+		rpB.renderArea.offset = {0, 0};
+		rpB.renderArea.extent = swapChainExtent;
+		rpB.clearValueCount = 1;
+		rpB.pClearValues = &clearB;
+
+		vkCmdBeginRenderPass(cmd, &rpB, VK_SUBPASS_CONTENTS_INLINE);
+
+		// (the descriptor view is all-mips; sampler uses mipmapMode=LINEAR)
+		scenes->renderPass1();
+
+		vkCmdEndRenderPass(cmd);
+
+		if (vkEndCommandBuffer(cmd) != VK_SUCCESS)
+			throw std::runtime_error("end cmd");
 	}
 
 	void drawFrame() {

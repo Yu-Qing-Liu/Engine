@@ -5,7 +5,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.hpp>
 
-Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", indices) {
+Texture::Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices, const VkRenderPass &renderPass) : texturePath(texturePath), vertices(vertices), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/texture", renderPass) {
+    this->indices = indices;
+
 	createDescriptorSetLayout();
 
 	createTextureImageFromFile();
