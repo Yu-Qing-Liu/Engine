@@ -7,14 +7,8 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath) {
-    rayTracing = std::make_unique<RayTracingPipeline>(this);
-	this->ubo.proj[1][1] *= -1;
-	if (scene) {
-		scene->models.emplace_back(this);
-	}
-}
-Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), indices(indices) {
+Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
+	rayTracing = std::make_unique<RayTracingPipeline>(this);
 	this->ubo.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
@@ -22,21 +16,21 @@ Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const str
 }
 
 Model::~Model() {
-    if (scene) {
-        auto &v = scene->models;
-        v.erase(std::remove(v.begin(), v.end(), this), v.end());
-        scene = nullptr;
-    }
+	if (scene) {
+		auto &v = scene->models;
+		v.erase(std::remove(v.begin(), v.end(), this), v.end());
+		scene = nullptr;
+	}
 
-    onMouseEnter = nullptr;
-    onMouseExit  = nullptr;
-    {
-        if (watcher.joinable()) {
-            watcher.request_stop();
-            cv.notify_all();
-            watcher.join();
-        }
-    }
+	onMouseEnter = nullptr;
+	onMouseExit = nullptr;
+	{
+		if (watcher.joinable()) {
+			watcher.request_stop();
+			cv.notify_all();
+			watcher.join();
+		}
+	}
 
 	if (shaderProgram.computeShader != VK_NULL_HANDLE) {
 		vkDestroyShaderModule(Engine::device, shaderProgram.computeShader, nullptr);
@@ -226,9 +220,7 @@ void Model::createIndexBuffer() {
 	vkFreeMemory(Engine::device, stgMem, nullptr);
 }
 
-void Model::createUniformBuffers() {
-    createUniformBuffers<MVP>(mvpBuffers, mvpBuffersMemory, mvpBuffersMapped);
-}
+void Model::createUniformBuffers() { createUniformBuffers<MVP>(mvpBuffers, mvpBuffersMemory, mvpBuffersMapped); }
 
 void Model::createDescriptorPool() {
 	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -348,9 +340,13 @@ void Model::createGraphicsPipeline() {
 
 	// Pipeline Layout
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	std::array<VkDescriptorSetLayout, 2> setLayouts = {
+		descriptorSetLayout,   // set = 0 (MVP UBO)
+		Engine::sceneSetLayout // set = 1 (sampler2D uScene)
+	};
+	pipelineLayoutInfo.setLayoutCount = (uint32_t)setLayouts.size();
+	pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
 	setupGraphicsPipeline();
 
@@ -373,7 +369,7 @@ void Model::createGraphicsPipeline() {
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = Engine::renderPass;
+	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
@@ -387,18 +383,25 @@ void Model::createGraphicsPipeline() {
 void Model::render() {
 	copyUBO();
 
-	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	auto cmd = Engine::currentCommandBuffer();
 
-	vkCmdSetViewport(Engine::currentCommandBuffer(), 0, 1, &screenParams.viewport);
+	if (blur) {
+		blur->render();
+		return;
+	}
 
-	vkCmdSetScissor(Engine::currentCommandBuffer(), 0, 1, &screenParams.scissor);
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+	vkCmdSetViewport(cmd, 0, 1, &screenParams.viewport);
+
+	vkCmdSetScissor(cmd, 0, 1, &screenParams.scissor);
 
 	VkBuffer vertexBuffers[] = {vertexBuffer};
 	VkDeviceSize offsets[] = {0};
-	vkCmdBindVertexBuffers(Engine::currentCommandBuffer(), 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(Engine::currentCommandBuffer(), indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(cmd, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(cmd, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 
-	vkCmdDrawIndexed(Engine::currentCommandBuffer(), static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(cmd, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 }
