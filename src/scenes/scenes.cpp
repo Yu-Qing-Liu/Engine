@@ -17,10 +17,10 @@ Scenes::Scenes() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
     blur->updateCopyViewport(vp, sc);
 
-    scenesContainer.emplace_back(make_shared<Default>(*this));
     scenesContainer.emplace_back(make_shared<Buttons>(*this));
-    scenesContainer.emplace_back(make_shared<Instancing>(*this));
+    scenesContainer.emplace_back(make_shared<Default>(*this));
     scenesContainer.emplace_back(make_shared<RayTracing>(*this));
+    scenesContainer.emplace_back(make_shared<Instancing>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
     }
