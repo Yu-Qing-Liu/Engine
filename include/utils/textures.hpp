@@ -12,7 +12,7 @@ using ScreenParams = Model::ScreenParams;
 
 namespace Textures {
 
-inline unique_ptr<Texture> icon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath) {
+inline unique_ptr<Texture> icon(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const VkRenderPass &renderPass = Engine::renderPass) {
 	return make_unique<Texture>(scene, ubo, screenParams, texturePath,
 								std::vector<Texture::Vertex>{
 									{{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
@@ -27,7 +27,8 @@ inline unique_ptr<Texture> icon(Scene *scene, const MVP &ubo, ScreenParams &scre
 									2,
 									3,
 									0,
-								});
+								},
+								renderPass);
 }
 
 } // namespace Textures

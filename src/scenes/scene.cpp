@@ -395,4 +395,5 @@ void Scene::computePass() {}
 
 void Scene::updateUniformBuffers() {}
 void Scene::renderPass() {}
+void Scene::renderPass1() {}
 void Scene::swapChainUpdate() {}
