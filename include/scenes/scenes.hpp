@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blurpipeline.hpp"
 #include "scene.hpp"
 #include <map>
 
@@ -26,6 +27,7 @@ class Scenes {
 
 	void updateUniformBuffers();
 	void renderPass();
+	void renderPass1();
 	void swapChainUpdate();
 
 	shared_ptr<Scene> getScene(const string &sceneName);
@@ -35,4 +37,9 @@ class Scenes {
   private:
 	std::vector<shared_ptr<Scene>> scenesContainer;
 	std::map<string, SceneEntry> scenes;
+
+	std::unique_ptr<BlurPipeline> blur;
+
+	VkViewport vp{};
+	VkRect2D sc{};
 };

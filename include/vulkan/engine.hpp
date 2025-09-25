@@ -38,7 +38,8 @@ inline VkQueue presentQueue = VK_NULL_HANDLE;
 inline VkDevice device = VK_NULL_HANDLE;
 inline VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-inline VkRenderPass renderPass = VK_NULL_HANDLE;
+inline VkRenderPass renderPass  = VK_NULL_HANDLE;
+inline VkRenderPass renderPass1     = VK_NULL_HANDLE;
 inline VkExtent2D swapChainExtent{};
 
 inline VkCommandPool commandPool = VK_NULL_HANDLE;
@@ -51,8 +52,19 @@ inline std::vector<VkCommandBuffer> commandBuffers;
 inline std::vector<VkCommandBuffer> computeCommandBuffers;
 inline uint32_t currentFrame = 0;
 
+inline uint32_t currentImageIndex = 0;
+inline std::vector<VkImage> sceneColorImages;
+inline std::vector<VkDeviceMemory> sceneColorMemories;
+inline std::vector<VkImageView> sceneColorViews;
+
+inline VkSampler sceneSampler = VK_NULL_HANDLE;
+inline VkDescriptorSetLayout sceneSetLayout = VK_NULL_HANDLE;
+inline VkDescriptorPool sceneDescPool = VK_NULL_HANDLE;
+inline std::vector<VkDescriptorSet> sceneSets; // size == swapChainImages.size()
+
 inline VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-inline std::vector<VkFramebuffer> swapChainFramebuffers;
+inline std::vector<VkFramebuffer> sceneFramebuffers;
+inline std::vector<VkFramebuffer> uiFramebuffers;
 
 inline VkImage depthImage = VK_NULL_HANDLE;
 inline VkDeviceMemory depthImageMemory = VK_NULL_HANDLE;
@@ -147,17 +159,22 @@ inline void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) {
 	endSingleTimeCommands(cmd);
 }
 
-inline void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) {
+inline void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory, uint32_t mipLevels, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT) {
+	// NOTE: Vulkan disallows mipmaps for MSAA images. Keep samples=1 when mipLevels>1.
+	if (mipLevels > 1 && samples != VK_SAMPLE_COUNT_1_BIT) {
+		throw std::runtime_error("createImage: mipmapped images must use SAMPLE_COUNT_1_BIT");
+	}
+
 	VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
 	ci.imageType = VK_IMAGE_TYPE_2D;
 	ci.extent = {width, height, 1};
-	ci.mipLevels = 1;
+	ci.mipLevels = mipLevels;
 	ci.arrayLayers = 1;
 	ci.format = format;
 	ci.tiling = tiling;
 	ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	ci.usage = usage;
-	ci.samples = VK_SAMPLE_COUNT_1_BIT;
+	ci.samples = samples;
 	ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	if (vkCreateImage(device, &ci, nullptr, &image) != VK_SUCCESS)
@@ -176,22 +193,26 @@ inline void createImage(uint32_t width, uint32_t height, VkFormat format, VkImag
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-inline VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) {
+inline void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image, VkDeviceMemory &imageMemory) { createImage(width, height, format, tiling, usage, properties, image, imageMemory, /*mipLevels=*/1, VK_SAMPLE_COUNT_1_BIT); }
+
+inline VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect, uint32_t baseMip, uint32_t levelCount, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1, VkImageViewType type = VK_IMAGE_VIEW_TYPE_2D) {
 	VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
 	vi.image = image;
-	vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	vi.viewType = type;
 	vi.format = format;
 	vi.subresourceRange.aspectMask = aspect;
-	vi.subresourceRange.baseMipLevel = 0;
-	vi.subresourceRange.levelCount = 1;
-	vi.subresourceRange.baseArrayLayer = 0;
-	vi.subresourceRange.layerCount = 1;
+	vi.subresourceRange.baseMipLevel = baseMip;
+	vi.subresourceRange.levelCount = levelCount;
+	vi.subresourceRange.baseArrayLayer = baseArrayLayer;
+	vi.subresourceRange.layerCount = layerCount;
 
 	VkImageView view{};
 	if (vkCreateImageView(device, &vi, nullptr, &view) != VK_SUCCESS)
 		throw std::runtime_error("failed to create image view!");
 	return view;
 }
+
+inline VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) { return createImageView(image, format, aspect, 0, 1); }
 
 inline void transitionImageLayout(VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	VkCommandBuffer cmd = beginSingleTimeCommands();
