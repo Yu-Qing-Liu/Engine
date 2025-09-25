@@ -8,6 +8,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 
 #include "assets.hpp"
+#include "blurpipeline.hpp"
 #include "engine.hpp"
 #include "platform.hpp"
 #include "raytracingpipeline.hpp"
@@ -44,11 +45,13 @@ class Model {
 		VkRect2D scissor{{1, 1}, {1, 1}};
 	};
 
-	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath);
-	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const vector<uint32_t> &indices);
+	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass = Engine::renderPass);
 	virtual ~Model();
 
+	const VkRenderPass &renderPass;
+
 	std::unique_ptr<RayTracingPipeline> rayTracing;
+	std::unique_ptr<BlurPipeline> blur;
 
 	bool rayTracingEnabled = false;
 	bool mouseIsOver{false};
@@ -76,6 +79,16 @@ class Model {
 		}
 	}
 
+	void enableBlur(bool on) {
+		if (on && !blur) {
+			blur = std::make_unique<BlurPipeline>(this);
+			blur->initialize();
+		}
+		if (!on && blur) {
+			blur.reset();
+		}
+	}
+
 	void setMouseIsOver(bool over);
 	void onMouseExitEvent();
 
@@ -87,27 +100,30 @@ class Model {
 	virtual void buildBVH();
 	virtual void render();
 
+	VkBuffer vertexBuffer = VK_NULL_HANDLE;
+	VkBuffer indexBuffer = VK_NULL_HANDLE;
+
+	VkVertexInputBindingDescription bindingDescription;
+	vector<VkVertexInputAttributeDescription> attributeDescriptions;
+	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+	vector<VkDescriptorSet> descriptorSets;
+
+	Assets::ShaderModules shaderProgram;
+
+	vector<uint32_t> indices;
+
   protected:
 	Scene *scene;
 
 	std::function<void(int, int, int, int)> onKeyboardKeyPress;
 
-	string rayTracingShaderPath = Assets::shaderRootPath + "/raytracing";
-	Assets::ShaderModules rayTracingProgram;
-
 	string shaderPath;
-	Assets::ShaderModules shaderProgram;
 
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
 	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
 	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
 
 	vector<VkPipelineShaderStageCreateInfo> shaderStages;
-
-	VkVertexInputBindingDescription bindingDescription;
-	vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	vector<VkDescriptorSet> descriptorSets;
 
 	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -129,14 +145,11 @@ class Model {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 
-	vector<uint32_t> indices;
 	vector<VkBuffer> mvpBuffers;
 	vector<VkDeviceMemory> mvpBuffersMemory;
 	vector<void *> mvpBuffersMapped;
 
-	VkBuffer vertexBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-	VkBuffer indexBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
 
 	virtual void createDescriptorSetLayout();

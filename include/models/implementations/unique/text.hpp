@@ -79,7 +79,7 @@ class Text : public Model {
 		glm::vec4 color{1, 1, 0, 0.25f}; // default yellow-ish bg
 	};
 
-	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const TextParams &params);
+	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const TextParams &params, const VkRenderPass &renderPass = Engine::renderPass);
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();

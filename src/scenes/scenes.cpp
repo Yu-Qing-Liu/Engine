@@ -3,6 +3,18 @@
 #include "overlay.hpp"
 
 Scenes::Scenes() {
+    blur = std::make_unique<BlurPipeline>(nullptr);
+    blur->createCopyPipeAndSets();
+    vp.x = 0.0f;
+    vp.y = 0.0f;
+    vp.width  = static_cast<float>(Engine::swapChainExtent.width);
+    vp.height = static_cast<float>(Engine::swapChainExtent.height);
+    vp.minDepth = 0.0f;
+    vp.maxDepth = 1.0f;
+	sc.offset = {(int32_t)vp.x, (int32_t)vp.y};
+	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
+    blur->updateCopyViewport(vp, sc);
+
     scenesContainer.emplace_back(make_shared<Graph>(*this));
     scenesContainer.emplace_back(make_shared<Overlay>(*this));
     for (const auto &sc : scenesContainer) {
@@ -56,7 +68,21 @@ void Scenes::renderPass() {
     }
 }
 
+void Scenes::renderPass1() {
+    blur->copy(Engine::currentCommandBuffer());
+    for (const auto &sc : scenes) {
+        if (sc.second.show) {
+            sc.second.scene->renderPass1();
+        }
+    }
+}
+
 void Scenes::swapChainUpdate() {
+    vp.width  = static_cast<float>(Engine::swapChainExtent.width);
+    vp.height = static_cast<float>(Engine::swapChainExtent.height);
+	sc.offset = {(int32_t)vp.x, (int32_t)vp.y};
+	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
+    blur->updateCopyViewport(vp, sc);
     for (const auto &sc : scenes) {
         if (sc.second.show) {
             sc.second.scene->updateScreenParams();
