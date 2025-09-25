@@ -1,7 +1,7 @@
 #include "raytraycespipeline.hpp"
 #include "model.hpp"
 
-RayTraycesPipeline::RayTraycesPipeline(Model *model, void* instMapped, void* idMapped, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances) : instMapped(instMapped), idMapped(idMapped), instCPU(instCPU), idsCPU(idsCPU), instanceCount(instanceCount), maxInstances(maxInstances), RayTracingPipeline(model) {
+RayTraycesPipeline::RayTraycesPipeline(Model *model, void *&instMapped, void *&idMapped, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances) : instMapped(instMapped), idMapped(idMapped), instCPU(instCPU), idsCPU(idsCPU), instanceCount(instanceCount), maxInstances(maxInstances), RayTracingPipeline(model) {
 	rayTracingShaderPath = Assets::shaderRootPath + "/instancedraytracing";
 }
 

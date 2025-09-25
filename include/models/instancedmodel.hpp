@@ -18,7 +18,6 @@ template <typename T> class InstancedModel : public Model {
 
 	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) {
 		createInstanceBuffers();
-		rayTracing.reset();
 		rayTracing = std::make_unique<RayTraycesPipeline>(this, instMapped, idMapped, instCPU, idsCPU, instanceCount, maxInstances);
 	}
 

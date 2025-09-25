@@ -17,7 +17,7 @@ class RayTraycesPipeline : public RayTracingPipeline {
 		glm::mat4 invModel; // world  -> object
 	};
 
-	RayTraycesPipeline(Model *model, void *instMapped, void *idMapped, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances);
+	RayTraycesPipeline(Model *model, void *&instMapped, void *&idMapped, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances);
 
 	vector<InstanceXformGPU> &instCPU; // sized to maxInstances
 	vector<int> &idsCPU;			   // slot -> external id
@@ -31,8 +31,8 @@ class RayTraycesPipeline : public RayTracingPipeline {
 	void createComputePipeline() override;
 
   private:
-	void *instMapped;
-	void *idMapped;
+	void *&instMapped;
+	void *&idMapped;
 
 	uint32_t &instanceCount;
 	uint32_t maxInstances;
