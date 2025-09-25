@@ -2,6 +2,7 @@
 
 #include "rectangle.hpp"
 #include "scene.hpp"
+#include "text.hpp"
 
 class NavBar : public Scene {
   public:
@@ -21,8 +22,10 @@ class NavBar : public Scene {
 
 	void updateUniformBuffers() override;
 	void renderPass() override;
+	void renderPass1() override;
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<Rectangle> bar;
+	unique_ptr<Rectangle> btn;
+	unique_ptr<Text> btnText;
 };

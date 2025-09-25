@@ -55,7 +55,7 @@ class Texture : public Model {
 		}
 	};
 
-	Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices);
+	Texture(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &texturePath, const vector<Vertex> &vertices, const vector<uint32_t> &indices, const VkRenderPass &renderPass = Engine::renderPass);
 	Params params{};
 	int texW = 0, texH = 0;
 
