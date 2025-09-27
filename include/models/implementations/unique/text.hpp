@@ -26,6 +26,7 @@ class Text : public Model {
 	struct BillboardParams {
 		vec3 centerWorld;	 // location
 		vec2 offsetPx{0, 0}; // pixel offset from the center (e.g. {-w/2, -h} to center/above)
+        bool on = false;
 	};
 
 	struct GlyphVertex {
@@ -65,7 +66,7 @@ class Text : public Model {
 		size_t byte = 0;
 		float px = 1.0f;
 		glm::vec4 color{Colors::White(0.8)};
-		bool on = true;
+		bool on = false;
 	};
 
 	struct SelectionRange {
@@ -79,29 +80,25 @@ class Text : public Model {
 		glm::vec4 color{1, 1, 0, 0.25f}; // default yellow-ish bg
 	};
 
+    struct TextParams{
+        string text;
+        vec3 origin = vec3(0.0, 0.0, 0.0);
+        float scale = 1.0f;
+        vec4 color = Colors::Red;
+        std::vector<std::pair<size_t, size_t>> selectionRanges;
+        vec4 selectionColor = Colors::Yellow(0.5f);
+        Caret caret{};
+        BillboardParams billboardParams{};
+    };
+
 	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
 
-    string text = "Some text!";
-    vec4 color = Colors::Red;
+    TextParams textParams{};
 
     void render() override;
-
-	// 1) normal (no caret, no selection) – existing one calls this behavior
-	void renderText(const std::string &text, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
-
-	// 2) caret at byte index
-	void renderText(const std::string &text, const Caret &caret, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
-
-	// 3) selection [start,end)
-	void renderText(const std::string &text, const SelectionRange &sel, std::optional<Caret> caret = std::nullopt, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
-
-	// 4) select all matches of `needle`
-	void renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret = std::nullopt, const glm::vec4 &color = Colors::Red, float scale = 1.0f, std::optional<glm::vec3> origin = std::nullopt);
-
-	void renderBillboard(const std::string &text, const BillboardParams &bb, const glm::vec4 &color = Colors::Red, float scale = 1.0);
 
   private:
 	struct RawGlyph {
@@ -112,7 +109,7 @@ class Text : public Model {
 		std::vector<uint8_t> pixels;
 	};
 
-	FontParams textParams;
+	FontParams fontParams;
 
 	float ascenderPx_ = 0.f;
 	float descenderPx_ = 0.f;
@@ -158,6 +155,4 @@ class Text : public Model {
 	void createDescriptorSets() override;
 	void createBindingDescriptions() override;
 	void setupGraphicsPipeline() override;
-
-	void renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt, const BillboardParams* bbOpt = nullptr);
 };

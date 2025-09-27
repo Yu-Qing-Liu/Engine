@@ -52,6 +52,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
 
     Text::FontParams tp{ Assets::fontRootPath + "/arial.ttf", 48 };
     text = make_unique<Text>(this, orthographic, screenParams, tp);
+    text->textParams.text = "Hello World!";
     text->updateMVP(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)));
 }
 
@@ -94,7 +95,6 @@ void Default::renderPass() {
     triangle->render();
     example->render();
     room->render();
-    text->renderText("Hello World");
-
+    text->render();
     particles->render();
 }

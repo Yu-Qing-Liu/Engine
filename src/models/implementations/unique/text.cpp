@@ -5,11 +5,11 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &textParams, const VkRenderPass &renderPass) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
+Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &fontParams, const VkRenderPass &renderPass) : fontParams(fontParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
-	fontBlob = Assets::loadBytes(textParams.fontPath);
+	fontBlob = Assets::loadBytes(fontParams.fontPath);
 	if (fontBlob.empty()) {
 		throw std::runtime_error("FREETYPE: Font bytes not found");
 	}
@@ -17,7 +17,7 @@ Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontP
 	if (err) {
 		throw std::runtime_error("FREETYPE: Failed to load font");
 	}
-	if (FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(textParams.pixelHeight)) != 0) {
+	if (FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(fontParams.pixelHeight)) != 0) {
 		throw std::runtime_error("FREETYPE: FT_Set_Pixel_Sizes failed");
 	}
 	bake();
@@ -88,7 +88,7 @@ void Text::createSampler() {
 }
 
 void Text::bake() {
-	std::vector<uint32_t> cps = textParams.codepoints.empty() ? defaultASCII() : textParams.codepoints;
+	std::vector<uint32_t> cps = fontParams.codepoints.empty() ? defaultASCII() : fontParams.codepoints;
 
 	std::vector<RawGlyph> raws;
 	raws.reserve(cps.size());
@@ -139,14 +139,14 @@ void Text::bake() {
 	}
 
 	// Shelf pack (height-sorted)
-	const uint32_t pad = std::max<uint32_t>(1, textParams.padding);
+	const uint32_t pad = std::max<uint32_t>(1, fontParams.padding);
 	std::vector<size_t> order(raws.size());
 	for (size_t i = 0; i < order.size(); ++i)
 		order[i] = i;
 	std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return raws[a].h > raws[b].h; });
 
 	std::vector<glm::ivec2> pos(raws.size());
-	uint32_t shelfX = pad, shelfY = pad, shelfH = 0, curW = std::max(256u, textParams.maxAtlasWidth);
+	uint32_t shelfX = pad, shelfY = pad, shelfH = 0, curW = std::max(256u, fontParams.maxAtlasWidth);
 	for (size_t k = 0; k < order.size(); ++k) {
 		auto &rg = raws[order[k]];
 		uint32_t needW = uint32_t(rg.w) + pad;
@@ -367,7 +367,7 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 		if (it == glyphs.end()) {
 			// advance by space width if missing
 			auto sp = glyphs.find(uint32_t(' '));
-			x += (sp != glyphs.end() ? sp->second.advance : textParams.pixelHeight * 0.5f) * scale;
+			x += (sp != glyphs.end() ? sp->second.advance : fontParams.pixelHeight * 0.5f) * scale;
 
 			// selection run may end at this break if the range ends before/at giEnd
 			const bool selectedNow = overlapsAny(giStart, giEnd, selRanges);
@@ -475,7 +475,7 @@ float Text::getPixelWidth(const std::string &s, float scale) const {
 	return x * scale;
 }
 
-float Text::getPixelHeight() { return float(textParams.pixelHeight); }
+float Text::getPixelHeight() { return float(fontParams.pixelHeight); }
 
 void Text::createDescriptorSetLayout() {
 	// binding 0: UBO (MVP); binding 1: atlas
@@ -593,25 +593,27 @@ static std::vector<std::pair<size_t, size_t>> findAllMatches(const std::string &
 	return out;
 }
 
-void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> &origin, float scale, const glm::vec4 &textColor, const std::vector<std::pair<size_t, size_t>> &selRanges, const glm::vec4 &selColor, const std::optional<Caret> &caretOpt, const BillboardParams *bbOpt) {
+void Text::render() {
 	copyUBO();
 
-	const bool billboard = (bbOpt != nullptr);
+	const bool billboard = (textParams.billboardParams.on);
+	const auto caretOpt = textParams.caret;
+	const auto text = textParams.text;
+	const auto origin = textParams.origin;
+	const auto selRanges = textParams.selectionRanges;
+	const auto scale = textParams.scale;
+	const auto bbOpt = textParams.billboardParams;
 
 	// Build tagged geometry
 	std::vector<GlyphVertex> verts;
 	std::vector<uint32_t> idx;
-	std::optional<size_t> caretByte = caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt;
-	float caretW = caretOpt ? caretOpt->px : 0.0f;
+	std::optional<size_t> caretByte = caretOpt.on ? std::optional<size_t>(caretOpt.byte) : std::nullopt;
+	float caretW = caretOpt.on ? caretOpt.px : 0.0f;
 
 	if (!billboard) {
-		if (origin.has_value()) {
-			buildGeometryTaggedUTF8(text, origin.value(), scale, selRanges, caretByte, caretW, verts, idx);
-		} else {
-			buildGeometryTaggedUTF8(text, {-getPixelWidth(text) / 2.0f, getPixelHeight() / 3.3 * scale, 0.0f}, scale, selRanges, caretByte, caretW, verts, idx);
-		}
+		buildGeometryTaggedUTF8(text, origin, scale, selRanges, caretByte, caretW, verts, idx);
 	} else {
-		buildGeometryTaggedUTF8(text, {/*origin*/ 0, 0, 0}, scale, selRanges, caretOpt ? std::optional<size_t>(caretOpt->byte) : std::nullopt, caretOpt ? caretOpt->px : 0.0f, verts, idx);
+		buildGeometryTaggedUTF8(text, origin, scale, selRanges, caretOpt.on ? std::optional<size_t>(caretOpt.byte) : std::nullopt, caretOpt.on ? caretOpt.px : 0.0f, verts, idx);
 	}
 
 	if (idx.empty())
@@ -689,15 +691,14 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 		glm::vec4 bbScreenSize; // xy = framebuffer size in px
 	} pc{};
 
-	pc.textColor = textColor;
-	pc.selectColor = selColor;
-	pc.caretColor = caretOpt ? caretOpt->color : glm::vec4(0, 0, 0, 0);
-	pc.misc = glm::vec4(caretOpt ? caretOpt->px : 0.0f, (caretOpt && caretOpt->on) ? 1.0f : 0.0f, Engine::time,
-						billboard ? 1.0f : 0.0f); // <- mode
+	pc.textColor = textParams.color;
+	pc.selectColor = textParams.selectionColor;
+	pc.caretColor = caretOpt.on ? caretOpt.color : glm::vec4(0, 0, 0, 0);
+	pc.misc = glm::vec4(caretOpt.on ? caretOpt.px : 0.0f, caretOpt.on ? 1.0f : 0.0f, Engine::time, billboard ? 1.0f : 0.0f);
 
 	if (billboard) {
-		pc.bbCenter = glm::vec4(bbOpt->centerWorld, 0.0f);
-		pc.bbOffsetPx = glm::vec4(bbOpt->offsetPx, 0.0f, 0.0f);
+		pc.bbCenter = glm::vec4(bbOpt.centerWorld, 0.0f);
+		pc.bbOffsetPx = glm::vec4(bbOpt.offsetPx, 0.0f, 0.0f);
 		pc.bbScreenSize = glm::vec4(float(Engine::swapChainExtent.width), float(Engine::swapChainExtent.height), 0.f, 0.f);
 	} else {
 		pc.bbCenter = pc.bbOffsetPx = pc.bbScreenSize = glm::vec4(0);
@@ -715,38 +716,4 @@ void Text::renderTextEx(const std::string &text, const std::optional<glm::vec3> 
 	vkCmdPushConstants(Engine::currentCommandBuffer(), pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PC), &pc);
 	vkCmdBindDescriptorSets(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[Engine::currentFrame], 0, nullptr);
 	vkCmdDrawIndexed(Engine::currentCommandBuffer(), (uint32_t)idx.size(), 1, 0, 0, 0);
-}
-
-void Text::render() {
-	static const std::vector<std::pair<size_t, size_t>> none;
-	renderTextEx(text, std::nullopt, 1.0f, color, none, glm::vec4(0, 0, 0, 0), std::nullopt);
-}
-
-// 1) normal
-void Text::renderText(const std::string &text, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
-	static const std::vector<std::pair<size_t, size_t>> none;
-	renderTextEx(text, origin, scale, color, none, glm::vec4(0, 0, 0, 0), std::nullopt);
-}
-
-// 2) caret only
-void Text::renderText(const std::string &text, const Caret &caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
-	static const std::vector<std::pair<size_t, size_t>> none;
-	renderTextEx(text, origin, scale, color, none, glm::vec4(0, 0, 0, 0), caret);
-}
-
-// 3) explicit range
-void Text::renderText(const std::string &text, const SelectionRange &sel, std::optional<Caret> caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
-	std::vector<std::pair<size_t, size_t>> ranges = {{sel.start, sel.end}};
-	renderTextEx(text, origin, scale, color, ranges, sel.color, caret);
-}
-
-// 4) match all substrings
-void Text::renderText(const std::string &text, const SelectionMatches &matches, std::optional<Caret> caret, const glm::vec4 &color, float scale, std::optional<glm::vec3> origin) {
-	auto ranges = findAllMatches(text, matches.needle, matches.caseSensitive);
-	renderTextEx(text, origin, scale, color, ranges, matches.color, caret);
-}
-
-void Text::renderBillboard(const std::string &text, const BillboardParams &bb, const glm::vec4 &color, float scale) {
-	static const std::vector<std::pair<size_t, size_t>> none;
-	renderTextEx(text, std::nullopt, scale, color, none, glm::vec4(0), std::nullopt, &bb);
 }

@@ -617,6 +617,14 @@ void Graph::renderPass() {
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
 	float wireTextLength = wireId->getPixelWidth(wireLabel);
-	nodeName->renderBillboard(nodeLabel, Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}}, Colors::Orange);
-	wireId->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
+
+    nodeName->textParams.text = nodeLabel;
+    nodeName->textParams.billboardParams = Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}, true};
+    nodeName->textParams.color = Colors::Orange;
+	nodeName->render();
+
+    wireId->textParams.text = wireLabel;
+    wireId->textParams.billboardParams = Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}, true}; 
+    wireId->textParams.color = Colors::Green;
+	wireId->render();
 }

@@ -33,7 +33,9 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 void Button::render() {
     Widget::render();
     if (!styleParams.text.empty()) {
-        textModel->renderText(styleParams.text, styleParams.textColor);
+        textModel->textParams.text = styleParams.text;
+        textModel->textParams.color = styleParams.textColor;
+        textModel->render();
     }
 	if (icon) {
 		icon->render();
