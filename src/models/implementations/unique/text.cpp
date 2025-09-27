@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const TextParams &textParams, const VkRenderPass &renderPass) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
+Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &textParams, const VkRenderPass &renderPass) : textParams(textParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}

@@ -50,7 +50,7 @@ Default::Default(Scenes &scenes) : Scene(scenes) {
         std::cout << "Room Hit " << Engine::time << std::endl;
     };
 
-    Text::TextParams tp{ Assets::fontRootPath + "/arial.ttf", 48 };
+    Text::FontParams tp{ Assets::fontRootPath + "/arial.ttf", 48 };
     text = make_unique<Text>(this, orthographic, screenParams, tp);
     text->updateMVP(translate(mat4(1.0f), glm::vec3(screenParams.viewport.width * 0.5f, screenParams.viewport.height * 0.15f, 0.0f)));
 }

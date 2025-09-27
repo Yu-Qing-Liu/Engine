@@ -12,7 +12,7 @@ using Kind = Graph::Kind;
 Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 	crosshair = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/crosshair/crosshair.png");
 
-	Text::TextParams tp{};
+	Text::FontParams tp{};
 	perspectiveBtn = make_unique<Button>(this, orthographic, screenParams, tp);
 	btn3DIcon = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/icons/3D.png");
 	btn2DIcon = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/icons/2D.png");

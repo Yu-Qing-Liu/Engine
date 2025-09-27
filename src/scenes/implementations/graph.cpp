@@ -145,7 +145,7 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	circuit = std::make_unique<Circuit>();
 
 	// Setup: construct instanced meshes
-	Text::TextParams tp{Fonts::ArialBold, 32};
+	Text::FontParams tp{Fonts::ArialBold, 32};
 	nodeName = make_unique<Text>(this, mvp, screenParams, tp);
 	wireId = make_unique<Text>(this, mvp, screenParams, tp);
 

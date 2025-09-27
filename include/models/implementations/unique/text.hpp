@@ -15,7 +15,7 @@ class Text : public Model {
 	Text &operator=(const Text &) = delete;
 	~Text() override;
 
-	struct TextParams {
+	struct FontParams {
 		string fontPath = Fonts::Arial;
 		uint32_t pixelHeight = 24;
 		vector<uint32_t> codepoints;
@@ -79,7 +79,7 @@ class Text : public Model {
 		glm::vec4 color{1, 1, 0, 0.25f}; // default yellow-ish bg
 	};
 
-	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const TextParams &params, const VkRenderPass &renderPass = Engine::renderPass);
+	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight();
@@ -112,7 +112,7 @@ class Text : public Model {
 		std::vector<uint8_t> pixels;
 	};
 
-	TextParams textParams;
+	FontParams textParams;
 
 	float ascenderPx_ = 0.f;
 	float descenderPx_ = 0.f;
