@@ -145,7 +145,7 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	circuit = std::make_unique<Circuit>();
 
 	// Setup: construct instanced meshes
-	Text::TextParams tp{Fonts::ArialBold, 32};
+	Text::FontParams tp{Fonts::ArialBold, 32};
 	nodeName = make_unique<Text>(this, mvp, screenParams, tp);
 	wireId = make_unique<Text>(this, mvp, screenParams, tp);
 
@@ -617,6 +617,14 @@ void Graph::renderPass() {
 	edges->render();
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
 	float wireTextLength = wireId->getPixelWidth(wireLabel);
-	nodeName->renderBillboard(nodeLabel, Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}}, Colors::Orange);
-	wireId->renderBillboard(wireLabel, Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}}, Colors::Green);
+
+    nodeName->textParams.text = nodeLabel;
+    nodeName->textParams.billboardParams = Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}, true};
+    nodeName->textParams.color = Colors::Orange;
+	nodeName->render();
+
+    wireId->textParams.text = wireLabel;
+    wireId->textParams.billboardParams = Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}, true}; 
+    wireId->textParams.color = Colors::Green;
+	wireId->render();
 }

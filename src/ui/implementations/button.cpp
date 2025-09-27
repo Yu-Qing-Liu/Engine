@@ -1,6 +1,6 @@
 #include "button.hpp"
 
-Button::Button(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::TextParams &textParams) : Widget(scene, ubo, screenParams) {
+Button::Button(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams) : Widget(scene, ubo, screenParams) {
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
 }
 
@@ -33,7 +33,9 @@ void Button::setParams(const StyleParams &p, std::optional<std::unique_ptr<Model
 void Button::render() {
     Widget::render();
     if (!styleParams.text.empty()) {
-        textModel->renderText(styleParams.text, styleParams.textColor);
+        textModel->textParams.text = styleParams.text;
+        textModel->textParams.color = styleParams.textColor;
+        textModel->render();
     }
 	if (icon) {
 		icon->render();
