@@ -19,6 +19,9 @@ class Graph : public Scene {
 		vec4 color;
 	};
 
+	std::unordered_map<std::string, glm::vec4> familyColor;
+	std::vector<LegendEntry> legendEntries;
+
 	const std::vector<LegendEntry> &legend() const { return legendEntries; }
 
 	std::string getName() override { return "Graph"; }
@@ -37,8 +40,6 @@ class Graph : public Scene {
 	unique_ptr<InstancedPolygon> nodes;
 	unique_ptr<InstancedPolygon> edges;
 
-	std::unordered_map<std::string, glm::vec4> familyColor;
-	std::vector<LegendEntry> legendEntries;
 	static glm::vec4 colorFromKey(const std::string &key);
 
 	struct NodeData {

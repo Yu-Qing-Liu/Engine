@@ -14,6 +14,7 @@
 #include "colors.hpp"
 #include "engine.hpp"
 #include "fonts.hpp"
+#include "overlay.hpp"
 
 Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	// Enable controls
@@ -128,10 +129,19 @@ static glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
 static glm::quat rotatePlusXTo(const glm::vec3 &dirN) { return quatFromTo(glm::vec3(1, 0, 0), dirN); }
 
 glm::vec4 Graph::colorFromKey(const std::string &key) {
+	// Stronger 64-bit mix so early/late chars influence all bits
 	uint64_t h = hash64(key);
-	float hue = ((h >> 8) & 0xFFFFFF) / float(0x1000000u); // 24-bit hue
-	float sat = 0.65f + 0.1f * ((h & 0x7) / 7.0f);		   // 0.65..0.75
-	float val = 0.88f;									   // bright
+	h ^= (h >> 33);
+	h *= 0xff51afd7ed558ccdULL;
+	h ^= (h >> 33);
+	h *= 0xc4ceb9fe1a85ec53ULL;
+	h ^= (h >> 33);
+
+	// Use low and high bits to vary hue, saturation, and value
+	float hue = ((h & 0xFFFFFFFFULL) / float(0x100000000ULL));				// full 32 bits → 0..1
+	float sat = 0.55f + 0.35f * ((h >> 32 & 0xFFFFULL) / float(0xFFFFULL)); // 0.55–0.90
+	float val = 0.70f + 0.25f * ((h >> 48) / float(0xFFFFULL));				// 0.70–0.95
+
 	return Colors::hsv2rgba(hue, sat, val, 1.0f);
 }
 
@@ -181,17 +191,14 @@ void Graph::swapChainUpdate() {
 	int m = 0;
 	std::unordered_map<long long, int> cableIdByUV;
 	auto packUV = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
-
 	{
 		std::unordered_set<long long> seen;
 		auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
-
 		for (const auto &kv : G.adj) {
 			auto itu = idToIdx.find(kv.first);
 			if (itu == idToIdx.end())
 				continue;
 			int u = itu->second;
-
 			for (const auto &e : kv.second) {
 				auto itv = idToIdx.find(e.child);
 				if (itv == idToIdx.end())
@@ -206,7 +213,6 @@ void Graph::swapChainUpdate() {
 					indeg[v]++;
 				}
 
-				// Edge meta
 				avgLen += e.length;
 				++m;
 				long long kdir = packUV(u, v);
@@ -214,7 +220,7 @@ void Graph::swapChainUpdate() {
 					cableIdByUV[kdir] = e.id;
 				long long krev = packUV(v, u);
 				if (!cableIdByUV.count(krev))
-					cableIdByUV[krev] = e.id; // allow lookup either way
+					cableIdByUV[krev] = e.id;
 			}
 		}
 	}
@@ -223,7 +229,7 @@ void Graph::swapChainUpdate() {
 	if (!m)
 		avgLen = 10.f;
 
-	// ---------- choose roots (pure topology) ----------
+	// ---------- choose roots ----------
 	std::vector<int> roots;
 	for (int i = 0; i < N; ++i)
 		if (indeg[i] == 0)
@@ -233,7 +239,6 @@ void Graph::swapChainUpdate() {
 	std::vector<int> comp(N, -1);
 	int compCount = 0;
 	{
-		// build undirected adjacency
 		std::vector<std::vector<int>> uadj(N);
 		for (int u = 0; u < N; ++u) {
 			for (int v : adj[u]) {
@@ -286,28 +291,28 @@ void Graph::swapChainUpdate() {
 					q.push(v);
 				}
 		}
-		// Attach any unreached nodes to a nearby predecessor or to a root
 		for (int v = 0; v < N; ++v)
 			if (depth[v] == INT_MAX) {
 				if (!radj[v].empty()) {
 					parent[v] = radj[v][0];
 					depth[v] = (depth[parent[v]] == INT_MAX ? 1 : depth[parent[v]] + 1);
-				} else {
+				} else if (!roots.empty()) {
 					parent[v] = roots[0];
 					depth[v] = 1;
+				} else {
+					parent[v] = -1;
+					depth[v] = 0;
 				}
 			}
 	}
 
-	// ---------- families from topology ----------
+	// ---------- families ----------
 	auto topAncestor = [&](int v) -> int {
 		int u = v;
 		while (parent[u] != -1)
 			u = parent[u];
 		return u;
 	};
-
-	// Family key: ROOT:<root-id> for nodes under a root; otherwise COMP:<c>:<rep>
 	std::vector<std::string> familyKey(N);
 	for (int v = 0; v < N; ++v) {
 		bool isRoot = (depth[v] == 0);
@@ -323,20 +328,16 @@ void Graph::swapChainUpdate() {
 			familyKey[v] = "COMP:" + std::to_string(c) + ":" + ids[rep];
 		}
 	}
-
-	// Deterministic color per family
 	for (int v = 0; v < N; ++v)
-		if (!familyColor.count(familyKey[v])) {
-			familyColor[familyKey[v]] = colorFromKey(familyKey[v]); // your deterministic HSV-from-hash helper
-		}
+		if (!familyColor.count(familyKey[v]))
+			familyColor[familyKey[v]] = colorFromKey(familyKey[v]);
 
 	// ---------- layout ----------
-	// Column order: stable sort by id
 	std::vector<int> order(N);
+	order.resize(N);
 	std::iota(order.begin(), order.end(), 0);
 	std::sort(order.begin(), order.end(), [&](int a, int b) { return ids[a] < ids[b]; });
 
-	// Side (above/below) by simple topology: sign(outdeg - indeg); roots on trunk
 	auto sideSign = [&](int v) -> int {
 		int s = (outdeg[v] > indeg[v]) ? +1 : (outdeg[v] < indeg[v] ? -1 : +1);
 		return (depth[v] == 0) ? 0 : s;
@@ -347,7 +348,6 @@ void Graph::swapChainUpdate() {
 	const float tierBase = std::max(8.0f, avgLen * 0.10f);
 	const float tierStep = std::max(5.0f, avgLen * 0.10f);
 
-	// Place anchors at depth==1 into lanes
 	std::vector<int> ups1, downs1, mids0;
 	for (int v : order) {
 		if (depth[v] == 0) {
@@ -363,12 +363,11 @@ void Graph::swapChainUpdate() {
 		for (int i = 0; i < (int)lane.size(); ++i)
 			xcol[lane[i]] = x0 + float(i) * dx;
 	};
-	placeLane(ups1, 0.0f);		  // integer slots
-	placeLane(downs1, 0.5f * dx); // half slots
+	placeLane(ups1, 0.0f);
+	placeLane(downs1, 0.5f * dx);
 	for (int i = 0; i < (int)mids0.size(); ++i)
 		xcol[mids0[i]] = float(i) * dx;
 
-	// Children vectors for consistent ordering deeper than 1
 	std::vector<std::vector<int>> kids(N);
 	for (int v = 0; v < N; ++v)
 		if (parent[v] >= 0)
@@ -376,7 +375,6 @@ void Graph::swapChainUpdate() {
 	for (int p = 0; p < N; ++p)
 		std::sort(kids[p].begin(), kids[p].end(), [&](int a, int b) { return ids[a] < ids[b]; });
 
-	// Inherit parent column for deeper levels
 	for (int d = 2; d < N + 2; ++d) {
 		bool any = false;
 		for (int p = 0; p < N; ++p) {
@@ -440,7 +438,7 @@ void Graph::swapChainUpdate() {
 	nodeName->updateMVP(std::nullopt, mvp.view, mvp.proj);
 	wireId->updateMVP(std::nullopt, mvp.view, mvp.proj);
 
-	// ---------- draw nodes with family colors ----------
+	// ---------- draw nodes ----------
 	const float nodeScale = 2.0f;
 	for (int i = 0; i < N; ++i) {
 		const glm::vec4 color = familyColor[familyKey[i]];
@@ -449,11 +447,18 @@ void Graph::swapChainUpdate() {
 	}
 	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
-	// ---------- draw wires ----------
+	// ---------- edge drawing (dedup + trunk-crossing split) ----------
 	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
-	const glm::vec4 wireColor = Colors::Gray;
 	int eIdx = 0;
-	auto addSeg = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
+
+	auto packUndirected = [](int a, int b) -> long long {
+		if (a > b)
+			std::swap(a, b);
+		return ((long long)a << 32) ^ (unsigned long long)(b & 0xffffffff);
+	};
+	std::unordered_set<long long> drawnPairs;
+
+	auto addSegRaw = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
 		glm::vec3 d = P1 - P0;
 		float L = glm::length(d);
 		if (L < 1e-6f)
@@ -461,12 +466,69 @@ void Graph::swapChainUpdate() {
 		glm::vec3 mid = 0.5f * (P0 + P1);
 		glm::quat rot = rotatePlusXTo(d / L);
 		edgeMap[eIdx] = {cableId, L};
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, wireColor, Colors::Black));
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
 	};
 
-	// Trunk line
+	auto addSegByNodes = [&](int a, int b, int cableId) {
+		if (a == b)
+			return;
+		long long key = packUndirected(a, b);
+		if (!drawnPairs.insert(key).second)
+			return;
+
+		const glm::vec3 &P0 = pos[a];
+		const glm::vec3 &P1 = pos[b];
+		glm::vec3 d = P1 - P0;
+		float L = glm::length(d);
+		if (L < 1e-6f)
+			return;
+
+		glm::vec3 mid = 0.5f * (P0 + P1);
+		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L};
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+	};
+
+	// Synthetic trunk anchors to dedup verticals cleanly
 	const float pad = 0.75f * dx;
-	addSeg(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
+	const int trunkBase = N;
+	auto trunkIdxFor = [&](int v) { return trunkBase + v; };
+
+	std::vector<glm::vec3> posWithTrunk = pos;
+	posWithTrunk.resize(N + N);
+	for (int v = 0; v < N; ++v)
+		posWithTrunk[trunkIdxFor(v)] = glm::vec3(xcol[v], trunkY, 0.f);
+
+	auto addSegByNodesPosRef = [&](int a, int b, int cableId) {
+		if (a == b)
+			return;
+		long long key = packUndirected(a, b);
+		if (!drawnPairs.insert(key).second)
+			return;
+
+		const glm::vec3 &P0 = posWithTrunk[a];
+		const glm::vec3 &P1 = posWithTrunk[b];
+		glm::vec3 d = P1 - P0;
+		float L = glm::length(d);
+		if (L < 1e-6f)
+			return;
+
+		glm::vec3 mid = 0.5f * (P0 + P1);
+		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L};
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+	};
+
+	// Helper: does straight segment (a,b) cross the trunk?
+	auto crossesTrunk = [&](int a, int b) -> bool {
+		float ya = pos[a].y - trunkY;
+		float yb = pos[b].y - trunkY;
+		// Crossing if strict opposite signs; if one sits exactly on trunk, treat as crossing to force separation
+		return (ya == 0.f || yb == 0.f) ? true : (ya * yb < 0.f);
+	};
+
+	// Draw the main trunk (single horizontal)
+	addSegRaw(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
 
 	// depth==1: verticals to trunk
 	for (int v = 0; v < N; ++v)
@@ -478,10 +540,10 @@ void Graph::swapChainUpdate() {
 				if (it != cableIdByUV.end())
 					cableId = it->second;
 			}
-			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f), cableId);
+			addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
 		}
 
-	// depth>=2: connect to parent
+	// depth>=2: connect to parent; if crossing trunk, split into verticals instead
 	for (int v = 0; v < N; ++v)
 		if (depth[v] >= 2 && parent[v] >= 0) {
 			int p = parent[v];
@@ -489,12 +551,20 @@ void Graph::swapChainUpdate() {
 			auto it = cableIdByUV.find(packUV(p, v));
 			if (it != cableIdByUV.end())
 				cableId = it->second;
-			addSeg(pos[v], pos[p], cableId);
+
+			if (crossesTrunk(p, v)) {
+				// Force separation at trunk: draw verticals to each side's trunk anchor (dedup handles repeats)
+				addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
+				addSegByNodesPosRef(p, trunkIdxFor(p), cableId);
+			} else {
+				// Same side of trunk: draw direct node↔node segment (dedup)
+				addSegByNodes(p, v, cableId);
+			}
 		}
 
 	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
-	// ---------- legend (one entry per family in view) ----------
+	// ---------- legend ----------
 	std::unordered_map<std::string, int> famCounts;
 	for (auto &fk : familyKey)
 		famCounts[fk]++;
@@ -505,7 +575,7 @@ void Graph::swapChainUpdate() {
 		int sz = kv.second;
 		std::string label;
 		if (key.rfind("ROOT:", 0) == 0) {
-			label = key.substr(5) + " (family, " + std::to_string(sz) + ")";
+			label = key.substr(5);
 		} else {
 			auto colon = key.find(':', 5);
 			std::string idx = key.substr(5, colon - 5);
@@ -516,10 +586,11 @@ void Graph::swapChainUpdate() {
 	}
 	std::sort(newLegend.begin(), newLegend.end(), [](auto &a, auto &b) { return a.label < b.label; });
 
+	bool diff = false;
 	if (newLegend.size() != legendEntries.size()) {
+		diff = true;
 		legendEntries = std::move(newLegend);
 	} else {
-		bool diff = false;
 		for (size_t i = 0; i < newLegend.size(); ++i) {
 			if (legendEntries[i].label != newLegend[i].label || legendEntries[i].color != newLegend[i].color) {
 				diff = true;
@@ -528,6 +599,10 @@ void Graph::swapChainUpdate() {
 		}
 		if (diff)
 			legendEntries = std::move(newLegend);
+	}
+
+	if (diff) {
+		dynamic_cast<Overlay *>(scenes.getScene("Overlay").get())->updateLegend();
 	}
 }
 
