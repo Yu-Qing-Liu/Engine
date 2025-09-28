@@ -128,6 +128,37 @@ static glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
 
 static glm::quat rotatePlusXTo(const glm::vec3 &dirN) { return quatFromTo(glm::vec3(1, 0, 0), dirN); }
 
+static std::string baseKeyFromId(const std::string &s) {
+	if (s.empty())
+		return s;
+	int i = (int)s.size() - 1;
+
+	// Step 1: strip trailing letters if they come after digits (e.g., "286A" -> "286")
+	int j = i;
+	while (j >= 0 && std::isalpha((unsigned char)s[j]))
+		--j;
+	bool hadLetters = (j < i); // we saw trailing letters
+	int k = j;
+	while (k >= 0 && std::isdigit((unsigned char)s[k]))
+		--k;
+	bool hadDigits = (k < j);
+
+	int end = i;
+	if (hadDigits) {
+		// If we had "...<digits>[letters]" at end, remove both the digits and any trailing letters
+		end = k;
+	} else {
+		// If no trailing digits, but we had letters, restore to original end
+		end = i;
+	}
+
+	// Step 2: trim trailing '-', '_' or '/' after removing number part
+	while (end >= 0 && (s[end] == '-' || s[end] == '_' || s[end] == '/'))
+		--end;
+
+	return s.substr(0, end + 1);
+}
+
 glm::vec4 Graph::colorFromKey(const std::string &key) {
 	// Stronger 64-bit mix so early/late chars influence all bits
 	uint64_t h = hash64(key);
@@ -306,32 +337,18 @@ void Graph::swapChainUpdate() {
 			}
 	}
 
-	// ---------- families ----------
-	auto topAncestor = [&](int v) -> int {
-		int u = v;
-		while (parent[u] != -1)
-			u = parent[u];
-		return u;
-	};
-	std::vector<std::string> familyKey(N);
+	// ---------- groups by node uniqueness (base key) ----------
+	std::vector<std::string> groupKey(N);
 	for (int v = 0; v < N; ++v) {
-		bool isRoot = (depth[v] == 0);
-		if (!roots.empty()) {
-			int r = isRoot ? v : topAncestor(v);
-			familyKey[v] = std::string("ROOT:") + ids[r];
-		} else {
-			int c = comp[v];
-			int rep = v;
-			for (int u = 0; u < N; ++u)
-				if (comp[u] == c && ids[u] < ids[rep])
-					rep = u;
-			familyKey[v] = "COMP:" + std::to_string(c) + ":" + ids[rep];
+		groupKey[v] = baseKeyFromId(ids[v]);
+	}
+
+	// Deterministic color per group key (reuse your colorFromKey)
+	for (int v = 0; v < N; ++v) {
+		if (!familyColor.count(groupKey[v])) {
+			familyColor[groupKey[v]] = colorFromKey(groupKey[v]);
 		}
 	}
-	for (int v = 0; v < N; ++v)
-		if (!familyColor.count(familyKey[v]))
-			familyColor[familyKey[v]] = colorFromKey(familyKey[v]);
-
 	// ---------- layout ----------
 	std::vector<int> order(N);
 	order.resize(N);
@@ -441,7 +458,7 @@ void Graph::swapChainUpdate() {
 	// ---------- draw nodes ----------
 	const float nodeScale = 2.0f;
 	for (int i = 0; i < N; ++i) {
-		const glm::vec4 color = familyColor[familyKey[i]];
+		const glm::vec4 color = familyColor[groupKey[i]];
 		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), color, Colors::Black));
 		nodeMap[i] = {ids[i]};
 	}
@@ -565,27 +582,20 @@ void Graph::swapChainUpdate() {
 	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
 	// ---------- legend ----------
-	std::unordered_map<std::string, int> famCounts;
-	for (auto &fk : familyKey)
-		famCounts[fk]++;
+	std::unordered_map<std::string, int> groupCounts;
+	for (auto &gk : groupKey)
+		groupCounts[gk]++;
+
 	std::vector<LegendEntry> newLegend;
-	newLegend.reserve(famCounts.size());
-	for (auto &kv : famCounts) {
-		const std::string &key = kv.first;
-		int sz = kv.second;
-		std::string label;
-		if (key.rfind("ROOT:", 0) == 0) {
-			label = key.substr(5);
-		} else {
-			auto colon = key.find(':', 5);
-			std::string idx = key.substr(5, colon - 5);
-			std::string rep = key.substr(colon + 1);
-			label = "Component " + idx + " (rep: " + rep + ", " + std::to_string(sz) + ")";
-		}
-		newLegend.push_back({label, familyColor[key]});
+	newLegend.reserve(groupCounts.size());
+	for (auto &kv : groupCounts) {
+		const std::string &label = kv.first;	   // base key label
+		const glm::vec4 &col = familyColor[label]; // color associated with that base key
+		newLegend.push_back({label, col});
 	}
 	std::sort(newLegend.begin(), newLegend.end(), [](auto &a, auto &b) { return a.label < b.label; });
 
+	// Diff & publish
 	bool diff = false;
 	if (newLegend.size() != legendEntries.size()) {
 		diff = true;
@@ -602,7 +612,9 @@ void Graph::swapChainUpdate() {
 	}
 
 	if (diff) {
-		dynamic_cast<Overlay *>(scenes.getScene("Overlay").get())->updateLegend();
+		if (auto overlay = std::dynamic_pointer_cast<Overlay>(scenes.getScene("Overlay"))) {
+			overlay->updateLegend();
+		}
 	}
 }
 
