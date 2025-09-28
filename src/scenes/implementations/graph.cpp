@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numeric>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,120 +14,8 @@
 #include "colors.hpp"
 #include "engine.hpp"
 #include "fonts.hpp"
+#include "overlay.hpp"
 
-using std::unordered_set;
-using Kind = Graph::Kind;
-
-// ------------ helpers ------------
-static inline glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
-	glm::vec3 from = glm::normalize(fromRaw);
-	glm::vec3 to = glm::normalize(toRaw);
-	float c = glm::dot(from, to);
-	if (c < -1.0f + 1e-6f) {
-		glm::vec3 ortho = glm::abs(from.x) < 0.5f ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
-		glm::vec3 axis = glm::normalize(glm::cross(from, ortho));
-		return glm::angleAxis(glm::pi<float>(), axis);
-	}
-	if (c > 1.0f - 1e-6f)
-		return glm::quat(1, 0, 0, 0);
-	glm::vec3 axis = glm::cross(from, to);
-	float s = glm::sqrt((1.0f + c) * 2.0f);
-	float invs = 1.0f / s;
-	return glm::normalize(glm::quat(s * 0.5f, axis.x * invs, axis.y * invs, axis.z * invs));
-}
-
-static inline glm::quat rotatePlusXTo(const glm::vec3 &dirN) { return quatFromTo(glm::vec3(1, 0, 0), dirN); }
-
-// ---------- normalization helpers ----------
-static std::string toUpperCopy(std::string s) {
-	for (char &c : s)
-		c = (char)std::toupper((unsigned char)c);
-	return s;
-}
-static std::string normalizedId(std::string s) {
-	auto pos = s.find_last_of('/');
-	if (pos != std::string::npos)
-		s = s.substr(pos + 1);
-	auto slash = s.find('/');
-	if (slash != std::string::npos)
-		s = s.substr(0, slash);
-	auto notSpace = [](unsigned char ch) { return !std::isspace(ch); };
-	s.erase(s.begin(), std::find_if(s.begin(), s.end(), notSpace));
-	s.erase(std::find_if(s.rbegin(), s.rend(), notSpace).base(), s.end());
-	return toUpperCopy(s);
-}
-static bool startsWith(const std::string &upId, const char *upPrefix) {
-	const size_t n = std::strlen(upPrefix);
-	return upId.size() >= n && std::memcmp(upId.data(), upPrefix, n) == 0;
-}
-
-static Kind classify8WithEdges(const Circuit *circuit, const std::string &rawId) {
-	const std::string id = normalizedId(rawId);
-
-	if (startsWith(id, "CSE-PCGH") || startsWith(id, "CSE-PCHG"))
-		return Kind::PCGH;
-
-	// Quick ID-based families
-	if (startsWith(id, "TTC-"))
-		return Kind::SensorTTC;
-	if (startsWith(id, "SPN-"))
-		return Kind::BJ_Primary_Installed; // splices (diamonds)
-
-	// Secondary family (291)
-	if (startsWith(id, "BJ-291B"))
-		return Kind::BJ_Secondary_InstalledConnected;
-	if (startsWith(id, "BJ-291"))
-		return Kind::BJ_Secondary_NotHeated;
-
-	// Not installed family (297)
-	if (startsWith(id, "BJ-297"))
-		return Kind::BJ_Primary_NotInstalled;
-
-	// Adduction water (192) — broadened from 192A to any 192*
-	if (startsWith(id, "BJ-192"))
-		return Kind::BJ_AdductionWater;
-
-	// Known connected primaries
-	if (id == "BJ-295" || id == "BJ-287A" || id == "BJ-287B")
-		return Kind::BJ_Primary_InstalledConnected;
-
-	// Drainage: exact BJ-186A or hint from text (see below)
-	if (startsWith(id, "BJ-"))
-		return Kind::Drainage;
-
-	// Text-based heuristics using incident edges
-	auto touches = [&](auto pred) {
-		for (const auto &e : circuit->edges()) {
-			// Compare against raw node id in edges because edges store original IDs
-			if (e.u.id == rawId || e.v.id == rawId) {
-				std::string cond = toUpperCopy(e.conditionAndCaliber);
-				std::string cable = toUpperCopy(e.cableName);
-				if (pred(cond) || pred(cable))
-					return true;
-			}
-		}
-		return false;
-	};
-
-	// NOT INSTALLED / SPARE / NON-INSTALLÉ (FR)
-	if (touches([](const std::string &s) {
-			return s.find("NOT INSTALLED") != std::string::npos || s.find("SPARE") != std::string::npos || s.find("NON INSTALLE") != std::string::npos || // handles NON INSTALLÉ (accents stripped)
-				   s.find("NON INSTALLÉ") != std::string::npos;
-		}))
-		return Kind::BJ_Primary_NotInstalled;
-
-	// DRAINAGE / DRAIN
-	if (touches([](const std::string &s) { return s.find("DRAINAGE") != std::string::npos || s.find("DRAIN") != std::string::npos; }))
-		return Kind::Drainage;
-
-	// ADDUCTION / WATER / EAU
-	if (touches([](const std::string &s) { return s.find("ADDUCTION") != std::string::npos || s.find("WATER") != std::string::npos || s.find("EAU") != std::string::npos; }))
-		return Kind::BJ_AdductionWater;
-
-	return Kind::Unknown;
-}
-
-// ------------ Main ------------
 Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	// Enable controls
 	disableMouseMode();
@@ -213,6 +100,82 @@ Graph::Graph(Scenes &scenes) : Scene(scenes) {
 	Events::keyboardCallbacks.push_back(kbState);
 }
 
+static uint64_t hash64(const std::string &s) {
+	uint64_t h = 1469598103934665603ull; // FNV-1a
+	for (unsigned char c : s) {
+		h ^= c;
+		h *= 1099511628211ull;
+	}
+	return h;
+}
+
+static glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
+	glm::vec3 from = glm::normalize(fromRaw);
+	glm::vec3 to = glm::normalize(toRaw);
+	float c = glm::dot(from, to);
+	if (c < -1.0f + 1e-6f) {
+		glm::vec3 ortho = glm::abs(from.x) < 0.5f ? glm::vec3(1, 0, 0) : glm::vec3(0, 1, 0);
+		glm::vec3 axis = glm::normalize(glm::cross(from, ortho));
+		return glm::angleAxis(glm::pi<float>(), axis);
+	}
+	if (c > 1.0f - 1e-6f)
+		return glm::quat(1, 0, 0, 0);
+	glm::vec3 axis = glm::cross(from, to);
+	float s = glm::sqrt((1.0f + c) * 2.0f);
+	float invs = 1.0f / s;
+	return glm::normalize(glm::quat(s * 0.5f, axis.x * invs, axis.y * invs, axis.z * invs));
+}
+
+static glm::quat rotatePlusXTo(const glm::vec3 &dirN) { return quatFromTo(glm::vec3(1, 0, 0), dirN); }
+
+static std::string baseKeyFromId(const std::string &s) {
+	if (s.empty())
+		return s;
+	int i = (int)s.size() - 1;
+
+	// Step 1: strip trailing letters if they come after digits (e.g., "286A" -> "286")
+	int j = i;
+	while (j >= 0 && std::isalpha((unsigned char)s[j]))
+		--j;
+	bool hadLetters = (j < i); // we saw trailing letters
+	int k = j;
+	while (k >= 0 && std::isdigit((unsigned char)s[k]))
+		--k;
+	bool hadDigits = (k < j);
+
+	int end = i;
+	if (hadDigits) {
+		// If we had "...<digits>[letters]" at end, remove both the digits and any trailing letters
+		end = k;
+	} else {
+		// If no trailing digits, but we had letters, restore to original end
+		end = i;
+	}
+
+	// Step 2: trim trailing '-', '_' or '/' after removing number part
+	while (end >= 0 && (s[end] == '-' || s[end] == '_' || s[end] == '/'))
+		--end;
+
+	return s.substr(0, end + 1);
+}
+
+glm::vec4 Graph::colorFromKey(const std::string &key) {
+	// Stronger 64-bit mix so early/late chars influence all bits
+	uint64_t h = hash64(key);
+	h ^= (h >> 33);
+	h *= 0xff51afd7ed558ccdULL;
+	h ^= (h >> 33);
+	h *= 0xc4ceb9fe1a85ec53ULL;
+	h ^= (h >> 33);
+
+	// Use low and high bits to vary hue, saturation, and value
+	float hue = ((h & 0xFFFFFFFFULL) / float(0x100000000ULL));				// full 32 bits → 0..1
+	float sat = 0.55f + 0.35f * ((h >> 32 & 0xFFFFULL) / float(0xFFFFULL)); // 0.55–0.90
+	float val = 0.70f + 0.25f * ((h >> 48) / float(0xFFFFULL));				// 0.70–0.95
+
+	return Colors::hsv2rgba(hue, sat, val, 1.0f);
+}
+
 void Graph::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
@@ -232,7 +195,7 @@ void Graph::swapChainUpdate() {
 	if (G.adj.empty() && G.level.empty())
 		return;
 
-	// ---- collect ids (stable) ----
+	// ---------- collect node ids ----------
 	std::unordered_set<std::string> idset;
 	for (const auto &kv : G.adj) {
 		idset.insert(kv.first);
@@ -242,247 +205,215 @@ void Graph::swapChainUpdate() {
 	std::vector<std::string> ids(idset.begin(), idset.end());
 	std::sort(ids.begin(), ids.end());
 	const int N = (int)ids.size();
+	if (N == 0)
+		return;
 
 	std::unordered_map<std::string, int> idToIdx;
 	idToIdx.reserve(N);
 	for (int i = 0; i < N; ++i)
 		idToIdx[ids[i]] = i;
 
-	// Build a cable-name index keyed by directed (uIdx,vIdx)
-	std::unordered_map<long long, int> cableIdByUV;
-	auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
+	// ---------- build directed adj / radj (dedup) ----------
+	std::vector<std::vector<int>> adj(N), radj(N);
+	std::vector<int> indeg(N, 0), outdeg(N, 0);
 
-	for (const auto &ce : circuit->edges()) {
-		std::string su = normalizedId(ce.u.id);
-		std::string sv = normalizedId(ce.v.id);
-		auto itu = idToIdx.find(su);
-		auto itv = idToIdx.find(sv);
-		if (itu == idToIdx.end() || itv == idToIdx.end())
-			continue;
-		long long k = pack(itu->second, itv->second);
-		// keep first seen; or overwrite if you prefer latest
-		if (!cableIdByUV.count(k))
-			cableIdByUV[k] = ce.id;
-
-		// optional: also allow reverse lookup (in case directions differ)
-		long long krev = pack(itv->second, itu->second);
-		if (!cableIdByUV.count(krev))
-			cableIdByUV[krev] = ce.id;
-	}
-
-	// ---- sizing stats ----
+	// Also: avg edge length and a map (u,v) -> cableId from G.adj
 	float avgLen = 0.f;
 	int m = 0;
-	for (const auto &e : circuit->edges()) {
-		avgLen += e.length;
-		++m;
-	}
-	if (m)
-		avgLen /= float(m);
-
-	// ---- taxonomy: sign only (above/below/center) ----
-	auto sideSign = [](const std::string &s) -> int {
-		auto starts = [&](const char *p) { return s.rfind(p, 0) == 0; };
-		if (starts("TTC-"))
-			return -1; // below
-		if (starts("CSE-"))
-			return 0; // on bus
-		return +1;	  // above (BJ-, SPN-, ...)
-	};
-
-	// ---- horizontal order key (same as you had) ----
-	auto familyKey = [](const std::string &s) -> int {
-		auto starts = [&](const char *p) { return s.rfind(p, 0) == 0; };
-		if (starts("CSE-"))
-			return 0;
-		if (starts("BJ-29"))
-			return 10;
-		if (starts("BJ-28"))
-			return 11;
-		if (starts("BJ-"))
-			return 12;
-		if (starts("SPN-") || starts("SPS-"))
-			return 20;
-		if (starts("TTC-"))
-			return 30;
-		return 40;
-	};
-	auto numTail = [](const std::string &s) -> int {
-		int n = 0, i = (int)s.size() - 1;
-		while (i >= 0 && std::isdigit((unsigned char)s[i]))
-			--i;
-		if (i + 1 < (int)s.size()) {
-			try {
-				n = std::stoi(s.substr(i + 1));
-			} catch (...) {
-			}
-		}
-		return n;
-	};
-
-	std::vector<int> order(N);
-	std::iota(order.begin(), order.end(), 0);
-	std::sort(order.begin(), order.end(), [&](int a, int b) {
-		int fa = familyKey(ids[a]), fb = familyKey(ids[b]);
-		if (fa != fb)
-			return fa < fb;
-		int na = numTail(ids[a]), nb = numTail(ids[b]);
-		if (na != nb)
-			return na < nb;
-		return ids[a] < ids[b];
-	});
-
-	// ---------------- BFS forest: depth[] and parent[] ----------------
-	// Build adj (u->v) with dedupe and indegrees
-	std::vector<std::vector<int>> adj(N), radj(N);
-	std::vector<int> indeg(N, 0);
-
+	std::unordered_map<long long, int> cableIdByUV;
+	auto packUV = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
 	{
 		std::unordered_set<long long> seen;
 		auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
-
 		for (const auto &kv : G.adj) {
-			int u = idToIdx[kv.first];
-			for (const auto &ee : kv.second) {
-				auto it = idToIdx.find(ee.child);
-				if (it == idToIdx.end())
+			auto itu = idToIdx.find(kv.first);
+			if (itu == idToIdx.end())
+				continue;
+			int u = itu->second;
+			for (const auto &e : kv.second) {
+				auto itv = idToIdx.find(e.child);
+				if (itv == idToIdx.end())
 					continue;
-				int v = it->second;
+				int v = itv->second;
+
 				long long k = pack(u, v);
 				if (seen.insert(k).second) {
 					adj[u].push_back(v);
 					radj[v].push_back(u);
+					outdeg[u]++;
 					indeg[v]++;
 				}
+
+				avgLen += e.length;
+				++m;
+				long long kdir = packUV(u, v);
+				if (!cableIdByUV.count(kdir))
+					cableIdByUV[kdir] = e.id;
+				long long krev = packUV(v, u);
+				if (!cableIdByUV.count(krev))
+					cableIdByUV[krev] = e.id;
 			}
 		}
 	}
+	if (m)
+		avgLen /= float(m);
+	if (!m)
+		avgLen = 10.f;
 
-	// roots: prefer CSE-; else indeg==0; final fallback=0
+	// ---------- choose roots ----------
 	std::vector<int> roots;
 	for (int i = 0; i < N; ++i)
-		if (ids[i].rfind("CSE-", 0) == 0)
+		if (indeg[i] == 0)
 			roots.push_back(i);
-	if (roots.empty()) {
-		for (int i = 0; i < N; ++i)
-			if (indeg[i] == 0)
-				roots.push_back(i);
-	}
-	if (roots.empty())
-		roots.push_back(0);
 
+	// If no roots (cycles), choose one representative per weakly connected component.
+	std::vector<int> comp(N, -1);
+	int compCount = 0;
+	{
+		std::vector<std::vector<int>> uadj(N);
+		for (int u = 0; u < N; ++u) {
+			for (int v : adj[u]) {
+				uadj[u].push_back(v);
+				uadj[v].push_back(u);
+			}
+		}
+		for (int i = 0; i < N; ++i) {
+			if (comp[i] != -1)
+				continue;
+			std::queue<int> q;
+			q.push(i);
+			comp[i] = compCount;
+			while (!q.empty()) {
+				int u = q.front();
+				q.pop();
+				for (int v : uadj[u])
+					if (comp[v] == -1) {
+						comp[v] = compCount;
+						q.push(v);
+					}
+			}
+			if (roots.empty()) {
+				int rep = i;
+				for (int u = 0; u < N; ++u)
+					if (comp[u] == compCount && ids[u] < ids[rep])
+						rep = u;
+				roots.push_back(rep);
+			}
+			compCount++;
+		}
+	}
+
+	// ---------- BFS from roots to get depth/parent ----------
 	std::vector<int> depth(N, INT_MAX), parent(N, -1);
-	std::queue<int> q;
-	for (int r : roots) {
-		depth[r] = 0;
-		parent[r] = -1;
-		q.push(r);
+	{
+		std::queue<int> q;
+		for (int r : roots) {
+			depth[r] = 0;
+			parent[r] = -1;
+			q.push(r);
+		}
+		while (!q.empty()) {
+			int u = q.front();
+			q.pop();
+			for (int v : adj[u])
+				if (depth[v] > depth[u] + 1) {
+					depth[v] = depth[u] + 1;
+					parent[v] = u;
+					q.push(v);
+				}
+		}
+		for (int v = 0; v < N; ++v)
+			if (depth[v] == INT_MAX) {
+				if (!radj[v].empty()) {
+					parent[v] = radj[v][0];
+					depth[v] = (depth[parent[v]] == INT_MAX ? 1 : depth[parent[v]] + 1);
+				} else if (!roots.empty()) {
+					parent[v] = roots[0];
+					depth[v] = 1;
+				} else {
+					parent[v] = -1;
+					depth[v] = 0;
+				}
+			}
 	}
 
-	while (!q.empty()) {
-		int u = q.front();
-		q.pop();
-		for (int v : adj[u]) {
-			if (depth[v] > depth[u] + 1) {
-				depth[v] = depth[u] + 1;
-				parent[v] = u; // choose u as the tree parent
-				q.push(v);
-			}
-		}
-	}
-	// Unreached -> attach to any predecessor if exists; else near roots
+	// ---------- groups by node uniqueness (base key) ----------
+	std::vector<std::string> groupKey(N);
 	for (int v = 0; v < N; ++v) {
-		if (depth[v] == INT_MAX) {
-			if (!radj[v].empty()) {
-				parent[v] = radj[v][0];
-				depth[v] = depth[parent[v]] + 1;
-			} else {
-				depth[v] = 1;
-				parent[v] = roots[0];
-			}
-		}
+		groupKey[v] = baseKeyFromId(ids[v]);
 	}
 
-	// --------------- X placement (columns) ----------------
-	// Columns are created by depth==1 anchors (the nodes that touch the bus).
-	// Ups on integer slots, downs on half slots. Deeper nodes inherit their
-	// parent’s column with tiny sibling offsets to keep wires distinct.
+	// Deterministic color per group key (reuse your colorFromKey)
+	for (int v = 0; v < N; ++v) {
+		if (!familyColor.count(groupKey[v])) {
+			familyColor[groupKey[v]] = colorFromKey(groupKey[v]);
+		}
+	}
+	// ---------- layout ----------
+	std::vector<int> order(N);
+	order.resize(N);
+	std::iota(order.begin(), order.end(), 0);
+	std::sort(order.begin(), order.end(), [&](int a, int b) { return ids[a] < ids[b]; });
+
+	auto sideSign = [&](int v) -> int {
+		int s = (outdeg[v] > indeg[v]) ? +1 : (outdeg[v] < indeg[v] ? -1 : +1);
+		return (depth[v] == 0) ? 0 : s;
+	};
+
 	const float trunkY = 0.0f;
-	const float dx = std::max(9.0f, avgLen * 0.26f); // column spacing
-	const float epsCol = dx * 0.12f;				 // sibling x offset
+	const float dx = std::max(9.0f, avgLen * 0.26f);
+	const float tierBase = std::max(8.0f, avgLen * 0.10f);
+	const float tierStep = std::max(5.0f, avgLen * 0.10f);
 
 	std::vector<int> ups1, downs1, mids0;
 	for (int v : order) {
 		if (depth[v] == 0) {
 			mids0.push_back(v);
 			continue;
-		} // on bus (CSE)
-		if (depth[v] == 1) {
-			(sideSign(ids[v]) > 0 ? ups1 : downs1).push_back(v);
 		}
+		if (depth[v] == 1)
+			(sideSign(v) > 0 ? ups1 : downs1).push_back(v);
 	}
 
-	// assign column x for anchors
 	std::vector<float> xcol(N, 0.f);
 	auto placeLane = [&](const std::vector<int> &lane, float x0) {
 		for (int i = 0; i < (int)lane.size(); ++i)
 			xcol[lane[i]] = x0 + float(i) * dx;
 	};
-	placeLane(ups1, 0.0f);		  // integer slots
-	placeLane(downs1, 0.5f * dx); // half slots
+	placeLane(ups1, 0.0f);
+	placeLane(downs1, 0.5f * dx);
 	for (int i = 0; i < (int)mids0.size(); ++i)
 		xcol[mids0[i]] = float(i) * dx;
 
-	// children lists for sibling offsets
 	std::vector<std::vector<int>> kids(N);
 	for (int v = 0; v < N; ++v)
 		if (parent[v] >= 0)
 			kids[parent[v]].push_back(v);
+	for (int p = 0; p < N; ++p)
+		std::sort(kids[p].begin(), kids[p].end(), [&](int a, int b) { return ids[a] < ids[b]; });
 
-	// DFS/BFS by depth to assign deeper columns = parent column +/- small offsets
-	// (keeps stacks vertical but wires distinct)
 	for (int d = 2; d < N + 2; ++d) {
 		bool any = false;
 		for (int p = 0; p < N; ++p) {
 			if (depth[p] != d - 1)
 				continue;
-			auto &ch = kids[p];
-			// deterministic order
-			std::sort(ch.begin(), ch.end(), [&](int a, int b) {
-				int sa = sideSign(ids[a]), sb = sideSign(ids[b]);
-				if (sa != sb)
-					return sa > sb; // above before below
-				int fa = familyKey(ids[a]), fb = familyKey(ids[b]);
-				if (fa != fb)
-					return fa < fb;
-				int na = numTail(ids[a]), nb = numTail(ids[b]);
-				if (na != nb)
-					return na < nb;
-				return ids[a] < ids[b];
-			});
-			for (int k = 0; k < (int)ch.size(); ++k) {
-				int v = ch[k];
-				if (depth[v] != d)
-					continue;
-				xcol[v] = xcol[p];
-				any = true;
-			}
+			for (int v : kids[p])
+				if (depth[v] == d) {
+					xcol[v] = xcol[p];
+					any = true;
+				}
 		}
 		if (!any)
 			break;
 	}
 
-	// --------------- Y placement (tiers by depth) ----------------
-	const float tierBase = std::max(8.0f, avgLen * 0.1f); // depth==1 distance
-	const float tierStep = std::max(5.0f, avgLen * 0.1f); // per extra depth
-
 	auto yFor = [&](int v) -> float {
 		if (depth[v] == 0)
 			return trunkY;
 		float mag = tierBase + float(depth[v] - 1) * tierStep;
-		int s = sideSign(ids[v]);
+		int s = sideSign(v);
 		if (s == 0)
-			s = +1; // non-TTC default above if depth>0 but on trunk taxonomy
+			s = +1;
 		return trunkY + (s > 0 ? +mag : -mag);
 	};
 
@@ -490,20 +421,16 @@ void Graph::swapChainUpdate() {
 	for (int v = 0; v < N; ++v)
 		pos[v] = glm::vec3(xcol[v], yFor(v), 0.f);
 
-	// extents
+	// Extents & camera
 	float minX = 1e9f, maxX = -1e9f;
 	for (int i = 0; i < N; ++i) {
 		minX = std::min(minX, pos[i].x);
 		maxX = std::max(maxX, pos[i].x);
 	}
-
-	// ---- camera ----
 	float sceneRadius = 1.f;
 	for (auto &p : pos)
 		sceneRadius = std::max(sceneRadius, glm::length(p));
-	const float w = screenParams.viewport.width;
-	const float h = screenParams.viewport.height;
-	const float aspect = w / h;
+	const float w = screenParams.viewport.width, h = screenParams.viewport.height, aspect = w / h;
 	const float fovY = radians(45.0f);
 	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
 	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
@@ -516,14 +443,11 @@ void Graph::swapChainUpdate() {
 		glm::mat4 view = glm::lookAt(camPosOrtho, camPosOrtho + glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
 		const float yOffsetLocal = -10.0f;
 		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffsetLocal, 0.0f)) * view;
-
 		fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
 		fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
 		baseH = 2.0f * 125.0f * std::tan(fovV * 0.5f);
 		baseW = baseH * aspect;
-
-		const float visH = baseH / zoom;
-		const float visW = baseW / zoom;
+		const float visH = baseH / zoom, visW = baseW / zoom;
 		const float orthoScale = (aspect >= 1.0f) ? visW : visH;
 		mvp.proj = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view).proj;
 	}
@@ -531,62 +455,167 @@ void Graph::swapChainUpdate() {
 	nodeName->updateMVP(std::nullopt, mvp.view, mvp.proj);
 	wireId->updateMVP(std::nullopt, mvp.view, mvp.proj);
 
-	// ---- draw nodes ----
+	// ---------- draw nodes ----------
 	const float nodeScale = 2.0f;
 	for (int i = 0; i < N; ++i) {
-		auto kind = classify8WithEdges(circuit.get(), ids[i]);
-		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), colorFor(kind), Colors::Black));
+		const glm::vec4 color = familyColor[groupKey[i]];
+		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), color, Colors::Black));
 		nodeMap[i] = {ids[i]};
 	}
 	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
-	// ---- wires ----
+	// ---------- edge drawing (dedup + trunk-crossing split) ----------
 	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
-	const glm::vec4 wireColor = Colors::Gray;
-
 	int eIdx = 0;
-	auto addSeg = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
+
+	auto packUndirected = [](int a, int b) -> long long {
+		if (a > b)
+			std::swap(a, b);
+		return ((long long)a << 32) ^ (unsigned long long)(b & 0xffffffff);
+	};
+	std::unordered_set<long long> drawnPairs;
+
+	auto addSegRaw = [&](const glm::vec3 &P0, const glm::vec3 &P1, int cableId) {
 		glm::vec3 d = P1 - P0;
 		float L = glm::length(d);
 		if (L < 1e-6f)
 			return;
 		glm::vec3 mid = 0.5f * (P0 + P1);
 		glm::quat rot = rotatePlusXTo(d / L);
-		edgeMap[eIdx] = {cableId, L}; // <-- use real label
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, wireColor, Colors::Black));
+		edgeMap[eIdx] = {cableId, L};
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
 	};
 
-	// Draw trunk
-	const float pad = 0.75f * dx;
-	addSeg(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
+	auto addSegByNodes = [&](int a, int b, int cableId) {
+		if (a == b)
+			return;
+		long long key = packUndirected(a, b);
+		if (!drawnPairs.insert(key).second)
+			return;
 
-	// depth==1: single vertical to bus
-	for (int v = 0; v < N; ++v) {
+		const glm::vec3 &P0 = pos[a];
+		const glm::vec3 &P1 = pos[b];
+		glm::vec3 d = P1 - P0;
+		float L = glm::length(d);
+		if (L < 1e-6f)
+			return;
+
+		glm::vec3 mid = 0.5f * (P0 + P1);
+		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L};
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+	};
+
+	// Synthetic trunk anchors to dedup verticals cleanly
+	const float pad = 0.75f * dx;
+	const int trunkBase = N;
+	auto trunkIdxFor = [&](int v) { return trunkBase + v; };
+
+	std::vector<glm::vec3> posWithTrunk = pos;
+	posWithTrunk.resize(N + N);
+	for (int v = 0; v < N; ++v)
+		posWithTrunk[trunkIdxFor(v)] = glm::vec3(xcol[v], trunkY, 0.f);
+
+	auto addSegByNodesPosRef = [&](int a, int b, int cableId) {
+		if (a == b)
+			return;
+		long long key = packUndirected(a, b);
+		if (!drawnPairs.insert(key).second)
+			return;
+
+		const glm::vec3 &P0 = posWithTrunk[a];
+		const glm::vec3 &P1 = posWithTrunk[b];
+		glm::vec3 d = P1 - P0;
+		float L = glm::length(d);
+		if (L < 1e-6f)
+			return;
+
+		glm::vec3 mid = 0.5f * (P0 + P1);
+		glm::quat rot = rotatePlusXTo(d / L);
+		edgeMap[eIdx] = {cableId, L};
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+	};
+
+	// Helper: does straight segment (a,b) cross the trunk?
+	auto crossesTrunk = [&](int a, int b) -> bool {
+		float ya = pos[a].y - trunkY;
+		float yb = pos[b].y - trunkY;
+		// Crossing if strict opposite signs; if one sits exactly on trunk, treat as crossing to force separation
+		return (ya == 0.f || yb == 0.f) ? true : (ya * yb < 0.f);
+	};
+
+	// Draw the main trunk (single horizontal)
+	addSegRaw(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
+
+	// depth==1: verticals to trunk
+	for (int v = 0; v < N; ++v)
 		if (depth[v] == 1) {
-			int p = parent[v]; // BFS parent that sits on/near the bus
-			int cableId;
+			int p = parent[v];
+			int cableId = 0;
 			if (p >= 0) {
-				auto it = cableIdByUV.find(pack(p, v));
+				auto it = cableIdByUV.find(packUV(p, v));
 				if (it != cableIdByUV.end())
 					cableId = it->second;
 			}
-			addSeg(pos[v], glm::vec3(xcol[v], trunkY, 0.f), cableId);
+			addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
 		}
-	}
 
-	// depth>=2: connect to parent
-	for (int v = 0; v < N; ++v) {
+	// depth>=2: connect to parent; if crossing trunk, split into verticals instead
+	for (int v = 0; v < N; ++v)
 		if (depth[v] >= 2 && parent[v] >= 0) {
 			int p = parent[v];
-			int cableId;
-			auto it = cableIdByUV.find(pack(p, v));
+			int cableId = 0;
+			auto it = cableIdByUV.find(packUV(p, v));
 			if (it != cableIdByUV.end())
 				cableId = it->second;
-			addSeg(pos[v], pos[p], cableId);
+
+			if (crossesTrunk(p, v)) {
+				// Force separation at trunk: draw verticals to each side's trunk anchor (dedup handles repeats)
+				addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
+				addSegByNodesPosRef(p, trunkIdxFor(p), cableId);
+			} else {
+				// Same side of trunk: draw direct node↔node segment (dedup)
+				addSegByNodes(p, v, cableId);
+			}
 		}
-	}
 
 	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+
+	// ---------- legend ----------
+	std::unordered_map<std::string, int> groupCounts;
+	for (auto &gk : groupKey)
+		groupCounts[gk]++;
+
+	std::vector<LegendEntry> newLegend;
+	newLegend.reserve(groupCounts.size());
+	for (auto &kv : groupCounts) {
+		const std::string &label = kv.first;	   // base key label
+		const glm::vec4 &col = familyColor[label]; // color associated with that base key
+		newLegend.push_back({label, col});
+	}
+	std::sort(newLegend.begin(), newLegend.end(), [](auto &a, auto &b) { return a.label < b.label; });
+
+	// Diff & publish
+	bool diff = false;
+	if (newLegend.size() != legendEntries.size()) {
+		diff = true;
+		legendEntries = std::move(newLegend);
+	} else {
+		for (size_t i = 0; i < newLegend.size(); ++i) {
+			if (legendEntries[i].label != newLegend[i].label || legendEntries[i].color != newLegend[i].color) {
+				diff = true;
+				break;
+			}
+		}
+		if (diff)
+			legendEntries = std::move(newLegend);
+	}
+
+	if (diff) {
+		if (auto overlay = std::dynamic_pointer_cast<Overlay>(scenes.getScene("Overlay"))) {
+			overlay->updateLegend();
+		}
+	}
 }
 
 void Graph::updateComputeUniformBuffers() {}
@@ -618,13 +647,13 @@ void Graph::renderPass() {
 	float nodeTextLength = nodeName->getPixelWidth(nodeLabel);
 	float wireTextLength = wireId->getPixelWidth(wireLabel);
 
-    nodeName->textParams.text = nodeLabel;
-    nodeName->textParams.billboardParams = Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}, true};
-    nodeName->textParams.color = Colors::Orange;
+	nodeName->textParams.text = nodeLabel;
+	nodeName->textParams.billboardParams = Text::BillboardParams{nodePos, {-nodeTextLength / 2, 0}, true};
+	nodeName->textParams.color = Colors::Orange;
 	nodeName->render();
 
-    wireId->textParams.text = wireLabel;
-    wireId->textParams.billboardParams = Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}, true}; 
-    wireId->textParams.color = Colors::Green;
+	wireId->textParams.text = wireLabel;
+	wireId->textParams.billboardParams = Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}, true};
+	wireId->textParams.color = Colors::Green;
 	wireId->render();
 }

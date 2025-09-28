@@ -7,8 +7,6 @@
 #include "shapes.hpp"
 #include "textures.hpp"
 
-using Kind = Graph::Kind;
-
 Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 	crosshair = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/crosshair/crosshair.png");
 
@@ -24,12 +22,12 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 				return;
 
 			if (is3D) {
-                is3D = false;
+				is3D = false;
 				graph->is3D = false;
 				enableMouseMode(); // capture cursor, go back to FPS controls
 				graph->swapChainUpdate();
 			} else {
-                is3D = true;
+				is3D = true;
 				graph->is3D = true;
 				disableMouseMode(); // capture cursor, go back to FPS controls
 				graph->swapChainUpdate();
@@ -37,23 +35,37 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 		}
 	});
 
-	legend = Shapes::pentagons(this, orthographic, screenParams, 10 /*node types*/);
+	legend = Shapes::polygons2D(this, orthographic, screenParams, 256, 6);
+}
+
+void Overlay::updateLegend() {
+	auto graph = scenes.getScene("Graph");
+	if (!graph) {
+		return;
+	}
+
+	Text::FontParams tp{};
+
+	std::vector<Graph::LegendEntry> entries = dynamic_cast<Graph *>(graph.get())->legendEntries;
+
 	float legendIconSize = 50.0f;
 	float y = 50.0f;
-	for (int i = 0; i != static_cast<int>(Kind::End); i++) {
-		Kind k = static_cast<Kind>(i);
-		vec4 color = Graph::colorFor(k);
-		legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, Colors::Black));
 
-		unique_ptr<Text> label = make_unique<Text>(this, orthographic, screenParams, tp);
-		string labelContent = Graph::stringFor(k);
-		float labelWidth = label->getPixelWidth(labelContent);
+	for (size_t i = 0; i < entries.size(); ++i) {
+		const auto &entry = entries[i];
+
+		// draw the color icon
+		legend->updateInstance(i, InstancedPolygonData(glm::vec3(50, y, 0), glm::vec3(legendIconSize), entry.color, Colors::Black));
+
+		// draw the label next to it
+		auto label = std::make_unique<Text>(this, orthographic, screenParams, tp);
+		float labelWidth = label->getPixelWidth(entry.label);
 		label->textParams.color = Colors::Gray;
-		label->textParams.text = labelContent;
-        label->textParams.origin = vec3{-label->getPixelWidth(labelContent) / 2.0f, label->getPixelHeight() / 3.3, 0.0f};
-		label->updateMVP(translate(mat4(1.0f), vec3(100 + labelWidth / 2, y, 0)));
-		legendLabels.push_back(std::move(label));
+		label->textParams.text = entry.label;
+		label->textParams.origin = glm::vec3{-labelWidth / 2.0f, label->getPixelHeight() / 3.3f, 0.0f};
+		label->updateMVP(glm::translate(glm::mat4(1.0f), glm::vec3(100 + labelWidth / 2, y, 0)));
 
+		legendLabels.push_back(std::move(label));
 		y += 60.0f;
 	}
 }
