@@ -8,6 +8,7 @@
     "shaderc",
     "glm",
     "openssl",
-    "freetype"
+    "freetype",
+    "libpqxx"
   ]
 }

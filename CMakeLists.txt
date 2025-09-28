@@ -13,6 +13,7 @@ if(WIN32)
 else()
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SHADERC REQUIRED shaderc)
+    pkg_check_modules(LIBPQXX REQUIRED libpqxx)
 endif()
 
 find_package(Vulkan REQUIRED)
@@ -61,6 +62,7 @@ target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include/compute
     ${CMAKE_SOURCE_DIR}/include/compute/implementations
     ${SHADERC_INCLUDE_DIRS}
+    ${LIBPQXX_INCLUDE_DIRS}
 
     ${CMAKE_SOURCE_DIR}/include/circuit/
 )
@@ -74,6 +76,7 @@ else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
         assimp
         ${SHADERC_LIBRARIES}
+        ${LIBPQXX_LIBRARIES}
     )
 endif()
 

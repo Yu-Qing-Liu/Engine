@@ -2,12 +2,9 @@
 #include "assets.hpp"
 #include "camera.hpp"
 #include "colors.hpp"
-#include "graph.hpp"
 #include "scenes.hpp"
 #include "shapes.hpp"
 #include "textures.hpp"
-
-using Kind = Graph::Kind;
 
 Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 	crosshair = Textures::icon(this, orthographic, screenParams, Assets::textureRootPath + "/crosshair/crosshair.png");
@@ -40,22 +37,6 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 	legend = Shapes::pentagons(this, orthographic, screenParams, 10 /*node types*/);
 	float legendIconSize = 50.0f;
 	float y = 50.0f;
-	for (int i = 0; i != static_cast<int>(Kind::End); i++) {
-		Kind k = static_cast<Kind>(i);
-		vec4 color = Graph::colorFor(k);
-		legend->updateInstance(i, InstancedPolygonData(vec3(50, y, 0), vec3(legendIconSize), color, Colors::Black));
-
-		unique_ptr<Text> label = make_unique<Text>(this, orthographic, screenParams, tp);
-		string labelContent = Graph::stringFor(k);
-		float labelWidth = label->getPixelWidth(labelContent);
-		label->textParams.color = Colors::Gray;
-		label->textParams.text = labelContent;
-        label->textParams.origin = vec3{-label->getPixelWidth(labelContent) / 2.0f, label->getPixelHeight() / 3.3, 0.0f};
-		label->updateMVP(translate(mat4(1.0f), vec3(100 + labelWidth / 2, y, 0)));
-		legendLabels.push_back(std::move(label));
-
-		y += 60.0f;
-	}
 }
 
 void Overlay::updateScreenParams() {

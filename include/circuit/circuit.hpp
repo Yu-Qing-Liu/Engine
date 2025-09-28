@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cctype>
+#include <pqxx/pqxx>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,6 +16,7 @@ class Circuit {
 		string child;
 		float length{};
 		string cond;
+		string cable;
 	};
 
 	struct UniGraph {
@@ -24,13 +26,12 @@ class Circuit {
 		std::vector<string> roots;							  // indegree==0 nodes
 	};
 
-  public:
 	Circuit();
 
 	Circuit(Circuit &&) = default;
-	Circuit(const Circuit &) = default;
+	Circuit(const Circuit &) = delete;
 	Circuit &operator=(Circuit &&) = default;
-	Circuit &operator=(const Circuit &) = default;
+	Circuit &operator=(const Circuit &) = delete;
 	~Circuit() = default;
 
 	// Read-only accessors
@@ -38,5 +39,9 @@ class Circuit {
 
   private:
 	UniGraph uni;
+
+	string conn_str = "postgresql://postgres:postgres@127.0.0.1:5432/appdb";
+	std::unique_ptr<pqxx::connection> conn;
+
 	void buildUnifilar();
 };
