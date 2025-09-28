@@ -30,10 +30,6 @@
             pkgs.llvmPackages.openmp
             pkgs.gdb
             pkgs.valgrind
-            # Graphics drivers
-            pkgs.mesa
-            pkgs.libglvnd
-            pkgs.linuxPackages.nvidia_x11
             # Vulkan
             pkgs.vulkan-headers
             pkgs.vulkan-loader
