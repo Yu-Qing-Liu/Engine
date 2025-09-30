@@ -1,82 +1,76 @@
 {
-  inputs = {
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-  };
+  inputs.nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-  outputs = { self, nixpkgs-unstable, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs-unstable {
-          inherit system;
-          config = {
-            allowUnfree = true;
+  outputs = { self, nixpkgs-unstable }:
+    let
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      forSystems = f:
+        (import nixpkgs-unstable { system = "x86_64-linux"; }).lib.genAttrs
+        systems f;
+    in {
+      devShells = forSystems (system:
+        let
+          pkgs = import nixpkgs-unstable {
+            inherit system;
+            config.allowUnfree = true;
           };
-        };
-      in {
-        devShells.default = pkgs.mkShell {
-          name = "VULKAN";
-
-          shellHook = ''
-            export SHELL=/run/current-system/sw/bin/zsh
-          '';
-
-          packages = [
-            # C++ Tools
-            pkgs.stdenv.cc
-            pkgs.cmake
-            pkgs.pkg-config
-            pkgs.gnumake
-            pkgs.clang-tools
-            pkgs.llvmPackages.openmp
-            pkgs.gdb
-            pkgs.valgrind
-            # Vulkan
-            pkgs.vulkan-headers
-            pkgs.vulkan-loader
-            pkgs.vulkan-validation-layers
-            pkgs.vulkan-tools
-            pkgs.vulkan-tools-lunarg
-            pkgs.spirv-tools
-            # Dependencies
-            pkgs.shaderc
-            pkgs.glfw
-            pkgs.glm
-            pkgs.freetype
-            pkgs.openssl
-            pkgs.assimp
-            pkgs.freetype
-            pkgs.libpqxx
-          ];
-
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
-            "${pkgs.glfw}/lib"
-            "${pkgs.glm}/lib"
-            "${pkgs.freetype.dev}/lib"
-            "${pkgs.vulkan-loader}/lib"
-            "${pkgs.vulkan-validation-layers}/lib"
-            "${pkgs.assimp.dev}/lib"
-            "${pkgs.openssl.dev}/lib"
-            "${pkgs.libpqxx.dev}/lib"
-          ];
-
-          PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
-            pkgs.shaderc.dev
-            pkgs.assimp.dev
-            pkgs.openssl.dev
-            pkgs.freetype.dev
-            pkgs.openssl.dev
-            pkgs.shaderc.dev
-            pkgs.libpqxx.dev
-          ];
-
-          VULKAN_SDK = "${pkgs.vulkan-headers}";
-          VK_LAYER_PATH = "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
-          glm_DIR = "${pkgs.glm}";
-          glfw3_DIR = "${pkgs.glfw}/lib/cmake/glfw3";
-          assimp_DIR = "${pkgs.assimp.dev}/lib/cmake/assimp-5.4";
-          OpenSSL_DIR = "${pkgs.openssl.dev}";
-          freetype_DIR = "${pkgs.freetype.dev}";
-          libpqxx_DIR = "${pkgs.libpqxx.dev}";
-        };
-      });
+        in {
+          default = pkgs.mkShell {
+            name = "VULKAN";
+            shellHook = "export SHELL=/run/current-system/sw/bin/zsh";
+            packages = with pkgs; [
+              # Dev tools
+              stdenv.cc
+              cmake
+              pkg-config
+              gnumake
+              clang-tools
+              llvmPackages.openmp
+              gdb
+              valgrind
+              # Vulkan
+              vulkan-headers
+              vulkan-loader
+              vulkan-validation-layers
+              vulkan-tools
+              vulkan-tools-lunarg
+              spirv-tools
+              # Dependencies
+              shaderc
+              glfw
+              glm
+              freetype
+              openssl
+              assimp
+              libpqxx
+            ];
+            LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+              pkgs.glfw
+              pkgs.glm
+              pkgs.freetype.dev
+              pkgs.vulkan-loader
+              pkgs.vulkan-validation-layers
+              pkgs.assimp.dev
+              pkgs.openssl.dev
+              pkgs.libpqxx.dev
+            ];
+            PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
+              pkgs.shaderc.dev
+              pkgs.assimp.dev
+              pkgs.openssl.dev
+              pkgs.freetype.dev
+              pkgs.libpqxx.dev
+            ];
+            VULKAN_SDK = "${pkgs.vulkan-headers}";
+            VK_LAYER_PATH =
+              "${pkgs.vulkan-validation-layers}/share/vulkan/explicit_layer.d";
+            glm_DIR = "${pkgs.glm}";
+            glfw3_DIR = "${pkgs.glfw}/lib/cmake/glfw3";
+            assimp_DIR = "${pkgs.assimp.dev}/lib/cmake/assimp-5.4}";
+            OpenSSL_DIR = "${pkgs.openssl.dev}";
+            freetype_DIR = "${pkgs.freetype.dev}";
+            libpqxx_DIR = "${pkgs.libpqxx.dev}";
+          };
+        });
+    };
 }
