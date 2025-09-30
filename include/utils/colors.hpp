@@ -24,6 +24,15 @@ inline bool operator!=(const Color &lhs, const glm::vec4 &rhs) noexcept { return
 inline bool operator==(const Color &a, const Color &b) noexcept { return a.rgb.r == b.rgb.r && a.rgb.g == b.rgb.g && a.rgb.b == b.rgb.b; }
 inline bool operator!=(const Color &a, const Color &b) noexcept { return !(a == b); }
 
+inline glm::vec4 hsv2rgba(float h, float s, float v, float a=1.0f) {
+  float i = std::floor(h*6.0f), f = h*6.0f - i;
+  float p = v*(1.0f - s), q = v*(1.0f - f*s), t = v*(1.0f - (1.0f - f)*s);
+  int ii = (int)i % 6; float r,g,b;
+  switch(ii){case 0:r=v;g=t;b=p;break;case 1:r=q;g=v;b=p;break;case 2:r=p;g=v;b=t;break;
+              case 3:r=p;g=q;b=v;break;case 4:r=t;g=p;b=v;break;default:r=v;g=p;b=q;break;}
+  return glm::vec4(r,g,b,a);
+}
+
 // Instances
 inline constexpr Color Transparent{{0.f, 0.f, 0.f}};
 inline constexpr Color White{{1.f, 1.f, 1.f}};
