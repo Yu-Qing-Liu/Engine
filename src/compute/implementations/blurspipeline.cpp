@@ -1,14 +1,16 @@
 #include "blurspipeline.hpp"
 #include "model.hpp"
 
-BlursPipeline::BlursPipeline(Model *model, std::array<VkVertexInputBindingDescription, 2> &bindings, std::vector<VkBuffer> &instanceBuffers, uint32_t &instanceCount) : bindings(bindings), instanceCount(instanceCount), instanceBuffers(instanceBuffers), BlurPipeline(model) {}
+BlursPipeline::BlursPipeline(Model *model, std::array<VkVertexInputBindingDescription, 2> &bindings, std::vector<VkBuffer> &instanceBuffers, uint32_t &instanceCount) : bindings(bindings), instanceCount(instanceCount), instanceBuffers(instanceBuffers), BlurPipeline(model) {
+	shaderPath = Assets::shaderRootPath + "/instanced/blur";
+}
 
 void BlursPipeline::initialize() {
 	attribs = model->attributeDescriptions;
 	modelDSL = model->descriptorSetLayout;
 	modelVS = model->shaderProgram.vertexShader;
 
-	prog = Assets::compileShaderProgram(Assets::shaderRootPath + "/instanced/blur");
+	prog = Assets::compileShaderProgram(shaderPath);
 
 	if (!modelVS || !prog.fragmentShader)
 		throw std::runtime_error("BlurPipeline: shaders missing (model VS and/or ui_blur.frag).");
@@ -130,21 +132,4 @@ void BlursPipeline::createPipeAndSets() {
 	if(vkCreateGraphicsPipelines(Engine::device, VK_NULL_HANDLE, 1, &g, nullptr, &blurPipe) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create blur pipeline");
     }
-}
-
-void BlursPipeline::destroyPipeAndSets() {
-	if (blurPipe)
-		vkDestroyPipeline(Engine::device, blurPipe, nullptr);
-	if (blurPL)
-		vkDestroyPipelineLayout(Engine::device, blurPL, nullptr);
-
-	if (prog.vertexShader)
-		vkDestroyShaderModule(Engine::device, prog.vertexShader, nullptr);
-	if (prog.fragmentShader)
-		vkDestroyShaderModule(Engine::device, prog.fragmentShader, nullptr);
-
-	blurPipe = VK_NULL_HANDLE;
-	blurPL = VK_NULL_HANDLE;
-	prog.vertexShader = VK_NULL_HANDLE;
-	prog.fragmentShader = VK_NULL_HANDLE;
 }

@@ -20,6 +20,8 @@ class BlurPipeline {
 	explicit BlurPipeline(Model *model);
 	~BlurPipeline();
 
+	std::string shaderPath = Assets::shaderRootPath + "/blur";
+
 	// Call once after Model is fully created (descriptorSetLayout, vertex format ready)
 	virtual void initialize();
 
@@ -59,7 +61,7 @@ class BlurPipeline {
 	Assets::ShaderModules prog{}; // compile: (use model VS or dedicated VS) + blur.frag
 
 	// params
-	float radius = 64.0f;
+	float radius = 24.0f;
 	float alpha = 1.0;
 	glm::vec4 tint = {0.0f, 0.0f, 0.0f, 0.0f};
 	float lodScale = 1.0f;
@@ -74,5 +76,5 @@ class BlurPipeline {
 
 	// helpers
 	virtual void createPipeAndSets();
-	virtual void destroyPipeAndSets();
+	void destroyPipeAndSets();
 };

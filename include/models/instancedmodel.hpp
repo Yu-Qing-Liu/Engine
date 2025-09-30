@@ -22,7 +22,7 @@ template <typename T> class InstancedModel : public Model {
 		rayTracing = std::make_unique<RayTraycesPipeline>(this, instMapped, idMapped, instCPU, idsCPU, instanceCount, maxInstances);
 	}
 
-	~InstancedModel() override {
+	virtual ~InstancedModel() {
 		for (size_t i = 0; i < instanceBuffers.size(); ++i) {
 			if (instanceMapped[i]) {
 				vkUnmapMemory(Engine::device, instanceMemories[i]);

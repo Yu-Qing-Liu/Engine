@@ -20,5 +20,4 @@ class BlursPipeline : public BlurPipeline {
 	uint32_t &instanceCount;
 
 	void createPipeAndSets() override;
-	void destroyPipeAndSets() override;
 };

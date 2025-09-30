@@ -2,6 +2,7 @@
 
 #include "instancedpolygon.hpp"
 #include "scene.hpp"
+#include "text.hpp"
 
 class Menu : public Scene {
   public:
@@ -25,6 +26,7 @@ class Menu : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<InstancedPolygon> days;
+	unique_ptr<InstancedPolygon> dayBtns;
+	vector<unique_ptr<Text>> dayLabels;
 };
 ;
