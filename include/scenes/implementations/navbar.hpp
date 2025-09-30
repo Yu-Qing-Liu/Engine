@@ -2,7 +2,7 @@
 
 #include "rectangle.hpp"
 #include "scene.hpp"
-#include "text.hpp"
+#include "texture.hpp"
 
 class NavBar : public Scene {
   public:
@@ -26,6 +26,15 @@ class NavBar : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<Rectangle> btn;
-	unique_ptr<Text> btnText;
+	unique_ptr<Rectangle> inventoryBtn;
+	unique_ptr<Texture> inventoryBtnIcon;
+
+	unique_ptr<Rectangle> recipesBtn;
+	unique_ptr<Texture> recipesBtnIcon;
+
+	unique_ptr<Rectangle> calendarBtn;
+	unique_ptr<Texture> calendarBtnIcon;
+
+	unique_ptr<Rectangle> cartBtn;
+	unique_ptr<Texture> cartBtnIcon;
 };

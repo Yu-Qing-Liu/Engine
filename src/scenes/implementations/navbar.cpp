@@ -1,17 +1,38 @@
 #include "navbar.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
+#include "textures.hpp"
 
 NavBar::NavBar(Scenes &scenes) : Scene(scenes) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-	btn = make_unique<Rectangle>(this, mvp, screenParams);
-    btn->enableBlur(true);
-    btn->blur->setTint(Colors::Purple(0.5));
-    btn->blur->setCornerRadiusOverride(24);
+	inventoryBtn = make_unique<Rectangle>(this, mvp, screenParams);
+    inventoryBtn->enableBlur(true);
+    inventoryBtn->blur->setTint(Colors::Orange(0.1));
+    inventoryBtn->blur->setCornerRadiusOverride(24);
 
-    Text::TextParams tp{};
-    btnText = make_unique<Text>(this, mvp, screenParams, tp, Engine::renderPass1);
+    inventoryBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/inventory.png", Engine::renderPass1);
+
+	recipesBtn = make_unique<Rectangle>(this, mvp, screenParams);
+    recipesBtn->enableBlur(true);
+    recipesBtn->blur->setTint(Colors::Blue(0.1));
+    recipesBtn->blur->setCornerRadiusOverride(24);
+
+    recipesBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/recipebook.png", Engine::renderPass1);
+
+	cartBtn = make_unique<Rectangle>(this, mvp, screenParams);
+    cartBtn->enableBlur(true);
+    cartBtn->blur->setTint(Colors::Green(0.1));
+    cartBtn->blur->setCornerRadiusOverride(24);
+
+    cartBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/grocerybasket.png", Engine::renderPass1);
+
+	calendarBtn = make_unique<Rectangle>(this, mvp, screenParams);
+    calendarBtn->enableBlur(true);
+    calendarBtn->blur->setTint(Colors::White(0.1));
+    calendarBtn->blur->setCornerRadiusOverride(24);
+
+    calendarBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/calendar.png", Engine::renderPass1);
 }
 
 void NavBar::updateScreenParams() {
@@ -30,13 +51,57 @@ void NavBar::swapChainUpdate() {
 	float h = screenParams.viewport.height;
     mvp.proj = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 
-    btn->updateMVP(
-        translate(mat4(1.0f), vec3(w * 0.5f, 100, 0.0f)) * scale(mat4(1.0f), vec3(w * 0.5, h * 0.05, 1.0)),
+    float wOffset = 50;
+    float offset = 85;
+
+    float hOffset = 50;
+
+    float btnSize = 75;
+    float iconSize = 50;
+
+    inventoryBtn->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(btnSize, btnSize, 1.0)),
         std::nullopt,
         mvp.proj
     );
-    btnText->updateMVP(
-        translate(mat4(1.0f), vec3(w * 0.5f, 100, 0.0f)),
+    inventoryBtnIcon->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(iconSize, iconSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    wOffset += offset;
+
+    recipesBtn->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(btnSize, btnSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    recipesBtnIcon->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(iconSize, iconSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    wOffset += offset;
+
+    cartBtn->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(btnSize, btnSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    cartBtnIcon->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(iconSize, iconSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    wOffset += offset;
+
+    calendarBtn->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(btnSize, btnSize, 1.0)),
+        std::nullopt,
+        mvp.proj
+    );
+    calendarBtnIcon->updateMVP(
+        translate(mat4(1.0f), vec3(w - wOffset, hOffset, 0.0f)) * scale(mat4(1.0f), vec3(iconSize, iconSize, 1.0)),
         std::nullopt,
         mvp.proj
     );
@@ -51,6 +116,15 @@ void NavBar::updateUniformBuffers() {}
 void NavBar::renderPass() {}
 
 void NavBar::renderPass1() {
-    btn->render();
-    btnText->renderText("TEST");
+    inventoryBtn->render();
+    inventoryBtnIcon->render();
+
+    recipesBtn->render();
+    recipesBtnIcon->render();
+
+    cartBtn->render();
+    cartBtnIcon->render();
+
+    calendarBtn->render();
+    calendarBtnIcon->render();
 }
