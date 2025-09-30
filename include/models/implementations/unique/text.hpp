@@ -94,7 +94,7 @@ class Text : public Model {
 	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
-	float getPixelHeight();
+	float getPixelHeight() const;
 
     TextParams textParams{};
 
