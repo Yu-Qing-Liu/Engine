@@ -1,5 +1,6 @@
 #pragma once
 
+#include "blurspipeline.hpp"
 #include "model.hpp"
 #include "raytraycespipeline.hpp"
 #include <memory>
@@ -32,6 +33,16 @@ template <typename T> class InstancedModel : public Model {
 			if (instanceMemories[i]) {
 				vkFreeMemory(Engine::device, instanceMemories[i], nullptr);
 			}
+		}
+	}
+
+	void enableBlur(bool on) override {
+		if (on && !blur) {
+			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
+			blur->initialize();
+		}
+		if (!on && blur) {
+			blur.reset();
 		}
 	}
 
@@ -102,6 +113,11 @@ template <typename T> class InstancedModel : public Model {
 		copyUBO();
 		uploadIfDirty();
 
+		if (blur) {
+			blur->render();
+			return;
+		}
+
 		// Bind pipeline
 		auto cmd = Engine::currentCommandBuffer();
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
@@ -129,6 +145,11 @@ template <typename T> class InstancedModel : public Model {
 	}
 
   protected:
+	std::array<VkVertexInputBindingDescription, 2> bindings{};
+
+	VkVertexInputBindingDescription vertexBD{};	  // binding 0 (per-vertex)
+	VkVertexInputBindingDescription instanceBD{}; // binding 1 (per-instance)
+
 	void *instMapped = nullptr;
 	void *idMapped = nullptr;
 

@@ -21,7 +21,7 @@ class BlurPipeline {
 	~BlurPipeline();
 
 	// Call once after Model is fully created (descriptorSetLayout, vertex format ready)
-	void initialize();
+	virtual void initialize();
 
 	void createCopyPipeAndSets();
 
@@ -37,12 +37,12 @@ class BlurPipeline {
 
 	// Draw the model in subpass 1 with blur-behind shader
 	void copy(VkCommandBuffer cmd);
-	void render();
+	virtual void render();
 
 	VkPipeline blurPipe = VK_NULL_HANDLE;
 	VkPipelineLayout blurPL = VK_NULL_HANDLE; // set0=modelDSL, set1=blurDSL, + push constants
 
-  private:
+  protected:
 	// owner/model state we borrow
 	Model *model = nullptr;
 
@@ -73,6 +73,6 @@ class BlurPipeline {
 	uint32_t copiedForImage = UINT32_MAX;
 
 	// helpers
-	void createPipeAndSets();
-	void destroyPipeAndSets();
+	virtual void createPipeAndSets();
+	virtual void destroyPipeAndSets();
 };

@@ -95,13 +95,6 @@ class InstancedObject : public InstancedModel<InstancedObjectData> {
 	void buildBVH() override;
 
   private:
-	std::vector<VkVertexInputAttributeDescription> attributes;
-	// We’ll store both bindings here to pass them in createGraphicsPipeline()
-	VkVertexInputBindingDescription vertexBD{};	  // binding 0 (per-vertex)
-	VkVertexInputBindingDescription instanceBD{}; // binding 1 (per-instance)
-
-	std::array<VkVertexInputBindingDescription, 2> bindings{};
-
 	void loadModel();
 	void processNode(aiNode *node, const aiScene *scene);
 	void bakeTexturesAndMaterials(const aiScene *scene);

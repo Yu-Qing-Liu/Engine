@@ -12,6 +12,8 @@ layout(location = 6) in vec4 iOutlineColor;
 layout(location = 7) in float iOutlineWidth;
 layout(location = 8) in float iBorderRadius;
 
+layout(location = 11) out vec4 vTint;
+
 layout(binding = 0) uniform UBO {
     mat4 model; // ignored
     mat4 view;
@@ -28,6 +30,7 @@ void main() {
     mat4 model = mat4(iM0, iM1, iM2, iM3);
     vLocal = inPos.xy;
     vColor = iColor;
+    vTint = iColor;
     vOutlineColor = iOutlineColor;
     vOutlineWidth = iOutlineWidth;
     vBorderRadius = iBorderRadius;

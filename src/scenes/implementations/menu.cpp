@@ -2,7 +2,6 @@
 
 #include <chrono>
 
-#include "colors.hpp"
 #include "shapes.hpp"
 
 using namespace std::chrono;
@@ -11,7 +10,6 @@ Menu::Menu(Scenes &scenes) : Scene(scenes) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	days = Shapes::slantedRectangles(this, mvp, screenParams, 7);
     days->enableBlur(true);
-    days->blur->setTint(Colors::Red(0.1));
 }
 
 void Menu::updateScreenParams() {
@@ -36,6 +34,7 @@ void Menu::swapChainUpdate() {
     vec3 btnSize = vec3(120, 50, 1);
 	for (int i = 0; i < 7; ++i) {
         InstancedPolygonData day{};
+        day.color = Colors::Gray(0.1);
         day.model = translate(mat4(1.0), vec3(85 + wOffset, hOffset, 0)) * scale(mat4(1.0), btnSize);
         days->updateInstance(i, day);       
         wOffset += offset;
