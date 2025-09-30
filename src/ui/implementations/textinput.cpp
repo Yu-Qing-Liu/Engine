@@ -1,5 +1,6 @@
 #include "textinput.hpp"
 #include "events.hpp"
+#include "geometry.hpp"
 
 namespace {
 
@@ -69,6 +70,7 @@ static inline size_t cp_right(const std::string &s, size_t pos) {
 
 TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams) : Widget(scene, ubo, screenParams) {
 	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
+    caret = &textModel->textParams.caret;
 
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
@@ -79,7 +81,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &s
 		if (codepoint < 0x20u)
 			return;
 
-		utf8_append(text, codepoint, caret.byte);
+		utf8_append(text, codepoint, caret->byte);
 	};
 
 	auto kbPress = [this](int key, int scancode, int action, int mods) {
@@ -90,7 +92,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &s
 
 		switch (key) {
 		case KEY_BACKSPACE:
-			utf8_pop_back(text, caret.byte);
+			utf8_pop_back(text, caret->byte);
 			break;
 		case KEY_ENTER:
 		case KEY_KP_ENTER:
@@ -101,10 +103,10 @@ TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &s
 			selected = false;
 			break;
 		case KEY_LEFT:
-			caret.byte = cp_left(text, caret.byte);
+			caret->byte = cp_left(text, caret->byte);
 			break;
 		case KEY_RIGHT:
-			caret.byte = cp_right(text, caret.byte);
+			caret->byte = cp_right(text, caret->byte);
 			break;
 		default:
 			// ignore other keys here; text comes from char callback
@@ -172,7 +174,7 @@ void TextInput::utf8_append(std::string &out, unsigned int cp, size_t position) 
 	out.insert(out.begin() + static_cast<std::ptrdiff_t>(pos), buf, buf + n);
 
 	// Move caret to just after inserted codepoint
-	caret.byte = pos + n;
+	caret->byte = pos + n;
 }
 
 // UTF-8 safe “pop back” (removes prev codepoint before caret)
@@ -198,7 +200,7 @@ void TextInput::utf8_pop_back(std::string &s, size_t position) {
 	s.erase(i, end - i);
 
 	// Move caret to new position (start of where that cp was)
-	caret.byte = i;
+	caret->byte = i;
 }
 
 void TextInput::updateUniformBuffers(const Model::MVP &ubo) {
@@ -220,24 +222,30 @@ void TextInput::render() {
 	Widget::render();
 	if (text.empty() && !selected) {
 		textModel->textParams.text = styleParams.placeholderText;
+        textModel->textParams.origin = Geometry::alignTextCentered(*textModel, styleParams.placeholderText);
 		textModel->textParams.color = styleParams.placeholderTextColor;
+        textModel->textParams.caret.on = false;
 		textModel->render();
 	} else {
 		if (selected) {
 			if (text.empty()) {
 				textModel->textParams.text = "";
+                textModel->textParams.origin = Geometry::alignTextCentered(*textModel, "");
 				textModel->textParams.color = styleParams.activeTextColor;
+				textModel->textParams.caret.on = true;
 				textModel->render();
 			} else {
 				textModel->textParams.text = text;
+                textModel->textParams.origin = Geometry::alignTextCentered(*textModel, text);
 				textModel->textParams.color = styleParams.activeTextColor;
-				textModel->textParams.caret = caret;
 				textModel->textParams.caret.on = true;
 				textModel->render();
 			}
 		} else {
             textModel->textParams.text = text;
+            textModel->textParams.origin = Geometry::alignTextCentered(*textModel, text);
             textModel->textParams.color = styleParams.textColor;
+            textModel->textParams.caret.on = false;
 			textModel->render();
 		}
 	}

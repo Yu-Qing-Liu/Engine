@@ -39,10 +39,10 @@ class TextInput : public Widget {
 
 	void render() override;
 
-	Text::Caret caret{};
-
 	bool selected = false;
 	StyleParams styleParams{};
 	string text{""};
+
 	std::unique_ptr<Text> textModel;
+	Text::Caret *caret;
 };

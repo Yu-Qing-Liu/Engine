@@ -475,7 +475,7 @@ float Text::getPixelWidth(const std::string &s, float scale) const {
 	return x * scale;
 }
 
-float Text::getPixelHeight() { return float(fontParams.pixelHeight); }
+float Text::getPixelHeight() const { return float(fontParams.pixelHeight); }
 
 void Text::createDescriptorSetLayout() {
 	// binding 0: UBO (MVP); binding 1: atlas
