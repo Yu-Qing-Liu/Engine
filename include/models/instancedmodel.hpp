@@ -19,7 +19,7 @@ template <typename T> class InstancedModel : public Model {
 
 	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) {
 		createInstanceBuffers();
-		rayTracing = std::make_unique<RayTraycesPipeline>(this, instMapped, idMapped, instCPU, idsCPU, instanceCount, maxInstances);
+		rayTracing = std::make_unique<RayTraycesPipeline>(this, instCPU, idsCPU, instanceCount, maxInstances);
 	}
 
 	virtual ~InstancedModel() {
@@ -36,13 +36,13 @@ template <typename T> class InstancedModel : public Model {
 		}
 	}
 
-	void enableBlur(bool on) override {
-		if (on && !blur) {
+	void enableBlur(bool init) override {
+		if (init && !blur) {
 			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
 			blur->initialize();
 		}
-		if (!on && blur) {
-			blur.reset();
+		if (!init && !blur) {
+			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
 		}
 	}
 
@@ -97,6 +97,8 @@ template <typename T> class InstancedModel : public Model {
 		frameDirty.fill(true);
 	}
 
+	const bool hasInstance(int id) const { return !(instances->find(id) == instances->end()); }
+
 	const T &getInstance(int id) const {
 		auto it = instances->find(id);
 		if (it == instances->end()) {
@@ -149,9 +151,6 @@ template <typename T> class InstancedModel : public Model {
 
 	VkVertexInputBindingDescription vertexBD{};	  // binding 0 (per-vertex)
 	VkVertexInputBindingDescription instanceBD{}; // binding 1 (per-instance)
-
-	void *instMapped = nullptr;
-	void *idMapped = nullptr;
 
 	virtual void bindExtraDescriptorSets(VkCommandBuffer cmd) {}
 	virtual mat4 toModel(const T &M) { return M.model; };
@@ -226,14 +225,7 @@ template <typename T> class InstancedModel : public Model {
 			idsCPU[i] = slotToKey[i]; // external id you want to read back
 		}
 
-		if (rayTracing->initialized) {
-			// memcpy into persistently-mapped ranges
-			const size_t xSz = sizeof(RayTraycesPipeline::InstanceXformGPU) * instanceCount;
-			const size_t iSz = sizeof(int) * instanceCount;
-
-			std::memcpy(instMapped, instCPU.data(), xSz);
-			std::memcpy(idMapped, idsCPU.data(), iSz);
-		}
+		dynamic_cast<RayTraycesPipeline *>(rayTracing.get())->upload(std::span(instCPU.data(), instanceCount), std::span(idsCPU.data(), instanceCount));
 
 		frameDirty[cf] = false;
 	}

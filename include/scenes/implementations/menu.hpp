@@ -1,8 +1,13 @@
 #pragma once
 
 #include "instancedpolygon.hpp"
+#include "instancedrectangle.hpp"
 #include "scene.hpp"
 #include "text.hpp"
+
+#include <chrono>
+
+using namespace std::chrono;
 
 class Menu : public Scene {
   public:
@@ -26,7 +31,13 @@ class Menu : public Scene {
 	void swapChainUpdate() override;
 
   private:
+	weekday selectedDay;
+	int hoveredId = -1;
+
 	unique_ptr<InstancedPolygon> dayBtns;
 	vector<unique_ptr<Text>> dayLabels;
+
+	int numMeals = 3;
+	unique_ptr<InstancedRectangle> mealBtns;
 };
 ;
