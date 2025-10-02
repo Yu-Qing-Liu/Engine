@@ -2,6 +2,7 @@
 .gcroots/
 .idea/
 AppDir/
+appdata/
 *.AppImage
 
 ##### Windows

@@ -1,5 +1,6 @@
 #include "scenes.hpp"
 #include "background.hpp"
+#include "menu.hpp"
 #include "navbar.hpp"
 
 Scenes::Scenes() {
@@ -17,6 +18,7 @@ Scenes::Scenes() {
 
     scenesContainer.emplace_back(make_shared<Background>(*this));
     scenesContainer.emplace_back(make_shared<NavBar>(*this));
+    scenesContainer.emplace_back(make_shared<Menu>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
     }

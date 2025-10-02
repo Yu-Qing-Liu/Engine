@@ -20,8 +20,10 @@ class BlurPipeline {
 	explicit BlurPipeline(Model *model);
 	~BlurPipeline();
 
+	std::string shaderPath = Assets::shaderRootPath + "/blur";
+
 	// Call once after Model is fully created (descriptorSetLayout, vertex format ready)
-	void initialize();
+	virtual void initialize();
 
 	void createCopyPipeAndSets();
 
@@ -37,12 +39,12 @@ class BlurPipeline {
 
 	// Draw the model in subpass 1 with blur-behind shader
 	void copy(VkCommandBuffer cmd);
-	void render();
+	virtual void render();
 
 	VkPipeline blurPipe = VK_NULL_HANDLE;
 	VkPipelineLayout blurPL = VK_NULL_HANDLE; // set0=modelDSL, set1=blurDSL, + push constants
 
-  private:
+  protected:
 	// owner/model state we borrow
 	Model *model = nullptr;
 
@@ -59,7 +61,7 @@ class BlurPipeline {
 	Assets::ShaderModules prog{}; // compile: (use model VS or dedicated VS) + blur.frag
 
 	// params
-	float radius = 64.0f;
+	float radius = 24.0f;
 	float alpha = 1.0;
 	glm::vec4 tint = {0.0f, 0.0f, 0.0f, 0.0f};
 	float lodScale = 1.0f;
@@ -73,6 +75,6 @@ class BlurPipeline {
 	uint32_t copiedForImage = UINT32_MAX;
 
 	// helpers
-	void createPipeAndSets();
+	virtual void createPipeAndSets();
 	void destroyPipeAndSets();
 };
