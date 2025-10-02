@@ -18,7 +18,7 @@ void BlurPipeline::initialize() {
 	// Compile shaders:
 	// - Vertex: we can reuse modelVS (preferred). If you want a dedicated VS, compile it here instead.
 	// - Fragment: new blur FS that samples sceneColor and does a small kernel around gl_FragCoord.
-	prog = Assets::compileShaderProgram(Assets::shaderRootPath + "/blur"); // expects: ui_blur.frag (VS is reused from model)
+	prog = Assets::compileShaderProgram(shaderPath); // expects: ui_blur.frag (VS is reused from model)
 
 	if (!modelVS || !prog.fragmentShader)
 		throw std::runtime_error("BlurPipeline: shaders missing (model VS and/or ui_blur.frag).");
@@ -242,9 +242,11 @@ void BlurPipeline::destroyPipeAndSets() {
 		vkDestroyPipeline(device, copyPipe, nullptr);
 	if (copyPL)
 		vkDestroyPipelineLayout(device, copyPL, nullptr);
-
 	if (prog.fragmentShader) {
 		vkDestroyShaderModule(device, prog.fragmentShader, nullptr);
+	}
+	if (prog.vertexShader) {
+		vkDestroyShaderModule(device, prog.vertexShader, nullptr);
 	}
 	if (copyProg.vertexShader) {
 		vkDestroyShaderModule(device, copyProg.vertexShader, nullptr);

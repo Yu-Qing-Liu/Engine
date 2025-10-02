@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Engine LANGUAGES CXX)
+project(Engine LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,11 +9,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 add_compile_definitions(PROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 if(WIN32)
-    find_package(unofficial-shaderc REQUIRED)
+  find_package(unofficial-shaderc REQUIRED)
 else()
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SHADERC REQUIRED shaderc)
-    pkg_check_modules(LIBPQXX REQUIRED libpqxx)
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(SHADERC REQUIRED shaderc)
+  pkg_check_modules(LIBPQXX REQUIRED libpqxx)
 endif()
 
 find_package(Vulkan REQUIRED)
@@ -39,10 +39,11 @@ file(GLOB COMPUTE_IMPL    ${CMAKE_CURRENT_SOURCE_DIR}/src/compute/implementation
 file(GLOB CIRCUIT         ${CMAKE_CURRENT_SOURCE_DIR}/src/circuit/*.cpp)
 
 add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL} ${SCENES_DEFAULT} ${UI} ${UI_IMPL} ${COMPUTE} ${COMPUTE_IMPL} ${CIRCUIT})
+add_library(sqlite3 STATIC ${CMAKE_SOURCE_DIR}/include/thirdparty/sqlite3.c)
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 
 if(WIN32)
-    target_include_directories(SOURCES PUBLIC
+  target_include_directories(SOURCES PUBLIC
         ${VCPKG_INSTALLED_DIR}/x64-windows/include
     )
 endif()
@@ -50,6 +51,7 @@ endif()
 target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/include/thirdparty
     ${CMAKE_SOURCE_DIR}/include/vulkan
     ${CMAKE_SOURCE_DIR}/include/models
     ${CMAKE_SOURCE_DIR}/include/models/implementations/unique
@@ -68,12 +70,12 @@ target_include_directories(SOURCES PUBLIC
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+  target_link_libraries(${PROJECT_NAME} PRIVATE
         unofficial::shaderc::shaderc
         assimp::assimp
     )
 else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+  target_link_libraries(${PROJECT_NAME} PRIVATE
         assimp
         ${SHADERC_LIBRARIES}
         ${LIBPQXX_LIBRARIES}
@@ -82,6 +84,7 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     SOURCES
+    sqlite3
     Vulkan::Vulkan
     glm::glm
     glfw

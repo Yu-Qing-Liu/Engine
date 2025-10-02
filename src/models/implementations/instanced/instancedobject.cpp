@@ -642,23 +642,23 @@ void InstancedObject::createBindingDescriptions() {
 	bindings = {vertexBD, instanceBD};
 
 	// Start with the mesh vertex attributes (locations 0..5)
-	attributes = Vertex::getAttributeDescriptions();
+	attributeDescriptions = Vertex::getAttributeDescriptions();
 
 	// Then append 4 attributes for the instance model matrix columns (locations 6..9)
 	// NOTE: std140-style column-major mat4 as 4 vec4 attributes.
 	const uint32_t locBase = 6;
-	attributes.push_back({locBase + 0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 0)});
-	attributes.push_back({locBase + 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 1)});
-	attributes.push_back({locBase + 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 2)});
-	attributes.push_back({locBase + 3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 3)});
+	attributeDescriptions.push_back({locBase + 0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 0)});
+	attributeDescriptions.push_back({locBase + 1, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 1)});
+	attributeDescriptions.push_back({locBase + 2, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 2)});
+	attributeDescriptions.push_back({locBase + 3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(offsetof(InstancedObjectData, model) + sizeof(glm::vec4) * 3)});
 }
 
 void InstancedObject::setupGraphicsPipeline() {
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = (uint32_t)bindings.size();
 	vertexInputInfo.pVertexBindingDescriptions = bindings.data();
-	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)attributes.size();
-	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
+	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)attributeDescriptions.size();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	colorBlendAttachment.blendEnable = VK_FALSE;
 

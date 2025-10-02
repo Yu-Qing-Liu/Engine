@@ -1,9 +1,8 @@
 #include "raytraycespipeline.hpp"
 #include "model.hpp"
+#include <algorithm>
 
-RayTraycesPipeline::RayTraycesPipeline(Model *model, void *&instMapped, void *&idMapped, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances) : instMapped(instMapped), idMapped(idMapped), instCPU(instCPU), idsCPU(idsCPU), instanceCount(instanceCount), maxInstances(maxInstances), RayTracingPipeline(model) {
-	rayTracingShaderPath = Assets::shaderRootPath + "/instancedraytracing";
-}
+RayTraycesPipeline::RayTraycesPipeline(Model *model, vector<InstanceXformGPU> &instCPU, vector<int> &idsCPU, uint32_t &instanceCount, uint32_t maxInstances) : instCPU(instCPU), idsCPU(idsCPU), instanceCount(instanceCount), maxInstances(maxInstances), RayTracingPipeline(model) { rayTracingShaderPath = Assets::shaderRootPath + "/instancedraytracing"; }
 
 RayTraycesPipeline::~RayTraycesPipeline() {
 	if (instBuf)
@@ -18,6 +17,25 @@ RayTraycesPipeline::~RayTraycesPipeline() {
 		vkUnmapMemory(Engine::device, idMem);
 		vkFreeMemory(Engine::device, idMem, nullptr);
 	}
+}
+
+void RayTraycesPipeline::upload(std::span<const InstanceXformGPU> x, std::span<const int> ids) {
+	// Preconditions: pipeline initialized and buffers mapped
+	if (!initialized || !instMapped || !idMapped)
+		return;
+
+	// Clamp to capacity just in case
+	const size_t n = std::min({x.size(), ids.size(), static_cast<size_t>(maxInstances)});
+	if (n == 0)
+		return;
+
+	// Copy to mapped GPU memory
+	std::memcpy(instMapped, x.data(), n * sizeof(InstanceXformGPU));
+	std::memcpy(idMapped, ids.data(), n * sizeof(int));
+
+	// Flush if memory is non-coherent. Using WHOLE_SIZE is valid and avoids atom-size math.
+	const VkMappedMemoryRange ranges[2] = {{VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, nullptr, instMem, 0, VK_WHOLE_SIZE}, {VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE, nullptr, idMem, 0, VK_WHOLE_SIZE}};
+	vkFlushMappedMemoryRanges(Engine::device, 2, ranges);
 }
 
 void RayTraycesPipeline::updateComputeUniformBuffer() {
