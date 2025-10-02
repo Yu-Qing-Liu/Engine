@@ -128,35 +128,37 @@ static glm::quat quatFromTo(const glm::vec3 &fromRaw, const glm::vec3 &toRaw) {
 
 static glm::quat rotatePlusXTo(const glm::vec3 &dirN) { return quatFromTo(glm::vec3(1, 0, 0), dirN); }
 
+static inline void rtrim(std::string &x) {
+	while (!x.empty() && (x.back() == ' ' || x.back() == '_'))
+		x.pop_back();
+}
+
+static inline void ltrim(std::string &x) {
+	size_t k = 0;
+	while (k < x.size() && (x[k] == ' ' || x[k] == '_'))
+		++k;
+	if (k)
+		x.erase(0, k);
+}
+
 static std::string baseKeyFromId(const std::string &s) {
 	if (s.empty())
+		return {};
+
+	int first = (int)s.find('-');
+	if (first == std::string::npos) {
+		// 0 hyphens → whole string
 		return s;
-	int i = (int)s.size() - 1;
-
-	// Step 1: strip trailing letters if they come after digits (e.g., "286A" -> "286")
-	int j = i;
-	while (j >= 0 && std::isalpha((unsigned char)s[j]))
-		--j;
-	bool hadLetters = (j < i); // we saw trailing letters
-	int k = j;
-	while (k >= 0 && std::isdigit((unsigned char)s[k]))
-		--k;
-	bool hadDigits = (k < j);
-
-	int end = i;
-	if (hadDigits) {
-		// If we had "...<digits>[letters]" at end, remove both the digits and any trailing letters
-		end = k;
-	} else {
-		// If no trailing digits, but we had letters, restore to original end
-		end = i;
 	}
 
-	// Step 2: trim trailing '-', '_' or '/' after removing number part
-	while (end >= 0 && (s[end] == '-' || s[end] == '_' || s[end] == '/'))
-		--end;
+	int last = (int)s.find_last_of('-');
+	if (first == last) {
+		// 1 hyphen → everything before it
+		return s.substr(0, first);
+	}
 
-	return s.substr(0, end + 1);
+	// 2+ hyphens → from start up to (not including) last hyphen
+	return s.substr(0, last);
 }
 
 glm::vec4 Graph::colorFromKey(const std::string &key) {
@@ -465,7 +467,7 @@ void Graph::swapChainUpdate() {
 	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
 	// ---------- edge drawing (dedup + trunk-crossing split) ----------
-	const float edgeThickness = glm::clamp(avgLen * 0.016f, 0.016f, 0.20f);
+	const float edgeThickness = 0.1;
 	int eIdx = 0;
 
 	auto packUndirected = [](int a, int b) -> long long {
