@@ -19,8 +19,8 @@ Scenes::Scenes() {
 
     scenesContainer.emplace_back(make_shared<Buttons>(*this));
     scenesContainer.emplace_back(make_shared<Default>(*this));
-    scenesContainer.emplace_back(make_shared<RayTracing>(*this));
     scenesContainer.emplace_back(make_shared<Instancing>(*this));
+    scenesContainer.emplace_back(make_shared<RayTracing>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
     }

@@ -342,4 +342,52 @@ inline std::unique_ptr<InstancedPolygon> polygons2D(Scene *scene, const MVP &ubo
 	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
 }
 
+inline std::unique_ptr<Polygon> slantedRectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams, float width = 1.0f, float height = 1.0f, float shearX = -0.05f, float z = 0.0f) {
+	using V = Polygon::Vertex;
+
+	// Guard against degenerate dims
+	width = std::max(0.0001f, width);
+	height = std::max(0.0001f, height);
+
+	const float hw = 0.5f * width;
+	const float hh = 0.5f * height;
+
+	// Parallelogram centered at origin, top edge shifted by shearX
+	// CCW: bottom-left, bottom-right, top-right, top-left
+	std::vector<V> vertices = {
+		{{-hw - shearX, -hh, z}, {1, 1, 1, 1}}, // bottom-left
+		{{+hw - shearX, -hh, z}, {1, 1, 1, 1}}, // bottom-right
+		{{+hw + shearX, +hh, z}, {1, 1, 1, 1}}, // top-right
+		{{-hw + shearX, +hh, z}, {1, 1, 1, 1}}, // top-left
+	};
+
+	// Two triangles
+	std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
+
+	return std::make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
+}
+
+inline std::unique_ptr<InstancedPolygon> slantedRectangles(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536, float width = 1.0f, float height = 1.0f, float shearX = -0.05f, float z = 0.0f) {
+	using V = InstancedPolygon::Vertex;
+
+	width = std::max(0.0001f, width);
+	height = std::max(0.0001f, height);
+
+	const float hw = 0.5f * width;
+	const float hh = 0.5f * height;
+
+	std::vector<V> vertices = {
+		{{-hw - shearX, -hh, z}, {1, 1, 1, 1}}, // bottom-left
+		{{+hw - shearX, -hh, z}, {1, 1, 1, 1}}, // bottom-right
+		{{+hw + shearX, +hh, z}, {1, 1, 1, 1}}, // top-right
+		{{-hw + shearX, +hh, z}, {1, 1, 1, 1}}, // top-left
+	};
+
+	std::vector<uint32_t> indices = {0, 1, 2, 0, 2, 3};
+
+	auto polygonInstances = std::make_shared<std::unordered_map<int, InstancedPolygonData>>(instances);
+
+	return std::make_unique<InstancedPolygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), polygonInstances, instances);
+}
+
 } // namespace Shapes

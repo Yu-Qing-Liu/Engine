@@ -8,7 +8,7 @@
 #include <vulkan/vulkan_core.h>
 
 Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
-	rayTracing = std::make_unique<RayTracingPipeline>(this);
+    rayTracing = std::make_unique<RayTracingPipeline>(this);
 	this->ubo.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
