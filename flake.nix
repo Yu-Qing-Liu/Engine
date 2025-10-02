@@ -28,6 +28,8 @@
               llvmPackages.openmp
               gdb
               valgrind
+              # Drivers
+              mesa
               # Vulkan
               vulkan-headers
               vulkan-loader
