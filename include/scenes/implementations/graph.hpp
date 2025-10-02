@@ -40,6 +40,9 @@ class Graph : public Scene {
 	unique_ptr<InstancedPolygon> nodes;
 	unique_ptr<InstancedPolygon> edges;
 
+	vector<unique_ptr<Text>> nodeLabels;
+	vector<unique_ptr<Text>> edgeLabels;
+
 	static glm::vec4 colorFromKey(const std::string &key);
 
 	struct NodeData {
