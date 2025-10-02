@@ -1,7 +1,8 @@
 #include "scenes.hpp"
-#include "background.hpp"
-#include "menu.hpp"
-#include "navbar.hpp"
+#include "buttons.hpp"
+#include "default.hpp"
+#include "instancing.hpp"
+#include "raytracing.hpp"
 
 Scenes::Scenes() {
     blur = std::make_unique<BlurPipeline>(nullptr);
@@ -16,9 +17,10 @@ Scenes::Scenes() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
     blur->updateCopyViewport(vp, sc);
 
-    scenesContainer.emplace_back(make_shared<Background>(*this));
-    scenesContainer.emplace_back(make_shared<NavBar>(*this));
-    scenesContainer.emplace_back(make_shared<Menu>(*this));
+    scenesContainer.emplace_back(make_shared<Buttons>(*this));
+    scenesContainer.emplace_back(make_shared<Default>(*this));
+    scenesContainer.emplace_back(make_shared<Instancing>(*this));
+    scenesContainer.emplace_back(make_shared<RayTracing>(*this));
     for (const auto &sc : scenesContainer) {
         scenes[sc->getName()] = {sc, true};
     }
