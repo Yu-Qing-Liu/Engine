@@ -583,6 +583,48 @@ void Graph::swapChainUpdate() {
 
 	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
+	// ---------- build static labels for 2D mode ----------
+	nodeLabels.clear();
+	edgeLabels.clear();
+
+	// You can reuse the same font params; tweak size if you want smaller labels in 2D
+	Text::FontParams nodeFP{Fonts::ArialBold, 16};
+	Text::FontParams edgeFP{Fonts::ArialBold, 16};
+
+	// Node labels: use node name (same as hover)
+	for (int i = 0; i < N; ++i) {
+		auto t = std::make_unique<Text>(this, mvp, screenParams, nodeFP);
+		t->textParams.text = nodeMap[i].name;
+		// center horizontally above the node (offset in pixels)
+		float wpx = t->getPixelWidth(t->textParams.text);
+		// put it slightly above the node in Z to avoid z-fighting if you keep 3D, 0 is fine in ortho
+		glm::vec3 p = pos[i] + glm::vec3(0.0f, 0.0f, 0.0f);
+		t->textParams.billboardParams = Text::BillboardParams{p, {30.0, -30.0f}, true};
+		t->textParams.color = Colors::Orange;
+		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+		nodeLabels.emplace_back(std::move(t));
+	}
+
+	// Edge labels: one per edge instance; text = "#<cableId>" (same as hover)
+	for (int idx = 0; idx < eIdx; ++idx) {
+		const InstancedPolygonData inst = edges->getInstance(idx);
+		auto it = edgeMap.find(idx);
+		if (it == edgeMap.end())
+			continue;
+		int cableId = it->second.cableId;
+
+		auto t = std::make_unique<Text>(this, mvp, screenParams, edgeFP);
+		t->textParams.text = "#" + std::to_string(cableId);
+		float wpx = t->getPixelWidth(t->textParams.text);
+
+		// Center on the edge mid (inst.model[3] has world-space position)
+		glm::vec3 mid(inst.model[3].x, inst.model[3].y, inst.model[3].z);
+		t->textParams.billboardParams = Text::BillboardParams{mid, {10.0f, 0.0f}, true};
+		t->textParams.color = Colors::Green;
+		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+		edgeLabels.emplace_back(std::move(t));
+	}
+
 	// ---------- legend ----------
 	std::unordered_map<std::string, int> groupCounts;
 	for (auto &gk : groupKey)
@@ -641,6 +683,15 @@ void Graph::updateUniformBuffers() {
 	edges->updateMVP(std::nullopt, mvp.view);
 	nodeName->updateMVP(std::nullopt, mvp.view);
 	wireId->updateMVP(std::nullopt, mvp.view);
+
+	if (!is3D) {
+		for (const auto &l : nodeLabels) {
+			l->updateMVP(std::nullopt, mvp.view);
+		}
+		for (const auto &l : edgeLabels) {
+			l->updateMVP(std::nullopt, mvp.view);
+		}
+	}
 }
 
 void Graph::renderPass() {
@@ -658,4 +709,13 @@ void Graph::renderPass() {
 	wireId->textParams.billboardParams = Text::BillboardParams{wirePos, {-wireTextLength / 2, 0}, true};
 	wireId->textParams.color = Colors::Green;
 	wireId->render();
+
+	if (!is3D) {
+		for (const auto &l : nodeLabels) {
+			l->render();
+		}
+		for (const auto &l : edgeLabels) {
+			l->render();
+		}
+	}
 }
