@@ -23,11 +23,13 @@ layout(location = 1) out vec4 vColor;
 layout(location = 2) out vec4 vOutlineColor;
 layout(location = 3) out float vOutlineWidth;
 layout(location = 4) out float vBorderRadius;
+layout(location = 11) out vec4 vTint;
 
 void main() {
     mat4 model = mat4(iM0, iM1, iM2, iM3);
     vLocal = inPos.xy;
     vColor = iColor;
+    vTint = iColor;
     vOutlineColor = iOutlineColor;
     vOutlineWidth = iOutlineWidth;
     vBorderRadius = iBorderRadius;
