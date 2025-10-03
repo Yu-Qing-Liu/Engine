@@ -3,6 +3,7 @@
 #include "camera.hpp"
 #include "colors.hpp"
 #include "graph.hpp"
+#include "pipeline.hpp"
 #include "scenes.hpp"
 #include "shapes.hpp"
 #include "textures.hpp"
@@ -25,11 +26,13 @@ Overlay::Overlay(Scenes &scenes) : Scene(scenes) {
 				is3D = false;
 				graph->is3D = false;
 				enableMouseMode(); // capture cursor, go back to FPS controls
+                Pipeline::recreateSwapChain();
 				graph->swapChainUpdate();
 			} else {
 				is3D = true;
 				graph->is3D = true;
 				disableMouseMode(); // capture cursor, go back to FPS controls
+                Pipeline::recreateSwapChain();
 				graph->swapChainUpdate();
 			}
 		}
