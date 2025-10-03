@@ -591,38 +591,49 @@ void Graph::swapChainUpdate() {
 	Text::FontParams nodeFP{Fonts::ArialBold, 16};
 	Text::FontParams edgeFP{Fonts::ArialBold, 16};
 
-	// Node labels: use node name (same as hover)
+	// Build or reuse node labels (index-stable, no growth)
+	nodeLabels.resize(N); // keep indices [0..N-1]
 	for (int i = 0; i < N; ++i) {
-		auto t = std::make_unique<Text>(this, mvp, screenParams, nodeFP);
-		t->textParams.text = nodeMap[i].name;
-		// center horizontally above the node (offset in pixels)
-		float wpx = t->getPixelWidth(t->textParams.text);
-		// put it slightly above the node in Z to avoid z-fighting if you keep 3D, 0 is fine in ortho
-		glm::vec3 p = pos[i] + glm::vec3(0.0f, 0.0f, 0.0f);
-		t->textParams.billboardParams = Text::BillboardParams{p, {30.0, -30.0f}, true};
-		t->textParams.color = Colors::Orange;
+		auto &t = nodeLabels[i];
+		if (!t) {
+			Text::FontParams nodeFP{Fonts::ArialBold, 16};
+			t = std::make_unique<Text>(this, mvp, screenParams, nodeFP);
+
+			t->textParams.text = nodeMap[i].name;
+			float wpx = t->getPixelWidth(t->textParams.text);
+
+			glm::vec3 p = pos[i];
+			t->textParams.billboardParams = Text::BillboardParams{p, {30.0f, -30.0f}, true};
+			t->textParams.color = Colors::Orange;
+		}
+
+		// If proj can change at runtime, pass it here; view is updated each frame elsewhere
 		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
-		nodeLabels.emplace_back(std::move(t));
 	}
 
-	// Edge labels: one per edge instance; text = "#<cableId>" (same as hover)
+	// Build or reuse edge labels (index-stable, no growth)
+	edgeLabels.resize(eIdx);
 	for (int idx = 0; idx < eIdx; ++idx) {
-		const InstancedPolygonData inst = edges->getInstance(idx);
 		auto it = edgeMap.find(idx);
 		if (it == edgeMap.end())
 			continue;
-		int cableId = it->second.cableId;
 
-		auto t = std::make_unique<Text>(this, mvp, screenParams, edgeFP);
-		t->textParams.text = "#" + std::to_string(cableId);
-		float wpx = t->getPixelWidth(t->textParams.text);
+		auto &t = edgeLabels[idx];
+		if (!t) {
+			Text::FontParams edgeFP{Fonts::ArialBold, 16};
+			t = std::make_unique<Text>(this, mvp, screenParams, edgeFP);
 
-		// Center on the edge mid (inst.model[3] has world-space position)
-		glm::vec3 mid(inst.model[3].x, inst.model[3].y, inst.model[3].z);
-		t->textParams.billboardParams = Text::BillboardParams{mid, {10.0f, 0.0f}, true};
-		t->textParams.color = Colors::Green;
+			int cableId = it->second.cableId;
+			t->textParams.text = "#" + std::to_string(cableId);
+			(void)t->getPixelWidth(t->textParams.text); // optional center calc if you need it
+
+			const InstancedPolygonData inst = edges->getInstance(idx);
+			glm::vec3 mid(inst.model[3].x, inst.model[3].y, inst.model[3].z);
+			t->textParams.billboardParams = Text::BillboardParams{mid, {10.0f, 0.0f}, true};
+			t->textParams.color = Colors::Green;
+		}
+
 		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
-		edgeLabels.emplace_back(std::move(t));
 	}
 
 	// ---------- legend ----------
