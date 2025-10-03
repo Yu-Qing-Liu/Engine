@@ -1,8 +1,8 @@
 #pragma once
 
 #include "colors.hpp"
-#include "model.hpp"
 #include "fonts.hpp"
+#include "model.hpp"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <vulkan/vulkan_core.h>
@@ -16,24 +16,24 @@ class Text : public Model {
 	~Text() override;
 
 	struct FontParams {
-		string fontPath = Fonts::Arial;
+		std::string fontPath = Fonts::Arial;
 		uint32_t pixelHeight = 24;
-		vector<uint32_t> codepoints;
+		std::vector<uint32_t> codepoints;
 		uint32_t maxAtlasWidth = 2048;
 		uint32_t padding = 1;
 	};
 
 	struct BillboardParams {
-		vec3 centerWorld;	 // location
-		vec2 offsetPx{0, 0}; // pixel offset from the center (e.g. {-w/2, -h} to center/above)
-        bool on = false;
+		glm::vec3 centerWorld;	  // location
+		glm::vec2 offsetPx{0, 0}; // pixel offset from the center
+		bool on = false;
 	};
 
 	struct GlyphVertex {
 		glm::vec3 pos;	// world space
 		glm::vec2 uv;	// atlas
-		float xNorm;	// 0 .. 1 across the quad
-		uint32_t flags; // bit0 sel, bit1 caretBefore, bit2 caretAfter
+		float xNorm;	// 0..1 across the quad
+		uint32_t flags; // bit0 sel, bit3 bg/caret (shader-side)
 		float quadW;	// quad width in pixels
 
 		static VkVertexInputBindingDescription getBindingDescription() {
@@ -55,11 +55,11 @@ class Text : public Model {
 	};
 
 	struct GlyphMeta {
-		ivec2 size;		  // bitmap size
-		ivec2 bearing;	  // left/top bearing
-		uint32_t advance; // in pixels
-		vec2 uvMin;		  // [0..1]
-		vec2 uvMax;		  // [0..1]
+		glm::ivec2 size;	// bitmap size
+		glm::ivec2 bearing; // left/top bearing
+		uint32_t advance;	// in pixels
+		glm::vec2 uvMin;	// [0..1]
+		glm::vec2 uvMax;	// [0..1]
 	};
 
 	struct Caret {
@@ -69,48 +69,31 @@ class Text : public Model {
 		bool on = false;
 	};
 
-	struct SelectionRange {
-		size_t start = 0, end = 0;		 // byte offsets [start,end)
-		glm::vec4 color{0, 0, 1, 0.25f}; // default blue-ish bg
+	struct TextParams {
+		std::string text;
+		glm::vec3 origin = glm::vec3(0.0f);
+		float scale = 1.0f;
+		glm::vec4 color = Colors::Red;
+		std::vector<std::pair<size_t, size_t>> selectionRanges; // [start,end)
+		glm::vec4 selectionColor = Colors::Yellow(0.5f);
+		Caret caret{};
+		BillboardParams billboardParams{};
 	};
-
-	struct SelectionMatches {
-		std::string needle; // plain byte-wise match
-		bool caseSensitive = true;
-		glm::vec4 color{1, 1, 0, 0.25f}; // default yellow-ish bg
-	};
-
-    struct TextParams{
-        string text;
-        vec3 origin = vec3(0.0, 0.0, 0.0);
-        float scale = 1.0f;
-        vec4 color = Colors::Red;
-        std::vector<std::pair<size_t, size_t>> selectionRanges;
-        vec4 selectionColor = Colors::Yellow(0.5f);
-        Caret caret{};
-        BillboardParams billboardParams{};
-    };
 
 	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);
+
+	static void Text_ShutdownUploadRings();
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight() const;
 
-    TextParams textParams{};
+	TextParams textParams{};
 
-    void render() override;
+	void render() override;
 
   private:
-	struct RawGlyph {
-		uint32_t cp{};
-		int w{}, h{}, pitch{};
-		glm::ivec2 bearing{};
-		uint32_t advance{};
-		std::vector<uint8_t> pixels;
-	};
-
+	// --------- Font/atlas state ----------
 	FontParams fontParams;
-
 	float ascenderPx_ = 0.f;
 	float descenderPx_ = 0.f;
 
@@ -128,26 +111,48 @@ class Text : public Model {
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 	VkPushConstantRange pc{};
 
-	std::array<VkBuffer, Engine::MAX_FRAMES_IN_FLIGHT> frameVB{};
-	std::array<VkDeviceMemory, Engine::MAX_FRAMES_IN_FLIGHT> frameVBMem{};
-	std::array<VkDeviceSize, Engine::MAX_FRAMES_IN_FLIGHT> frameVBSize{};
-
-	std::array<VkBuffer, Engine::MAX_FRAMES_IN_FLIGHT> frameIB{};
-	std::array<VkDeviceMemory, Engine::MAX_FRAMES_IN_FLIGHT> frameIBMem{};
-	std::array<VkDeviceSize, Engine::MAX_FRAMES_IN_FLIGHT> frameIBSize{};
-
 	std::unordered_map<uint32_t, GlyphMeta> glyphs;
 
+	// --- Geometry cache (rebuild only when inputs change) ---
+	struct GeoCache {
+		std::string text;
+		glm::vec3 origin{};
+		float scale = 1.f;
+		std::vector<std::pair<size_t, size_t>> sel;
+		std::optional<size_t> caret;
+		float caretPx = 0.f;
+
+		std::vector<GlyphVertex> verts;
+		std::vector<uint32_t> idx;
+		bool dirty = true;
+
+		void reserve(size_t v, size_t i) {
+			if (verts.capacity() < v)
+				verts.reserve(v);
+			if (idx.capacity() < i)
+				idx.reserve(i);
+		}
+	} cache;
+
+	// kerning cache
+	mutable std::unordered_map<uint64_t, float> kerningCache;
+
+	// --------- helpers ----------
 	static std::vector<uint32_t> defaultASCII();
 	static std::u32string utf8ToUtf32(const std::string &s);
+
+	static inline uint64_t pairKey(uint32_t a, uint32_t b) { return (uint64_t(a) << 32) | uint64_t(b); }
+
 	float kerning(uint32_t prev, uint32_t curr) const;
 
 	void bake();
-	void uploadAtlas(const std::vector<RawGlyph> &raws, const std::vector<glm::ivec2> &positions, uint32_t W, uint32_t H);
+	void uploadAtlas(const std::vector<struct RawGlyph> &raws, const std::vector<glm::ivec2> &positions, uint32_t W, uint32_t H);
 	void createSampler();
 
+	// Direct emission (no extra reindex pass)
 	void emitCaretQuad(float caretX, const glm::vec3 &origin, float scale, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
 	void emitSelectionQuad(float x0, float x1, const glm::vec3 &origin, float scale, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
+
 	void buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin, float scale, const std::vector<std::pair<size_t, size_t>> &selRanges, std::optional<size_t> caretByte, float caretWidthPx, std::vector<GlyphVertex> &outVerts, std::vector<uint32_t> &outIdx);
 
 	void createDescriptorSetLayout() override;
