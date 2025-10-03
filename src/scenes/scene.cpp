@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "events.hpp"
+#include "pipeline.hpp"
 #include "scenes.hpp"
 
 bool Scene::mouseMode = true;
@@ -184,6 +185,7 @@ void Scene::mapMouseControls() {
 			camPosOrtho.y += ndcY * (effH_b * 0.5f) * (1.0f - zoom_ratio);
 
 			// Rebuild matrices
+            Pipeline::recreateSwapChain();
 			swapChainUpdate();
 		});
 		s_hookedScroll = true;
