@@ -1,5 +1,6 @@
 #include "scenes.hpp"
 #include "background.hpp"
+#include "inventory.hpp"
 #include "menu.hpp"
 #include "navbar.hpp"
 
@@ -16,12 +17,13 @@ Scenes::Scenes() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
 
-    scenesContainer.emplace_back(make_shared<Background>(*this));
-    scenesContainer.emplace_back(make_shared<NavBar>(*this));
-    scenesContainer.emplace_back(make_shared<Menu>(*this));
-    for (const auto &sc : scenesContainer) {
-        scenes[sc->getName()] = {sc, true};
-    }
+	scenesContainer.emplace_back(make_shared<Background>(*this));
+	scenesContainer.emplace_back(make_shared<NavBar>(*this));
+	// scenesContainer.emplace_back(make_shared<Menu>(*this));
+	scenesContainer.emplace_back(make_shared<Inventory>(*this));
+	for (const auto &sc : scenesContainer) {
+		scenes[sc->getName()] = {sc, true};
+	}
 }
 
 void Scenes::showScene(const string &sceneName) { scenes[sceneName].show = true; }
@@ -73,18 +75,20 @@ void Scenes::updateUniformBuffers() {
 }
 
 void Scenes::renderPass() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->renderPass();
+	for (const auto &scPtr : scenesContainer) {
+		auto it = scenes.find(scPtr->getName());
+		if (it != scenes.end() && it->second.show) {
+			scPtr->renderPass();
 		}
 	}
 }
 
 void Scenes::renderPass1() {
 	blur->copy(Engine::currentCommandBuffer());
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->renderPass1();
+	for (const auto &scPtr : scenesContainer) {
+		auto it = scenes.find(scPtr->getName());
+		if (it != scenes.end() && it->second.show) {
+			scPtr->renderPass1();
 		}
 	}
 }

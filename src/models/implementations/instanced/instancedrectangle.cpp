@@ -86,7 +86,7 @@ void InstancedRectangle::setupGraphicsPipeline() {
 
 	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
-	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthTestEnable = isOrtho() ? VK_FALSE : VK_TRUE;
 	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }

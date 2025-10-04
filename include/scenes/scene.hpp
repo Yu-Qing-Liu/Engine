@@ -29,7 +29,7 @@ class Scene {
 
 	void updateRayTraceUniformBuffers();
 	ClosestHit rayTraces();
-	void applyHover(Model* globalClosest);
+	void applyHover(Model *globalClosest);
 
 	virtual void updateScreenParams();
 
@@ -76,6 +76,9 @@ class Scene {
 
 	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
 
+	bool scrollTopInit = false;
+	float scrollTopY = 0.0f;
+
 	void disableMouseMode();
 	void enableMouseMode();
 
@@ -83,7 +86,11 @@ class Scene {
 	void firstPersonKeyboardControls(float sensitivity = 1.0f);
 
 	void mapMouseControls();
+	void scrollBarMouseControls(float &scrollMinY, float &scrollMaxY, bool inverted);
 	void mapKeyboardControls();
 
 	std::function<void(double)> mouseScrollCallback;
+
+  private:
+	void applyVerticalDeltaClamped(float dy, float minY, float maxY);
 };
