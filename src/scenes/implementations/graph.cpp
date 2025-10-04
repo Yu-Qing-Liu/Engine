@@ -189,10 +189,9 @@ void Graph::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void Graph::swapChainUpdate() {
+void Graph::buildGraph() {
 	if (!circuit)
 		return;
-
 	const auto &G = circuit->unifilar();
 	if (G.adj.empty() && G.level.empty())
 		return;
@@ -204,9 +203,9 @@ void Graph::swapChainUpdate() {
 		for (const auto &e : kv.second)
 			idset.insert(e.child);
 	}
-	std::vector<std::string> ids(idset.begin(), idset.end());
+	ids.assign(idset.begin(), idset.end());
 	std::sort(ids.begin(), ids.end());
-	const int N = (int)ids.size();
+	N = (int)ids.size();
 	if (N == 0)
 		return;
 
@@ -222,11 +221,12 @@ void Graph::swapChainUpdate() {
 	// Also: avg edge length and a map (u,v) -> cableId from G.adj
 	float avgLen = 0.f;
 	int m = 0;
-	std::unordered_map<long long, int> cableIdByUV;
-	auto packUV = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
+	cableIdByUV.clear();
+
 	{
 		std::unordered_set<long long> seen;
 		auto pack = [](int u, int v) -> long long { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); };
+
 		for (const auto &kv : G.adj) {
 			auto itu = idToIdx.find(kv.first);
 			if (itu == idToIdx.end())
@@ -248,6 +248,7 @@ void Graph::swapChainUpdate() {
 
 				avgLen += e.length;
 				++m;
+
 				long long kdir = packUV(u, v);
 				if (!cableIdByUV.count(kdir))
 					cableIdByUV[kdir] = e.id;
@@ -262,13 +263,12 @@ void Graph::swapChainUpdate() {
 	if (!m)
 		avgLen = 10.f;
 
-	// ---------- choose roots ----------
+	// ---------- choose roots / components ----------
 	std::vector<int> roots;
 	for (int i = 0; i < N; ++i)
 		if (indeg[i] == 0)
 			roots.push_back(i);
 
-	// If no roots (cycles), choose one representative per weakly connected component.
 	std::vector<int> comp(N, -1);
 	int compCount = 0;
 	{
@@ -305,8 +305,9 @@ void Graph::swapChainUpdate() {
 		}
 	}
 
-	// ---------- BFS from roots to get depth/parent ----------
-	std::vector<int> depth(N, INT_MAX), parent(N, -1);
+	// ---------- BFS for depth/parent ----------
+	depth.assign(N, INT_MAX);
+	parent.assign(N, -1);
 	{
 		std::queue<int> q;
 		for (int r : roots) {
@@ -339,33 +340,30 @@ void Graph::swapChainUpdate() {
 			}
 	}
 
-	// ---------- groups by node uniqueness (base key) ----------
+	// ---------- groups & colors ----------
 	std::vector<std::string> groupKey(N);
-	for (int v = 0; v < N; ++v) {
+	for (int v = 0; v < N; ++v)
 		groupKey[v] = baseKeyFromId(ids[v]);
-	}
-
-	// Deterministic color per group key (reuse your colorFromKey)
 	for (int v = 0; v < N; ++v) {
-		if (!familyColor.count(groupKey[v])) {
+		if (!familyColor.count(groupKey[v]))
 			familyColor[groupKey[v]] = colorFromKey(groupKey[v]);
-		}
 	}
-	// ---------- layout ----------
-	std::vector<int> order(N);
-	order.resize(N);
-	std::iota(order.begin(), order.end(), 0);
-	std::sort(order.begin(), order.end(), [&](int a, int b) { return ids[a] < ids[b]; });
 
+	// ---------- layout (once) ----------
 	auto sideSign = [&](int v) -> int {
-		int s = (outdeg[v] > indeg[v]) ? +1 : (outdeg[v] < indeg[v] ? -1 : +1);
+		// use indeg/outdeg captured by build
+		int s = (int)adj[v].size() > indeg[v] ? +1 : ((int)adj[v].size() < indeg[v] ? -1 : +1);
 		return (depth[v] == 0) ? 0 : s;
 	};
 
-	const float trunkY = 0.0f;
-	const float dx = std::max(9.0f, avgLen * 0.26f);
-	const float tierBase = std::max(8.0f, avgLen * 0.10f);
-	const float tierStep = std::max(5.0f, avgLen * 0.10f);
+	trunkY = 0.0f;
+	dx = std::max(9.0f, avgLen * 0.26f);
+	tierBase = std::max(8.0f, avgLen * 0.10f);
+	tierStep = std::max(5.0f, avgLen * 0.10f);
+
+	std::vector<int> order(N);
+	std::iota(order.begin(), order.end(), 0);
+	std::sort(order.begin(), order.end(), [&](int a, int b) { return ids[a] < ids[b]; });
 
 	std::vector<int> ups1, downs1, mids0;
 	for (int v : order) {
@@ -377,7 +375,7 @@ void Graph::swapChainUpdate() {
 			(sideSign(v) > 0 ? ups1 : downs1).push_back(v);
 	}
 
-	std::vector<float> xcol(N, 0.f);
+	xcol.assign(N, 0.f);
 	auto placeLane = [&](const std::vector<int> &lane, float x0) {
 		for (int i = 0; i < (int)lane.size(); ++i)
 			xcol[lane[i]] = x0 + float(i) * dx;
@@ -419,55 +417,21 @@ void Graph::swapChainUpdate() {
 		return trunkY + (s > 0 ? +mag : -mag);
 	};
 
-	std::vector<glm::vec3> pos(N, glm::vec3(0));
+	pos.assign(N, glm::vec3(0));
 	for (int v = 0; v < N; ++v)
 		pos[v] = glm::vec3(xcol[v], yFor(v), 0.f);
 
-	// Extents & camera
-	float minX = 1e9f, maxX = -1e9f;
-	for (int i = 0; i < N; ++i) {
-		minX = std::min(minX, pos[i].x);
-		maxX = std::max(maxX, pos[i].x);
-	}
-	float sceneRadius = 1.f;
-	for (auto &p : pos)
-		sceneRadius = std::max(sceneRadius, glm::length(p));
-	const float w = screenParams.viewport.width, h = screenParams.viewport.height, aspect = w / h;
-	const float fovY = radians(45.0f);
-	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
-	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
-	camPos = dir * desiredDist;
-	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
-	if (!Scene::mouseMode) {
-		mvp.view = lookAt(camPos, camTarget, camUp);
-		mvp.proj = perspective(fovY, aspect, nearP, farP);
-	} else {
-		glm::mat4 view = glm::lookAt(camPosOrtho, camPosOrtho + glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
-		const float yOffsetLocal = -10.0f;
-		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffsetLocal, 0.0f)) * view;
-		fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
-		fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
-		baseH = 2.0f * 125.0f * std::tan(fovV * 0.5f);
-		baseW = baseH * aspect;
-		const float visH = baseH / zoom, visW = baseW / zoom;
-		const float orthoScale = (aspect >= 1.0f) ? visW : visH;
-		mvp.proj = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view).proj;
-	}
-
-	nodeName->updateMVP(std::nullopt, mvp.view, mvp.proj);
-	wireId->updateMVP(std::nullopt, mvp.view, mvp.proj);
-
-	// ---------- draw nodes ----------
+	// ---------- instances: nodes ----------
 	const float nodeScale = 2.0f;
+	nodeMap.clear();
 	for (int i = 0; i < N; ++i) {
 		const glm::vec4 color = familyColor[groupKey[i]];
 		nodes->updateInstance(i, InstancedPolygonData(pos[i], glm::vec3(nodeScale), color, Colors::Black));
 		nodeMap[i] = {ids[i]};
 	}
-	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 
-	// ---------- edge drawing (dedup + trunk-crossing split) ----------
-	const float edgeThickness = 0.1;
+	// ---------- instances: edges (including trunk + splits) ----------
+	edgeMap.clear();
 	int eIdx = 0;
 
 	auto packUndirected = [](int a, int b) -> long long {
@@ -485,69 +449,41 @@ void Graph::swapChainUpdate() {
 		glm::vec3 mid = 0.5f * (P0 + P1);
 		glm::quat rot = rotatePlusXTo(d / L);
 		edgeMap[eIdx] = {cableId, L};
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, 0.1f, 0.1f), rot, Colors::Gray, Colors::Black));
 	};
-
 	auto addSegByNodes = [&](int a, int b, int cableId) {
 		if (a == b)
 			return;
 		long long key = packUndirected(a, b);
 		if (!drawnPairs.insert(key).second)
 			return;
-
 		const glm::vec3 &P0 = pos[a];
 		const glm::vec3 &P1 = pos[b];
 		glm::vec3 d = P1 - P0;
 		float L = glm::length(d);
 		if (L < 1e-6f)
 			return;
-
 		glm::vec3 mid = 0.5f * (P0 + P1);
 		glm::quat rot = rotatePlusXTo(d / L);
 		edgeMap[eIdx] = {cableId, L};
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
+		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, 0.1f, 0.1f), rot, Colors::Gray, Colors::Black));
 	};
 
-	// Synthetic trunk anchors to dedup verticals cleanly
 	const float pad = 0.75f * dx;
-	const int trunkBase = N;
-	auto trunkIdxFor = [&](int v) { return trunkBase + v; };
+	float minX = 1e9f, maxX = -1e9f;
+	for (int i = 0; i < N; ++i) {
+		minX = std::min(minX, pos[i].x);
+		maxX = std::max(maxX, pos[i].x);
+	}
 
-	std::vector<glm::vec3> posWithTrunk = pos;
-	posWithTrunk.resize(N + N);
-	for (int v = 0; v < N; ++v)
-		posWithTrunk[trunkIdxFor(v)] = glm::vec3(xcol[v], trunkY, 0.f);
+	// main trunk
+	addSegRaw(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
 
-	auto addSegByNodesPosRef = [&](int a, int b, int cableId) {
-		if (a == b)
-			return;
-		long long key = packUndirected(a, b);
-		if (!drawnPairs.insert(key).second)
-			return;
-
-		const glm::vec3 &P0 = posWithTrunk[a];
-		const glm::vec3 &P1 = posWithTrunk[b];
-		glm::vec3 d = P1 - P0;
-		float L = glm::length(d);
-		if (L < 1e-6f)
-			return;
-
-		glm::vec3 mid = 0.5f * (P0 + P1);
-		glm::quat rot = rotatePlusXTo(d / L);
-		edgeMap[eIdx] = {cableId, L};
-		edges->updateInstance(eIdx++, InstancedPolygonData(mid, glm::vec3(L, edgeThickness, edgeThickness), rot, Colors::Gray, Colors::Black));
-	};
-
-	// Helper: does straight segment (a,b) cross the trunk?
+	// helper to decide if (a,b) crosses trunk
 	auto crossesTrunk = [&](int a, int b) -> bool {
-		float ya = pos[a].y - trunkY;
-		float yb = pos[b].y - trunkY;
-		// Crossing if strict opposite signs; if one sits exactly on trunk, treat as crossing to force separation
+		float ya = pos[a].y - trunkY, yb = pos[b].y - trunkY;
 		return (ya == 0.f || yb == 0.f) ? true : (ya * yb < 0.f);
 	};
-
-	// Draw the main trunk (single horizontal)
-	addSegRaw(glm::vec3(minX - pad, trunkY, 0.f), glm::vec3(maxX + pad, trunkY, 0.f), 0);
 
 	// depth==1: verticals to trunk
 	for (int v = 0; v < N; ++v)
@@ -559,10 +495,10 @@ void Graph::swapChainUpdate() {
 				if (it != cableIdByUV.end())
 					cableId = it->second;
 			}
-			addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
+			addSegRaw(glm::vec3(xcol[v], trunkY, 0.f), glm::vec3(xcol[v], pos[v].y, 0.f), cableId);
 		}
 
-	// depth>=2: connect to parent; if crossing trunk, split into verticals instead
+	// depth>=2: connect (split when crossing trunk)
 	for (int v = 0; v < N; ++v)
 		if (depth[v] >= 2 && parent[v] >= 0) {
 			int p = parent[v];
@@ -572,105 +508,126 @@ void Graph::swapChainUpdate() {
 				cableId = it->second;
 
 			if (crossesTrunk(p, v)) {
-				// Force separation at trunk: draw verticals to each side's trunk anchor (dedup handles repeats)
-				addSegByNodesPosRef(v, trunkIdxFor(v), cableId);
-				addSegByNodesPosRef(p, trunkIdxFor(p), cableId);
+				addSegRaw(glm::vec3(xcol[v], trunkY, 0.f), glm::vec3(xcol[v], pos[v].y, 0.f), cableId);
+				addSegRaw(glm::vec3(xcol[p], trunkY, 0.f), glm::vec3(xcol[p], pos[p].y, 0.f), cableId);
 			} else {
-				// Same side of trunk: draw direct node↔node segment (dedup)
 				addSegByNodes(p, v, cableId);
 			}
 		}
 
-	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
-
-	// ---------- build static labels for 2D mode ----------
+	// ---------- static labels (for 2D mode) ----------
 	nodeLabels.clear();
 	edgeLabels.clear();
 
-	// You can reuse the same font params; tweak size if you want smaller labels in 2D
-	Text::FontParams nodeFP{Fonts::ArialBold, 16};
-	Text::FontParams edgeFP{Fonts::ArialBold, 16};
-
-	// Build or reuse node labels (index-stable, no growth)
-	nodeLabels.resize(N); // keep indices [0..N-1]
+	nodeLabels.resize(N);
 	for (int i = 0; i < N; ++i) {
-		auto &t = nodeLabels[i];
-		if (!t) {
+		if (!nodeLabels[i]) {
 			Text::FontParams nodeFP{Fonts::ArialBold, 16};
-			t = std::make_unique<Text>(this, mvp, screenParams, nodeFP);
-
+			auto t = std::make_unique<Text>(this, mvp, screenParams, nodeFP);
 			t->textParams.text = nodeMap[i].name;
-			float wpx = t->getPixelWidth(t->textParams.text);
-
 			glm::vec3 p = pos[i];
 			t->textParams.billboardParams = Text::BillboardParams{p, {30.0f, -30.0f}, true};
 			t->textParams.color = Colors::Orange;
+			nodeLabels[i] = std::move(t);
 		}
-
-		// If proj can change at runtime, pass it here; view is updated each frame elsewhere
-		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 	}
 
-	// Build or reuse edge labels (index-stable, no growth)
-	edgeLabels.resize(eIdx);
-	for (int idx = 0; idx < eIdx; ++idx) {
-		auto it = edgeMap.find(idx);
-		if (it == edgeMap.end())
-			continue;
-
-		auto &t = edgeLabels[idx];
-		if (!t) {
+	edgeLabels.resize((int)edgeMap.size());
+	for (int idx = 0; idx < (int)edgeLabels.size(); ++idx) {
+		if (!edgeLabels[idx]) {
 			Text::FontParams edgeFP{Fonts::ArialBold, 16};
-			t = std::make_unique<Text>(this, mvp, screenParams, edgeFP);
-
-			int cableId = it->second.cableId;
+			auto t = std::make_unique<Text>(this, mvp, screenParams, edgeFP);
+			int cableId = edgeMap[idx].cableId;
 			t->textParams.text = "#" + std::to_string(cableId);
-			(void)t->getPixelWidth(t->textParams.text); // optional center calc if you need it
 
 			const InstancedPolygonData inst = edges->getInstance(idx);
 			glm::vec3 mid(inst.model[3].x, inst.model[3].y, inst.model[3].z);
 			t->textParams.billboardParams = Text::BillboardParams{mid, {10.0f, 0.0f}, true};
 			t->textParams.color = Colors::Green;
+			edgeLabels[idx] = std::move(t);
 		}
-
-		t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 	}
 
 	// ---------- legend ----------
 	std::unordered_map<std::string, int> groupCounts;
 	for (auto &gk : groupKey)
 		groupCounts[gk]++;
-
 	std::vector<LegendEntry> newLegend;
 	newLegend.reserve(groupCounts.size());
 	for (auto &kv : groupCounts) {
-		const std::string &label = kv.first;	   // base key label
-		const glm::vec4 &col = familyColor[label]; // color associated with that base key
+		const std::string &label = kv.first;
+		const glm::vec4 &col = familyColor[label];
 		newLegend.push_back({label, col});
 	}
 	std::sort(newLegend.begin(), newLegend.end(), [](auto &a, auto &b) { return a.label < b.label; });
 
-	// Diff & publish
-	bool diff = false;
-	if (newLegend.size() != legendEntries.size()) {
-		diff = true;
-		legendEntries = std::move(newLegend);
-	} else {
+	bool diff = (newLegend.size() != legendEntries.size());
+	if (!diff) {
 		for (size_t i = 0; i < newLegend.size(); ++i) {
 			if (legendEntries[i].label != newLegend[i].label || legendEntries[i].color != newLegend[i].color) {
 				diff = true;
 				break;
 			}
 		}
-		if (diff)
-			legendEntries = std::move(newLegend);
 	}
-
 	if (diff) {
+		legendEntries = std::move(newLegend);
 		if (auto overlay = std::dynamic_pointer_cast<Overlay>(scenes.getScene("Overlay"))) {
 			overlay->updateLegend();
 		}
 	}
+
+	graphBuilt = true;
+}
+
+void Graph::swapChainUpdate() {
+	// Now: only per-frame / per-resize work.
+	if (!circuit)
+		return;
+	if (!graphBuilt)
+		buildGraph(); // safety (e.g., if circuit changed)
+
+	// Camera & projection depend on viewport/aspect each frame:
+	const float w = screenParams.viewport.width, h = screenParams.viewport.height, aspect = w / h;
+	const float fovY = radians(45.0f);
+
+	// Fit camera distance to scene extents computed in buildGraph()
+	float sceneRadius = 1.f;
+	for (auto &p : pos)
+		sceneRadius = std::max(sceneRadius, glm::length(p));
+	const float desiredDist = std::max(18.0f, sceneRadius * 0.1f);
+	glm::vec3 dir = glm::normalize((camPos == glm::vec3(0)) ? glm::vec3(1, 1, 1) : camPos);
+	camPos = dir * desiredDist;
+	const float nearP = 0.05f, farP = std::max(desiredDist * 6.f, sceneRadius * 8.f);
+
+	if (!Scene::mouseMode) {
+		mvp.view = lookAt(camPos, camTarget, camUp);
+		mvp.proj = perspective(fovY, aspect, nearP, farP);
+	} else {
+		glm::mat4 view = glm::lookAt(camPosOrtho, camPosOrtho + glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+		const float yOffsetLocal = -10.0f;
+		mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -yOffsetLocal, 0.0f)) * view;
+		fovH = 2.0f * std::atan((Camera::sensorWidth * 0.5f) / Camera::focalLength);
+		fovV = 2.0f * std::atan(std::tan(fovH * 0.5f) / aspect);
+		baseH = 2.0f * 125.0f * std::tan(fovV * 0.5f);
+		baseW = baseH * aspect;
+		const float visH = baseH / zoom, visW = baseW / zoom;
+		const float orthoScale = (aspect >= 1.0f) ? visW : visH;
+		mvp.proj = Camera::blenderOrthographicMVP(w, h, orthoScale, mvp.view).proj;
+	}
+
+	// Update MVPs affected by camera changes (instances already built)
+	nodeName->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+	wireId->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+	nodes->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+	edges->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+
+	for (auto &t : nodeLabels)
+		if (t)
+			t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+	for (auto &t : edgeLabels)
+		if (t)
+			t->updateMVP(std::nullopt, std::nullopt, mvp.proj);
 }
 
 void Graph::updateComputeUniformBuffers() {}
