@@ -80,10 +80,4 @@ class InstancedPolygon : public InstancedModel<InstancedPolygonData> {
 
   private:
 	std::vector<Vertex> vertices;
-
-	// We’ll store both bindings here to pass them in createGraphicsPipeline()
-	VkVertexInputBindingDescription vertexBD{};	  // binding 0 (per-vertex)
-	VkVertexInputBindingDescription instanceBD{}; // binding 1 (per-instance)
-
-	std::array<VkVertexInputBindingDescription, 2> bindings{};
 };

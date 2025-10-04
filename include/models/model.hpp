@@ -79,7 +79,7 @@ class Model {
 		}
 	}
 
-	void enableBlur(bool on) {
+	virtual void enableBlur(bool on) {
 		if (on && !blur) {
 			blur = std::make_unique<BlurPipeline>(this);
 			blur->initialize();

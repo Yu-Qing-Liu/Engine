@@ -15,6 +15,8 @@ layout(location = 8) in vec4 iColor; // instance fill color multiplier
 layout(location = 9) in vec4 iOutlineColor; // instance outline color
 layout(location = 10) in float iOutlineWidth;
 
+layout(location = 11) out vec4 vTint;
+
 // Global camera UBO
 layout(binding = 0) uniform UBO {
     mat4 model;
@@ -40,6 +42,7 @@ void main() {
     vEdgeMask = inEdgeMask;
 
     vIColor = iColor;
+    vTint = iColor;
     vIOutlineColor = iOutlineColor;
     vIOutlineWidth = iOutlineWidth;
 }

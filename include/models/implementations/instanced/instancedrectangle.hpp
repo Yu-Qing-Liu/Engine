@@ -65,10 +65,4 @@ class InstancedRectangle : public InstancedModel<InstancedRectangleData> {
 		{{0.5f, 0.5f, 0.0f}},
 		{{-0.5f, 0.5f, 0.0f}},
 	};
-
-	// We’ll store both bindings here to pass them in createGraphicsPipeline()
-	VkVertexInputBindingDescription vertexBD{};	  // binding 0 (per-vertex)
-	VkVertexInputBindingDescription instanceBD{}; // binding 1 (per-instance)
-
-	std::array<VkVertexInputBindingDescription, 2> bindings{};
 };
