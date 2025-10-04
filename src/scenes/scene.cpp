@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "events.hpp"
+#include "pipeline.hpp"
 #include "scenes.hpp"
 
 bool Scene::mouseMode = true;
@@ -184,6 +185,7 @@ void Scene::mapMouseControls() {
 			camPosOrtho.y += ndcY * (effH_b * 0.5f) * (1.0f - zoom_ratio);
 
 			// Rebuild matrices
+			Pipeline::recreateSwapChain();
 			swapChainUpdate();
 		});
 		s_hookedScroll = true;
@@ -341,51 +343,43 @@ void Scene::updateRayTraceUniformBuffers() {
 	}
 }
 
-void Scene::rayTraces() {
+Scene::ClosestHit Scene::rayTraces() {
 	for (auto *m : models) {
 		if (m && m->rayTracingEnabled) {
 			m->rayTracing->compute();
 		}
 	}
 
-	Model *closest = nullptr;
-	float bestLen = std::numeric_limits<float>::infinity();
-
+	ClosestHit hit{};
 	for (auto *m : models) {
-		if (!m) {
+		if (!m)
 			continue;
-		}
-		if (!m->rayTracingEnabled) {
+		if (!m->rayTracingEnabled)
 			continue;
-		}
-		if (!m->rayTracing->rayLength.has_value()) {
+		if (!m->rayTracing->rayLength.has_value())
 			continue;
-		}
-		float d = *m->rayTracing->rayLength;
-		if (d < bestLen) {
-			bestLen = d;
-			closest = m;
-		}
-	}
 
-	if (closest) {
-		closest->setMouseIsOver(true);
-		if (closest->onMouseHover) {
-			closest->onMouseHover();
+		const float d = *m->rayTracing->rayLength;
+		if (d < hit.distance) {
+			hit.distance = d;
+			hit.model = m;
 		}
 	}
-	for (auto *m : models) {
-		if (closest && m == closest) {
-			continue;
-		}
-		if (!m) {
-			continue;
-		}
-		if (!m->rayTracingEnabled) {
-			continue;
-		}
-		m->setMouseIsOver(false);
-	}
+	return hit;
+}
+
+void Scene::applyHover(Model* globalClosest) {
+    for (auto* m : models) {
+        if (!m) continue;
+        if (!m->rayTracingEnabled) continue;
+
+        const bool isClosestHere = (m == globalClosest);
+        m->setMouseIsOver(isClosestHere);
+
+        if (isClosestHere && m->onMouseHover) {
+            m->onMouseHover();
+        }
+    }
 }
 
 void Scene::updateScreenParams() {}
