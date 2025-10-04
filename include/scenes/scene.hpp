@@ -17,13 +17,19 @@ class Scene {
 	Scene &operator=(const Scene &) = delete;
 	virtual ~Scene() = default;
 
+	struct ClosestHit {
+		Model *model = nullptr;
+		float distance = std::numeric_limits<float>::infinity();
+	};
+
 	virtual std::string getName() = 0;
 
 	vector<Model *> models;
 	bool is3D = true;
 
 	void updateRayTraceUniformBuffers();
-	void rayTraces();
+	ClosestHit rayTraces();
+	void applyHover(Model* globalClosest);
 
 	virtual void updateScreenParams();
 

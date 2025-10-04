@@ -2,6 +2,7 @@
 #include "events.hpp"
 #include "pipeline.hpp"
 #include "scenes.hpp"
+#include "text.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cstdint>
@@ -97,6 +98,7 @@ class Application {
 	}
 
 	void cleanup() {
+        Text::Text_ShutdownUploadRings();
 		Pipeline::cleanupSwapChain();
 		vkDestroyRenderPass(device, renderPass, nullptr);
 		vkDestroyRenderPass(device, renderPass1, nullptr);
