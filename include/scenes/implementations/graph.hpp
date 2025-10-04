@@ -64,4 +64,24 @@ class Graph : public Scene {
 	unique_ptr<Text> wireId;
 	vec3 wirePos;
 	string wireLabel;
+
+	bool graphBuilt = false;
+
+	int N = 0;
+	std::vector<std::string> ids;
+	std::vector<glm::vec3> pos;
+	std::vector<float> xcol;
+	std::vector<int> depth, parent;
+	float trunkY = 0.0f;
+	float dx = 9.0f;
+	float tierBase = 8.0f;
+	float tierStep = 5.0f;
+
+	// Cached mapping for edge labeling/hover
+	std::unordered_map<long long, int> cableIdByUV;
+
+	// Utility to pack a pair for maps/sets
+	static inline long long packUV(int u, int v) { return ((long long)u << 32) ^ (unsigned long long)(v & 0xffffffff); }
+
+	void buildGraph();
 };
