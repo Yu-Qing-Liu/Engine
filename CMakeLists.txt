@@ -51,6 +51,7 @@ endif()
 target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/utils
+    ${CMAKE_SOURCE_DIR}/include/persistence
     ${CMAKE_SOURCE_DIR}/include/thirdparty
     ${CMAKE_SOURCE_DIR}/include/vulkan
     ${CMAKE_SOURCE_DIR}/include/models

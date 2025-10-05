@@ -3,6 +3,7 @@
 #include "pipeline.hpp"
 #include "scenes.hpp"
 #include "text.hpp"
+#include "AppData.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cstdint>
@@ -288,6 +289,8 @@ class Application {
 
 int main() {
 	Assets::initialize();
+    AppData::openDB();
+    AppData::printTables();
 	Application app;
 	try {
 		app.run();

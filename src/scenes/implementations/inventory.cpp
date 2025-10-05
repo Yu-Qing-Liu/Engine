@@ -87,7 +87,7 @@ void Inventory::createGrid() {
 
 	int lastRow = 0;
 	for (size_t i = 0; i < numItems; ++i) {
-		if (curX + kCellSize > rightEdge + kEps + padL) {
+		if (curX + kCellSize + kScrollBarWidth + kGap > rightEdge + kEps + padL) {
 			curX = padL;
 			curY += pitch;
 			++lastRow;

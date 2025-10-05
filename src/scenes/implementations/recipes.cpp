@@ -17,6 +17,25 @@ Recipes::Recipes(Scenes &scenes) : Scene(scenes) {
 	grid->enableBlur(false);
 	grid->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
 	grid->blur->initialize();
+    grid->enableRayTracing(true);
+	grid->setOnMouseClick([&](int button, int action, int mods) {
+		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = grid->rayTracing->hitMapped->primId;
+			if (id == numItems) {
+                auto style = grid->getInstance(id);
+                style.color = Colors::Gray(0.5);
+                grid->updateInstance(id, style);
+			}
+		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = grid->rayTracing->hitMapped->primId;
+			if (id == numItems) {
+                auto style = grid->getInstance(id);
+                style.color = Colors::Gray(0.1);
+                grid->updateInstance(id, style);
+			}
+		}
+	});
+
 
 	auto barElements = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(4);
 	scrollBar = make_unique<InstancedRectangle>(this, mvp, spGrid, barElements, 4);
@@ -91,7 +110,7 @@ void Recipes::createGrid() {
 
 	int lastRow = 0;
 	for (size_t i = 0; i <= numItems; ++i) {
-		if (curX + kCellSize > rightEdge + kEps + padL) {
+		if (curX + kCellSize + kScrollBarWidth + kGap > rightEdge + kEps + padL) {
 			curX = padL;
 			curY += pitch;
 			++lastRow;
