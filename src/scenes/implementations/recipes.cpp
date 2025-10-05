@@ -4,7 +4,7 @@
 #include "events.hpp"
 #include "textures.hpp"
 
-Recipes::Recipes(Scenes &scenes) : Scene(scenes) {
+Recipes::Recipes(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	camPosOrtho = glm::vec3(0.0f);
 	lookAtCoords = glm::vec3(0.0f);
@@ -17,30 +17,35 @@ Recipes::Recipes(Scenes &scenes) : Scene(scenes) {
 	grid->enableBlur(false);
 	grid->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
 	grid->blur->initialize();
-    grid->enableRayTracing(true);
+	grid->enableRayTracing(true);
 	grid->setOnMouseClick([&](int button, int action, int mods) {
+        if (!this->show) {
+            return;
+        }
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = grid->rayTracing->hitMapped->primId;
 			if (id == numItems) {
-                auto style = grid->getInstance(id);
-                style.color = Colors::Gray(0.5);
-                grid->updateInstance(id, style);
+				auto style = grid->getInstance(id);
+				style.color = Colors::Gray(0.5);
+				grid->updateInstance(id, style);
 			}
 		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = grid->rayTracing->hitMapped->primId;
 			if (id == numItems) {
-                auto style = grid->getInstance(id);
-                style.color = Colors::Gray(0.1);
-                grid->updateInstance(id, style);
+				auto style = grid->getInstance(id);
+				style.color = Colors::Gray(0.1);
+				grid->updateInstance(id, style);
 			}
 		}
 	});
-
 
 	auto barElements = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(4);
 	scrollBar = make_unique<InstancedRectangle>(this, mvp, spGrid, barElements, 4);
 	scrollBar->enableRayTracing(true);
 	scrollBar->setOnMouseClick([&](int button, int action, int mods) {
+        if (!this->show) {
+            return;
+        }
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = scrollBar->rayTracing->hitMapped->primId;
 			if (id == 1) {
@@ -50,6 +55,9 @@ Recipes::Recipes(Scenes &scenes) : Scene(scenes) {
 		}
 	});
 	Events::mouseCallbacks.push_back([&](int button, int action, int mods) {
+        if (!this->show) {
+            return;
+        }
 		if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
 			slider.color = Colors::Gray(0.55f);
 			usingSlider = false;
@@ -160,7 +168,7 @@ void Recipes::createScrollBar() {
 		InstancedRectangleData r{};
 		r.color = Colors::Gray(0.05f);
 		r.borderRadius = 6.0f;
-		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, trackY, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, trackH * 2, 1.0f));
+		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, trackY, -0.1f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, trackH * 2, 1.0f));
 		scrollBar->updateInstance(0, r);
 	}
 
@@ -169,7 +177,7 @@ void Recipes::createScrollBar() {
 		InstancedRectangleData r{};
 		r.color = Colors::Gray(0.35f);
 		r.borderRadius = 6.0f;
-		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, btnH / 2, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, btnH, 1.0f));
+		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, btnH / 2, -0.1f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, btnH, 1.0f));
 		scrollBar->updateInstance(2, r);
 	}
 
@@ -178,7 +186,7 @@ void Recipes::createScrollBar() {
 		InstancedRectangleData r{};
 		r.color = Colors::Gray(0.35f);
 		r.borderRadius = 6.0f;
-		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, gh - btnH / 2, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, btnH, 1.0f));
+		r.model = glm::translate(glm::mat4(1.0f), glm::vec3(trackX, gh - btnH / 2, -0.1f)) * glm::scale(glm::mat4(1.0f), glm::vec3(sbW, btnH, 1.0f));
 		scrollBar->updateInstance(3, r);
 	}
 

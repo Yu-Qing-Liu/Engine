@@ -8,7 +8,7 @@ using namespace std::chrono;
 
 class Recipes : public Scene {
   public:
-	Recipes(Scenes &scenes);
+	Recipes(Scenes &scenes, bool show = true);
 	Recipes(Recipes &&) = delete;
 	Recipes(const Recipes &) = delete;
 	Recipes &operator=(Recipes &&) = delete;

@@ -135,6 +135,10 @@ void Scene::mapMouseControls() {
 	static bool s_hookedScroll = false;
 	if (!s_hookedScroll) {
 		Events::scrollCallbacks.push_back([&](double /*xoff*/, double yoff) {
+            if (!show) {
+                return;
+            }
+
 			GLFWwindow *w = Engine::window;
 			if (!w)
 				return;
@@ -270,6 +274,10 @@ void Scene::scrollBarMouseControls(float &scrollMinY, float &scrollMaxY, bool in
 	static bool s_hookedScroll = false;
 	if (!s_hookedScroll) {
 		Events::scrollCallbacks.push_back([&](double /*xoff*/, double yoff) {
+            if (!show) {
+                return;
+            }
+
 			GLFWwindow *w = Engine::window;
 			if (!w)
 				return;

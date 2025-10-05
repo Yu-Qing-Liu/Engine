@@ -9,7 +9,7 @@ using namespace std::chrono;
 
 class Inventory : public Scene {
   public:
-	Inventory(Scenes &scenes);
+	Inventory(Scenes &scenes, bool show = true);
 	Inventory(Inventory &&) = delete;
 	Inventory(const Inventory &) = delete;
 	Inventory &operator=(Inventory &&) = delete;

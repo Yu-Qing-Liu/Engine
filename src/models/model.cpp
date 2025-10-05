@@ -90,7 +90,7 @@ void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, siz
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 	auto callback = [this, cb](int button, int action, int mods) {
-		if (mouseIsOver) {
+		if (this->rayTracing->hitPos) {
 			cb(button, action, mods);
 		}
 	};

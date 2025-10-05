@@ -29,6 +29,8 @@ class Scenes {
 	void showScene(const string &sceneName);
 	void hideScene(const string &sceneName);
 
+	string currentScene;
+
   private:
 	std::vector<shared_ptr<Scene>> scenesContainer;
 	std::map<string, shared_ptr<Scene>> scenes;

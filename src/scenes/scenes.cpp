@@ -18,11 +18,13 @@ Scenes::Scenes() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
 
+	currentScene = "Menu";
+
 	scenesContainer.emplace_back(make_shared<Background>(*this));
 	scenesContainer.emplace_back(make_shared<NavBar>(*this));
-	// scenesContainer.emplace_back(make_shared<Menu>(*this));
-	// scenesContainer.emplace_back(make_shared<Inventory>(*this));
-	scenesContainer.emplace_back(make_shared<Recipes>(*this));
+	scenesContainer.emplace_back(make_shared<Menu>(*this));
+	scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
+	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
 	for (const auto &sc : scenesContainer) {
 		scenes[sc->getName()] = {sc};
 	}
@@ -78,9 +80,9 @@ void Scenes::updateUniformBuffers() {
 
 void Scenes::renderPass() {
 	for (const auto &sc : scenesContainer) {
-        if (sc->show) {
-            sc->renderPass();
-        }
+		if (sc->show) {
+			sc->renderPass();
+		}
 	}
 }
 
@@ -88,8 +90,8 @@ void Scenes::renderPass1() {
 	blur->copy(Engine::currentCommandBuffer());
 	for (const auto &sc : scenesContainer) {
 		if (sc->show) {
-            sc->renderPass1();
-        }
+			sc->renderPass1();
+		}
 	}
 }
 
@@ -100,9 +102,7 @@ void Scenes::swapChainUpdate() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
 	for (const auto &sc : scenesContainer) {
-		if (sc->show) {
-			sc->updateScreenParams();
-			sc->swapChainUpdate();
-		}
+		sc->updateScreenParams();
+		sc->swapChainUpdate();
 	}
 }
