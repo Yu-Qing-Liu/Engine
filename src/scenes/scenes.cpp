@@ -3,6 +3,7 @@
 #include "inventory.hpp"
 #include "menu.hpp"
 #include "navbar.hpp"
+#include "recipes.hpp"
 
 Scenes::Scenes() {
 	blur = std::make_unique<BlurPipeline>(nullptr);
@@ -20,23 +21,24 @@ Scenes::Scenes() {
 	scenesContainer.emplace_back(make_shared<Background>(*this));
 	scenesContainer.emplace_back(make_shared<NavBar>(*this));
 	// scenesContainer.emplace_back(make_shared<Menu>(*this));
-	scenesContainer.emplace_back(make_shared<Inventory>(*this));
+	// scenesContainer.emplace_back(make_shared<Inventory>(*this));
+	scenesContainer.emplace_back(make_shared<Recipes>(*this));
 	for (const auto &sc : scenesContainer) {
-		scenes[sc->getName()] = {sc, true};
+		scenes[sc->getName()] = {sc};
 	}
 }
 
-void Scenes::showScene(const string &sceneName) { scenes[sceneName].show = true; }
+void Scenes::showScene(const string &sceneName) { scenes[sceneName]->show = true; }
 
-void Scenes::hideScene(const string &sceneName) { scenes[sceneName].show = false; }
+void Scenes::hideScene(const string &sceneName) { scenes[sceneName]->show = false; }
 
-shared_ptr<Scene> Scenes::getScene(const string &sceneName) { return scenes[sceneName].scene; }
+shared_ptr<Scene> Scenes::getScene(const string &sceneName) { return scenes[sceneName]; }
 
 void Scenes::updateComputeUniformBuffers() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateRayTraceUniformBuffers();
-			sc.second.scene->updateComputeUniformBuffers();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->updateRayTraceUniformBuffers();
+			sc->updateComputeUniformBuffers();
 		}
 	}
 }
@@ -48,12 +50,12 @@ void Scenes::computePass() {
 	std::vector<Scene *> visibleScenes;
 	visibleScenes.reserve(scenes.size());
 
-	for (const auto &sc : scenes) {
-		if (!sc.second.show)
+	for (const auto &sc : scenesContainer) {
+		if (!sc->show)
 			continue;
-		visibleScenes.push_back(sc.second.scene.get());
+		visibleScenes.push_back(sc.get());
 
-		Scene::ClosestHit hit = sc.second.scene->rayTraces();
+		Scene::ClosestHit hit = sc->rayTraces();
 		if (hit.model && hit.distance < bestLen) {
 			bestLen = hit.distance;
 			globalClosest = hit.model;
@@ -67,29 +69,27 @@ void Scenes::computePass() {
 }
 
 void Scenes::updateUniformBuffers() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateUniformBuffers();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->updateUniformBuffers();
 		}
 	}
 }
 
 void Scenes::renderPass() {
-	for (const auto &scPtr : scenesContainer) {
-		auto it = scenes.find(scPtr->getName());
-		if (it != scenes.end() && it->second.show) {
-			scPtr->renderPass();
-		}
+	for (const auto &sc : scenesContainer) {
+        if (sc->show) {
+            sc->renderPass();
+        }
 	}
 }
 
 void Scenes::renderPass1() {
 	blur->copy(Engine::currentCommandBuffer());
-	for (const auto &scPtr : scenesContainer) {
-		auto it = scenes.find(scPtr->getName());
-		if (it != scenes.end() && it->second.show) {
-			scPtr->renderPass1();
-		}
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+            sc->renderPass1();
+        }
 	}
 }
 
@@ -99,10 +99,10 @@ void Scenes::swapChainUpdate() {
 	sc.offset = {(int32_t)vp.x, (int32_t)vp.y};
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateScreenParams();
-			sc.second.scene->swapChainUpdate();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->updateScreenParams();
+			sc->swapChainUpdate();
 		}
 	}
 }

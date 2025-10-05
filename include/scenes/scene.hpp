@@ -10,7 +10,7 @@ class Scenes;
 
 class Scene {
   public:
-	Scene(Scenes &scenes);
+	Scene(Scenes &scenes, bool show = true);
 	Scene(Scene &&) = delete;
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
@@ -26,6 +26,7 @@ class Scene {
 
 	vector<Model *> models;
 	bool is3D = true;
+	bool show = true;
 
 	void updateRayTraceUniformBuffers();
 	ClosestHit rayTraces();

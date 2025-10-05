@@ -5,7 +5,7 @@
 
 bool Scene::mouseMode = true;
 
-Scene::Scene(Scenes &scenes) : scenes(scenes) {
+Scene::Scene(Scenes &scenes, bool show) : scenes(scenes), show(show) {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;

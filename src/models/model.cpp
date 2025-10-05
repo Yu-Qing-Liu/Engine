@@ -7,9 +7,9 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), ubo(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
+Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), mvp(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
     rayTracing = std::make_unique<RayTracingPipeline>(this);
-	this->ubo.proj[1][1] *= -1;
+	this->mvp.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
 	}
@@ -86,7 +86,7 @@ Model::~Model() {
 	}
 }
 
-void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &ubo, sizeof(ubo)); }
+void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 	auto callback = [this, cb](int button, int action, int mods) {
@@ -160,20 +160,20 @@ void Model::onMouseExitEvent() {
 
 void Model::updateMVP(optional<mat4> model, optional<mat4> view, optional<mat4> proj) {
 	if (model.has_value()) {
-		ubo.model = model.value();
+		mvp.model = model.value();
 	}
 	if (view.has_value()) {
-		ubo.view = view.value();
+		mvp.view = view.value();
 	}
 	if (proj.has_value()) {
-		ubo.proj = proj.value();
-		ubo.proj[1][1] *= -1;
+		mvp.proj = proj.value();
+		mvp.proj[1][1] *= -1;
 	}
 }
 
 void Model::updateUniformBuffer(const MVP &ubo) {
-	this->ubo = ubo;
-	this->ubo.proj[1][1] *= -1;
+	this->mvp = ubo;
+	this->mvp.proj[1][1] *= -1;
 }
 
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
