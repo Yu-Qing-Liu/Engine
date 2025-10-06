@@ -1,48 +1,50 @@
-#include "recipes.hpp"
+#include "recipe.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
 #include "events.hpp"
-#include "scenes.hpp"
 #include "textures.hpp"
 
-Recipes::Recipes(Scenes &scenes, bool show) : Scene(scenes, show) {
+Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
+	sceneMVP = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	camPosOrtho = glm::vec3(0.0f);
 	lookAtCoords = glm::vec3(0.0f);
 	zoom = 1.0f;
 
-	addRecipeIcon = Textures::icon(this, mvp, spGrid, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+	addStepIcon = Textures::icon(this, mvp, spGrid, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+
+	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
+	modal = make_unique<InstancedRectangle>(this, mvp, spGrid, mInstances, 2);
+	modal->enableBlur(false);
+	modal->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
+	modal->blur->initialize();
 
 	auto itemInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
-	grid = make_unique<InstancedRectangle>(this, mvp, spGrid, itemInstances);
-	grid->enableBlur(false);
-	grid->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	grid->blur->initialize();
-	grid->enableRayTracing(true);
-	grid->setOnMouseClick([&](int button, int action, int mods) {
+	steps = make_unique<InstancedRectangle>(this, mvp, spGrid, itemInstances, 128, Engine::renderPass1);
+	steps->enableRayTracing(true);
+	steps->setOnMouseClick([&](int button, int action, int mods) {
 		if (!this->show) {
 			return;
 		}
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
-			int id = grid->rayTracing->hitMapped->primId;
+			int id = steps->rayTracing->hitMapped->primId;
 			if (id == numItems) {
-				auto style = grid->getInstance(id);
-				style.color = Colors::Gray(0.5);
-				grid->updateInstance(id, style);
-				scenes.showScene("Recipe");
+				auto style = steps->getInstance(id);
+				style.color = Colors::Lime;
+				steps->updateInstance(id, style);
 			}
 		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
-			int id = grid->rayTracing->hitMapped->primId;
+			int id = steps->rayTracing->hitMapped->primId;
 			if (id == numItems) {
-				auto style = grid->getInstance(id);
-				style.color = Colors::Gray(0.1);
-				grid->updateInstance(id, style);
+				auto style = steps->getInstance(id);
+				style.color = Colors::Green;
+				steps->updateInstance(id, style);
 			}
 		}
 	});
 
 	auto barElements = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(4);
-	scrollBar = make_unique<InstancedRectangle>(this, mvp, spGrid, barElements, 4);
+	scrollBar = make_unique<InstancedRectangle>(this, mvp, spGrid, barElements, 4, Engine::renderPass1);
 	scrollBar->enableRayTracing(true);
 	scrollBar->setOnMouseClick([&](int button, int action, int mods) {
 		if (!this->show) {
@@ -67,7 +69,7 @@ Recipes::Recipes(Scenes &scenes, bool show) : Scene(scenes, show) {
 	});
 }
 
-void Recipes::updateScreenParams() {
+void Recipe::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -80,10 +82,10 @@ void Recipes::updateScreenParams() {
 	const float swapW = screenParams.viewport.width;
 	const float swapH = screenParams.viewport.height;
 
-	gridX = 25.0f;				   // left padding
-	gridY = 100.0f;				   // top padding
-	gridW = swapW - gridX - 25.0f; // right padding
-	gridH = swapH - gridY - 25.0f; // bottom padding
+	gridX = 125.0f;					// left padding
+	gridY = 125.0f;					// top padding
+	gridW = swapW - gridX - 125.0f; // right padding
+	gridH = swapH - gridY - 125.0f - swapH * 0.4; // bottom padding
 
 	// Clamp so the viewport/scissor never exceed framebuffer bounds
 	const float maxW = std::max(0.0f, swapW - gridX);
@@ -102,58 +104,65 @@ void Recipes::updateScreenParams() {
 	gw = spGrid.viewport.width;
 	gh = spGrid.viewport.height;
 
-	pitch = kCellSize + kGap;
-	padL = kCellSize * kPadScale;
-	padT = kCellSize * kPadScale;
+	pitch = kCellSizeH + kGap;
+	padL = 0.0;
+	padT = 25.0;
 	padR = 0.0f;
 
 	baseW = gridW;
 	baseH = gridH;
 }
 
-void Recipes::createGrid() {
+void Recipe::createModal() {
+	InstancedRectangleData m{};
+	m.color = Colors::Gray(0.5f);
+	m.borderRadius = 25.0f;
+
+	m.model = glm::translate(glm::mat4(1.0f), glm::vec3(gridW * 0.5, gridH * 0.5, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(gridW, gridH, 1.0f));
+	modal->updateInstance(0, m);
+	modal->updateMVP(std::nullopt, std::nullopt, mvp.proj);
+}
+
+void Recipe::createGrid() {
 	// Grid-local placement
 	float curX = padL;
-	float curY = padT;
+	float curY = padT + kCellSizeH / 2;
 
-	const float rightEdge = std::max(padL + kCellSize, gw - padR);
+	const float rightEdge = std::max(padL + kCellSizeW, gw - padR);
 
 	int lastRow = 0;
 	for (size_t i = 0; i <= numItems; ++i) {
-		if (curX + kCellSize + kScrollBarWidth + kGap > rightEdge + kEps + padL) {
-			curX = padL;
-			curY += pitch;
-			++lastRow;
-		}
+		curX = padL + kCellSizeW / 2 + (gw - kCellSizeW) / 2;
+		++lastRow;
 
 		const float x = curX;
 		const float y = curY;
 
 		InstancedRectangleData fr{};
-		fr.color = Colors::Gray(0.1f);
+		fr.color = Colors::Green;
 		fr.borderRadius = 25.0f;
-		fr.model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(kCellSize, kCellSize, 1.0f));
-		grid->updateInstance((int)i, fr);
+		fr.model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(kCellSizeW, kCellSizeH, 1.0f));
+		steps->updateInstance((int)i, fr);
 
 		if (i == numItems) {
-			addRecipeIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(kCellSize * 0.6, kCellSize * 0.6, 1.0f)), mvp.view, mvp.proj);
+			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(kCellSizeH * 0.6, kCellSizeH * 0.6, 1.0f)), mvp.view, mvp.proj);
 		}
 
-		curX += kCellSize + kGap;
+		curY += pitch;
 	}
 
 	rowsUsed = (numItems > 0) ? (lastRow + 1) : 0;
-	contentH = (rowsUsed > 0) ? (padT + (rowsUsed - 1) * pitch + kCellSize) : 0.0f;
+	contentH = (rowsUsed > 0) ? (padT + (rowsUsed - 1) * pitch + kCellSizeH) : 0.0f;
 
 	const float maxTop = std::max(0.0f, contentH - gridH);
 	const float desiredTop = lookAtCoords.y;
 	const float snappedTop = glm::clamp(std::floor(desiredTop / pitch) * pitch, 0.0f, maxTop);
 
 	mvp.view = glm::translate(glm::mat4(1.0f), glm::vec3(-lookAtCoords.x, -snappedTop, 0.0f));
-	grid->updateMVP(std::nullopt, mvp.view, mvp.proj);
+	steps->updateMVP(std::nullopt, mvp.view, mvp.proj);
 }
 
-void Recipes::createScrollBar() {
+void Recipe::createScrollBar() {
 	// Scroll limits from content
 	scrollMinY = 0.0f;
 	scrollMaxY = std::max(0.0f, contentH - gh);
@@ -201,7 +210,7 @@ void Recipes::createScrollBar() {
 	scrollBar->updateMVP(std::nullopt, glm::mat4(1.0f), mvp.proj);
 }
 
-void Recipes::updateSlider() {
+void Recipe::updateSlider() {
 	const float innerH = std::max(0.0f, trackH - 2.0f * btnH);
 
 	float thumbH = (contentH <= gh || innerH <= 0.0f) ? innerH : std::max(kMinThumb, innerH * (gh / std::max(gh, contentH))) / 2;
@@ -214,7 +223,7 @@ void Recipes::updateSlider() {
 	scrollBar->updateInstance(1, slider);
 }
 
-void Recipes::dragSliderToCursor() {
+void Recipe::dragSliderToCursor() {
 	GLFWwindow *w = Engine::window;
 	if (!w || !usingSlider)
 		return;
@@ -256,31 +265,36 @@ void Recipes::dragSliderToCursor() {
 	camTarget.y = clamped;
 }
 
-void Recipes::swapChainUpdate() {
+void Recipe::swapChainUpdate() {
 	mvp.proj = ortho(0.0f, gridW, 0.0f, -gridH, -1.0f, 1.0f);
+	sceneMVP.proj = ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f);
+	kCellSizeW = gridW * 0.8;
+	createModal();
 	createGrid();
 	createScrollBar();
 }
 
-void Recipes::updateComputeUniformBuffers() {}
+void Recipe::updateComputeUniformBuffers() {}
 
-void Recipes::computePass() {}
+void Recipe::computePass() {}
 
-void Recipes::updateUniformBuffers() {
+void Recipe::updateUniformBuffers() {
 	if (!usingSlider) {
 		scrollBarMouseControls(scrollMinY, scrollMaxY, /*inverted=*/true);
 	} else {
 		dragSliderToCursor();
 	}
 	mvp.view = translate(mat4(1.0f), vec3(-lookAtCoords.x, -lookAtCoords.y, 0.0f));
-	grid->updateMVP(std::nullopt, mvp.view);
+	steps->updateMVP(std::nullopt, mvp.view);
 	updateSlider();
-	addRecipeIcon->updateMVP(std::nullopt, mvp.view);
+	addStepIcon->updateMVP(std::nullopt, mvp.view);
 }
 
-void Recipes::renderPass() { scrollBar->render(); }
+void Recipe::renderPass() {}
 
-void Recipes::renderPass1() {
-	grid->render();
-	addRecipeIcon->render();
+void Recipe::renderPass1() {
+	modal->render();
+	scrollBar->render();
+	steps->render();
+	addStepIcon->render();
 }

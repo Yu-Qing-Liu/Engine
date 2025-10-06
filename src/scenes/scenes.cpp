@@ -4,6 +4,7 @@
 #include "menu.hpp"
 #include "navbar.hpp"
 #include "recipes.hpp"
+#include "recipe.hpp"
 
 Scenes::Scenes() {
 	blur = std::make_unique<BlurPipeline>(nullptr);
@@ -25,6 +26,7 @@ Scenes::Scenes() {
 	scenesContainer.emplace_back(make_shared<Menu>(*this));
 	scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
 	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
+	scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
 	for (const auto &sc : scenesContainer) {
 		scenes[sc->getName()] = {sc};
 	}

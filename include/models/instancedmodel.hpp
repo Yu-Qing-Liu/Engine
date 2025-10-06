@@ -17,7 +17,7 @@ template <typename T> class InstancedModel : public Model {
 	InstancedModel &operator=(InstancedModel &&) = delete;
 	InstancedModel &operator=(const InstancedModel &) = delete;
 
-	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) {
+	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536, VkRenderPass &renderPass = Engine::renderPass) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath, renderPass) {
 		createInstanceBuffers();
 		rayTracing = std::make_unique<RayTraycesPipeline>(this, instCPU, idsCPU, instanceCount, maxInstances);
 	}
