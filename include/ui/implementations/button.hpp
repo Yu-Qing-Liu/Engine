@@ -34,13 +34,9 @@ class Button : public Widget {
 	~Button() = default;
 
 	void updateUniformBuffers(const Model::MVP &ubo) override;
-	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
-
-	void render() override;
+	void renderPass() override;
 
 	// models
 	std::unique_ptr<Text> textModel;
-	std::unique_ptr<Model> icon;
-
 	StyleParams styleParams{};
 };

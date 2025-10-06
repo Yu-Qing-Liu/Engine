@@ -257,7 +257,7 @@ void Scene::applyVerticalDeltaClamped(float dy, float minY, float maxY) {
     camTarget.y    += applied;
 }
 
-void Scene::scrollBarMouseControls(float &scrollMinY, float &scrollMaxY, bool inverted) {
+void Scene::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
 	GLFWwindow *win = Engine::window;
 	if (!win || !Scene::mouseMode || !glfwGetWindowAttrib(win, GLFW_FOCUSED))
 		return;

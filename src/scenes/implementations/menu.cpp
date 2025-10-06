@@ -145,7 +145,7 @@ void Menu::swapChainUpdate() {
 		float cy = topOffset + (i + 0.5f) * rowH;
 
 		InstancedRectangleData btn{};
-		btn.color = Colors::LightBlue(0.3f);
+		btn.color = Colors::Gray(0.3f);
 		btn.model = glm::translate(mat4(1.0f), vec3(cx, cy, 0.0f)) * glm::scale(mat4(1.0f), btnSize);
         btn.borderRadius = 50.0f;
 

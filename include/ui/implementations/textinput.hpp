@@ -35,9 +35,8 @@ class TextInput : public Widget {
 	void utf8_pop_back(std::string &s, size_t position);
 
 	void updateUniformBuffers(const Model::MVP &ubo) override;
-	void setParams(const StyleParams &params);
 
-	void render() override;
+	void renderPass() override;
 
 	bool selected = false;
 	StyleParams styleParams{};

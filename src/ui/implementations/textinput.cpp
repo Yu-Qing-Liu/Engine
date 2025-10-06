@@ -208,18 +208,8 @@ void TextInput::updateUniformBuffers(const Model::MVP &ubo) {
 	textModel->updateUniformBuffer(ubo);
 }
 
-void TextInput::setParams(const StyleParams &p) {
-	styleParams = p;
-	container->params.color = p.bgColor;
-	container->params.outlineColor = p.outlineColor;
-	container->params.outlineWidth = p.outlineWidth;
-	container->params.borderRadius = p.borderRadius;
-	container->updateMVP(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)));
-	textModel->updateMVP(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)));
-}
-
-void TextInput::render() {
-	Widget::render();
+void TextInput::renderPass() {
+	Widget::renderPass();
 	if (text.empty() && !selected) {
 		textModel->textParams.text = styleParams.placeholderText;
         textModel->textParams.origin = Geometry::alignTextCentered(*textModel, styleParams.placeholderText);

@@ -42,6 +42,7 @@ class Scene {
 	virtual void renderPass1();
 	virtual void swapChainUpdate();
 
+
   protected:
 	Scenes &scenes;
 	Model::ScreenParams screenParams;
@@ -87,8 +88,9 @@ class Scene {
 	void firstPersonKeyboardControls(float sensitivity = 1.0f);
 
 	void mapMouseControls();
-	void scrollBarMouseControls(float &scrollMinY, float &scrollMaxY, bool inverted);
 	void mapKeyboardControls();
+
+	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
 
 	std::function<void(double)> mouseScrollCallback;
 
