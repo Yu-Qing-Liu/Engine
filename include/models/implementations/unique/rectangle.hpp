@@ -12,7 +12,7 @@ class Rectangle : public Model {
 	Rectangle &operator=(const Rectangle &) = delete;
 	~Rectangle();
 
-	Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams);
+	Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const VkRenderPass &renderPass = Engine::renderPass);
 
 	void render() override;
 

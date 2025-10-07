@@ -9,7 +9,7 @@
 using DB = std::unique_ptr<sqlite3, decltype(&sqlite3_close)>;
 
 namespace AppData {
-inline std::string path = Assets::appdataPath + "/databas.db";
+inline std::string path = Assets::appdataPath + "/database.db";
 inline DB conn{nullptr, &sqlite3_close};
 
 inline void openDB() {

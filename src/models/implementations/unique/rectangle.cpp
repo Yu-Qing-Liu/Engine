@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vulkan/vulkan_core.h>
 
-Rectangle::Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/rectangle") {
+Rectangle::Rectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const VkRenderPass &renderPass) : Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/rectangle", renderPass) {
 	indices = {0, 1, 2, 2, 3, 0};
 
 	createDescriptorSetLayout();

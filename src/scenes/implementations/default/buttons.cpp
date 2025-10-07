@@ -65,7 +65,6 @@ void Buttons::swapChainUpdate() {
 	float size = 1000.0f;
 	background->updateMVP(translate(mat4(1.0f), vec3((float)width / 2.0f, (float)height / 2.0f, 0.0f)) * scale(mat4(1.0f), vec3(size, size, 1.0f)), std::nullopt, orthographic.proj);
 
-	button->updateUniformBuffers(orthographic);
 	auto &bp = button->styleParams;
 	bp.center = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
 	bp.textCenter = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
@@ -73,14 +72,15 @@ void Buttons::swapChainUpdate() {
 	bp.outlineWidth = 5.0f;
 	bp.borderRadius = 16.0f;
 	bp.text = std::string("Click me!");
+	button->swapChainUpdate();
 
-	textInput->updateUniformBuffers(orthographic);
 	auto &tp = textInput->styleParams;
 	tp.center = {screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f};
 	tp.textCenter = {screenParams.viewport.width * 0.75, screenParams.viewport.height * 0.25f};
 	tp.dim = {200.0f, 40.0f};
 	tp.outlineWidth = 3.0f;
 	tp.borderRadius = 8.0f;
+    textInput->swapChainUpdate();
 }
 
 void Buttons::updateComputeUniformBuffers() {}
@@ -91,6 +91,6 @@ void Buttons::updateUniformBuffers() {}
 
 void Buttons::renderPass() {
 	background->render();
-	button->renderPass();
-	textInput->renderPass();
+	button->render();
+	textInput->render();
 }

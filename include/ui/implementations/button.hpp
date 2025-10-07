@@ -33,8 +33,8 @@ class Button : public Widget {
 	Button(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams);
 	~Button() = default;
 
-	void updateUniformBuffers(const Model::MVP &ubo) override;
-	void renderPass() override;
+	void swapChainUpdate();
+	void render() override;
 
 	// models
 	std::unique_ptr<Text> textModel;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "colors.hpp"
 #include "text.hpp"
 #include "widget.hpp"
@@ -29,14 +31,14 @@ class TextInput : public Widget {
 		vec4 activeTextColor{Colors::Green};
 	};
 
-	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams);
+	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
 
 	void utf8_append(std::string &out, unsigned int cp, size_t position);
 	void utf8_pop_back(std::string &s, size_t position);
 
-	void updateUniformBuffers(const Model::MVP &ubo) override;
+	void swapChainUpdate();
 
-	void renderPass() override;
+	void render() override;
 
 	bool selected = false;
 	StyleParams styleParams{};

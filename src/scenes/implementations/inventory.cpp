@@ -3,12 +3,8 @@
 Inventory::Inventory(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	grid = make_unique<Grid>(this, mvp, screenParams);
-	grid->grid->enableBlur(false);
-	grid->scrollBar->enableBlur(false);
-	grid->grid->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	grid->scrollBar->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	grid->grid->blur->initialize();
-	grid->scrollBar->blur->initialize();
+	grid->grid->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+	grid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 }
 
 void Inventory::updateScreenParams() {
@@ -41,4 +37,4 @@ void Inventory::updateUniformBuffers() { grid->updateUniformBuffers(); }
 
 void Inventory::renderPass() {}
 
-void Inventory::renderPass1() { grid->renderPass1(); }
+void Inventory::renderPass1() { grid->render(); }

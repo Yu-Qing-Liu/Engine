@@ -30,8 +30,7 @@ class Grid : public Widget {
 
 	void swapChainUpdate();
 	void updateUniformBuffers();
-	void renderPass() override;
-	void renderPass1() override;
+	void render() override;
 
 	bool enableControls = true;
 

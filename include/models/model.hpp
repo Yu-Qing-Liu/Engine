@@ -79,13 +79,11 @@ class Model {
 		}
 	}
 
-	virtual void enableBlur(bool on) {
-		if (on && !blur) {
+	virtual void enableBlur(const std::string &blurShaderPath = Assets::shaderRootPath + "/blur") {
+		if (!blur) {
 			blur = std::make_unique<BlurPipeline>(this);
+			blur->shaderPath = blurShaderPath;
 			blur->initialize();
-		}
-		if (!on && blur) {
-			blur.reset();
 		}
 	}
 
@@ -93,7 +91,7 @@ class Model {
 	void onMouseExitEvent();
 
 	void updateMVP(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void updateUniformBuffer(const MVP &ubo);
+	void updateMVP(const MVP &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
 	void copyUBO();
 

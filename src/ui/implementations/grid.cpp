@@ -377,12 +377,7 @@ void Grid::updateUniformBuffers() {
 	updateSlider();
 }
 
-void Grid::renderPass() {
-	grid->render();
-	scrollBar->render();
-}
-
-void Grid::renderPass1() {
+void Grid::render() {
 	grid->render();
 	scrollBar->render();
 }

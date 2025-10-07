@@ -13,7 +13,7 @@ Menu::Menu(Scenes &scenes) : Scene(scenes) {
 
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	dayBtns = Shapes::slantedRectangles(this, mvp, screenParams, 7);
-	dayBtns->enableBlur(true);
+	dayBtns->enableBlur();
 	dayBtns->enableRayTracing(true);
 	dayBtns->onMouseEnter = [&]() {
 		if (!dayBtns->rayTracing->hitMapped) {
@@ -79,9 +79,7 @@ Menu::Menu(Scenes &scenes) : Scene(scenes) {
 
 	auto mealBtnsInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(3);
 	mealBtns = make_unique<InstancedRectangle>(this, mvp, screenParams, mealBtnsInstances, 3);
-	mealBtns->enableBlur(false);
-    mealBtns->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-    mealBtns->blur->initialize();
+	mealBtns->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 }
 
 void Menu::updateScreenParams() {

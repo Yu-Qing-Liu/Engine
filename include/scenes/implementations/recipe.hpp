@@ -3,6 +3,7 @@
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
+#include "textinput.hpp"
 #include "texture.hpp"
 
 using namespace std::chrono;

@@ -68,9 +68,14 @@ static inline size_t cp_right(const std::string &s, size_t pos) {
 
 } // namespace
 
-TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams) : Widget(scene, ubo, screenParams) {
-	textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams);
+TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
+	textModel = std::make_unique<Text>(scene, mvp, screenParams, textParams, renderPass);
     caret = &textModel->textParams.caret;
+    textModel->enableRayTracing(true);
+    textModel->setOnMouseClick([&](int button, int action, int mods) {
+        int id = textModel->rayTracing->hitMapped->primId;
+        std::cout << id << std::endl;
+    });
 
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
@@ -119,7 +124,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &s
 		(void)mods;
 		// Selection toggled by whether the mouse/pointer is over us on click
 		if (action == Events::ACTION_PRESS) {
-			selected = container->mouseIsOver;
+			selected = textModel->mouseIsOver || container->mouseIsOver;
 			if (selected) {
 				container->params.color = styleParams.activeBgColor;
 				container->params.outlineColor = styleParams.activeOutlineColor;
@@ -203,13 +208,18 @@ void TextInput::utf8_pop_back(std::string &s, size_t position) {
 	caret->byte = i;
 }
 
-void TextInput::updateUniformBuffers(const Model::MVP &ubo) {
-	Widget::updateUniformBuffers(ubo);
-	textModel->updateUniformBuffer(ubo);
+void TextInput::swapChainUpdate() {
+    auto &p = styleParams;
+	container->params.color = p.bgColor;
+	container->params.outlineColor = p.outlineColor;
+	container->params.outlineWidth = p.outlineWidth;
+	container->params.borderRadius = p.borderRadius;
+	container->updateMVP(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)), mvp.view, mvp.proj);
+	textModel->updateMVP(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)), mvp.view, mvp.proj);
 }
 
-void TextInput::renderPass() {
-	Widget::renderPass();
+void TextInput::render() {
+	Widget::render();
 	if (text.empty() && !selected) {
 		textModel->textParams.text = styleParams.placeholderText;
         textModel->textParams.origin = Geometry::alignTextCentered(*textModel, styleParams.placeholderText);

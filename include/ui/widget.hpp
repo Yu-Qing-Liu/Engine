@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine.hpp"
 #include "model.hpp"
 #include "rectangle.hpp"
 
@@ -8,16 +9,14 @@ using std::unique_ptr;
 
 class Widget {
   public:
-	Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams);
+	Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass = Engine::renderPass);
 	Widget(Widget &&) = delete;
 	Widget(const Widget &) = delete;
 	Widget &operator=(Widget &&) = delete;
 	Widget &operator=(const Widget &) = delete;
 	~Widget() = default;
 
-	virtual void updateUniformBuffers(const Model::MVP &ubo);
-	virtual void renderPass();
-	virtual void renderPass1();
+	virtual void render();
 
 	virtual void setOnMouseHover(std::function<void()> cb);
 	virtual void setOnMouseEnter(std::function<void()> cb);

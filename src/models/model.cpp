@@ -171,8 +171,8 @@ void Model::updateMVP(optional<mat4> model, optional<mat4> view, optional<mat4> 
 	}
 }
 
-void Model::updateUniformBuffer(const MVP &ubo) {
-	this->mvp = ubo;
+void Model::updateMVP(const MVP &mvp) {
+	this->mvp = mvp;
 	this->mvp.proj[1][1] *= -1;
 }
 

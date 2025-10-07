@@ -36,13 +36,11 @@ template <typename T> class InstancedModel : public Model {
 		}
 	}
 
-	void enableBlur(bool init) override {
-		if (init && !blur) {
+	void enableBlur(const std::string &blurShaderPath = Assets::shaderRootPath + "/instanced/blur") override {
+		if (!blur) {
 			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
+			blur->shaderPath = blurShaderPath;
 			blur->initialize();
-		}
-		if (!init && !blur) {
-			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
 		}
 	}
 

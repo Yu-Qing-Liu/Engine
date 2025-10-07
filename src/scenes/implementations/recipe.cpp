@@ -7,12 +7,8 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
 	grid = make_unique<Grid>(this, mvp, screenParams);
-	grid->grid->enableBlur(false);
-	grid->scrollBar->enableBlur(false);
-	grid->grid->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	grid->scrollBar->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	grid->grid->blur->initialize();
-	grid->scrollBar->blur->initialize();
+	grid->grid->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+	grid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 	grid->grid->enableRayTracing(true);
 	grid->grid->setOnMouseClick([&](int button, int action, int mods) {
 		if (!this->show) {
@@ -39,9 +35,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, grid->mvp, grid->bgSp, mInstances, 2);
-	modal->enableBlur(false);
-	modal->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-	modal->blur->initialize();
+	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 }
 
 void Recipe::updateScreenParams() {
@@ -107,6 +101,6 @@ void Recipe::renderPass() {}
 
 void Recipe::renderPass1() {
 	modal->render();
-	grid->renderPass1();
+	grid->render();
 	addStepIcon->render();
 }

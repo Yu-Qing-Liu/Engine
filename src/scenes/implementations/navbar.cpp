@@ -9,7 +9,7 @@ NavBar::NavBar(Scenes &scenes) : Scene(scenes) {
 
 	inventoryBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/inventory.png", Engine::renderPass1);
 	inventoryBtn = make_unique<Rectangle>(this, mvp, screenParams);
-	inventoryBtn->enableBlur(true);
+	inventoryBtn->enableBlur();
 	inventoryBtn->enableRayTracing(true);
 	inventoryBtn->blur->setTint(Colors::Orange(0.1));
 	inventoryBtn->blur->setCornerRadiusOverride(24);
@@ -23,7 +23,7 @@ NavBar::NavBar(Scenes &scenes) : Scene(scenes) {
 
 	recipesBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/recipebook.png", Engine::renderPass1);
 	recipesBtn = make_unique<Rectangle>(this, mvp, screenParams);
-	recipesBtn->enableBlur(true);
+	recipesBtn->enableBlur();
 	recipesBtn->enableRayTracing(true);
 	recipesBtn->blur->setTint(Colors::Blue(0.1));
 	recipesBtn->blur->setCornerRadiusOverride(24);
@@ -37,14 +37,14 @@ NavBar::NavBar(Scenes &scenes) : Scene(scenes) {
 
 	cartBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/grocerybasket.png", Engine::renderPass1);
 	cartBtn = make_unique<Rectangle>(this, mvp, screenParams);
-	cartBtn->enableBlur(true);
+	cartBtn->enableBlur();
 	cartBtn->enableRayTracing(true);
 	cartBtn->blur->setTint(Colors::Green(0.1));
 	cartBtn->blur->setCornerRadiusOverride(24);
 
 	calendarBtnIcon = Textures::icon(this, mvp, screenParams, Assets::textureRootPath + "/icons/calendar.png", Engine::renderPass1);
 	calendarBtn = make_unique<Rectangle>(this, mvp, screenParams);
-	calendarBtn->enableBlur(true);
+	calendarBtn->enableBlur();
 	calendarBtn->enableRayTracing(true);
 	calendarBtn->blur->setTint(Colors::White(0.1));
 	calendarBtn->blur->setCornerRadiusOverride(24);

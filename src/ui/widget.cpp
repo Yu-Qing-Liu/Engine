@@ -1,15 +1,11 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams) : scene(scene), mvp(mvp), screenParams(screenParams) {
-	container = std::make_unique<Rectangle>(scene, mvp, screenParams);
+Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass) : scene(scene), mvp(mvp), screenParams(screenParams) {
+	container = std::make_unique<Rectangle>(scene, mvp, screenParams, renderPass);
 	container->enableRayTracing(true);
 }
 
-void Widget::updateUniformBuffers(const Model::MVP &ubo) { container->updateUniformBuffer(ubo); }
-
-void Widget::renderPass() { container->render(); }
-
-void Widget::renderPass1() {}
+void Widget::render() { container->render(); }
 
 void Widget::setOnMouseHover(std::function<void()> cb) { container->onMouseHover = cb; }
 void Widget::setOnMouseEnter(std::function<void()> cb) { container->onMouseEnter = cb; }

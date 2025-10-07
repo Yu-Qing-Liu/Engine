@@ -1,5 +1,6 @@
 #include "text.hpp"
 #include "engine.hpp"
+#include "textraytracing.hpp"
 #include <algorithm>
 #include <cstring>
 #include <numeric>
@@ -111,7 +112,7 @@ struct RawGlyph {
 };
 
 Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &fontParams, const VkRenderPass &renderPass) : fontParams(fontParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
-
+	rayTracing = std::make_unique<TextRayTracing>(this);
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
@@ -611,6 +612,66 @@ void Text::setupGraphicsPipeline() {
 	pipelineLayoutInfo.pPushConstantRanges = &pc;
 }
 
+void Text::rebuildPickingSpans(const std::string &s, const glm::vec3 &origin, float scale) {
+	spansCPU.clear();
+	spansCPU.reserve(std::max<size_t>(s.size(), 16));
+
+	float x = origin.x, y = origin.y, z = origin.z;
+	uint32_t prev = 0;
+	uint32_t letterIdx = 0; // 0-based codepoint index
+
+	for (size_t i = 0; i < s.size();) {
+		size_t adv = 0;
+		const uint32_t cp = utf8_decode_at(s, i, adv);
+		if (adv == 0)
+			break;
+
+		const size_t giStart = i;
+		const size_t giEnd = i + adv;
+
+		auto it = glyphs.find(cp);
+		if (it == glyphs.end()) {
+			// advance by space if missing glyph (mirror buildGeometryTaggedUTF8)
+			auto sp = glyphs.find(uint32_t(' '));
+			x += (sp != glyphs.end() ? sp->second.advance : fontParams.pixelHeight * 0.5f) * scale;
+
+			i = giEnd;
+			prev = 0;
+			++letterIdx; // still count this codepoint position
+			continue;
+		}
+
+		const GlyphMeta &g = it->second;
+		x += kerning(prev, cp) * scale;
+
+		const float w = g.size.x * scale;
+		const float h = g.size.y * scale;
+		const float x0 = x + g.bearing.x * scale;
+		const float x1 = x0 + w;
+		const float y0 = y - g.bearing.y * scale;
+		const float y1 = y0 + h;
+
+		// --- IMPORTANT: std430-friendly struct: 4x vec4 + uvec4 (index + padding) ---
+		TextRayTracing::GlyphSpanGPU span{};
+		span.p0 = {x0, y0, z, 0.0f};
+		span.p1 = {x0, y1, z, 0.0f};
+		span.p2 = {x1, y1, z, 0.0f};
+		span.p3 = {x1, y0, z, 0.0f};
+		span.letterIndex = static_cast<uint32_t>(letterIdx);
+		span._p0 = span._p1 = span._p2 = 0u; // pad to 16B
+
+		spansCPU.push_back(span);
+
+		x += g.advance * scale;
+		prev = cp;
+		i = giEnd;
+		++letterIdx;
+	}
+
+	if (spansCPU.size() > kMaxSpans)
+		spansCPU.resize(kMaxSpans);
+}
+
 void Text::render() {
 	copyUBO(); // keep your existing UBO path
 
@@ -650,6 +711,12 @@ void Text::render() {
 		cache.reserve(est * 4 + 32, est * 6 + 48);
 		buildGeometryTaggedUTF8(cache.text, cache.origin, cache.scale, cache.sel, cache.caret, cache.caretPx, cache.verts, cache.idx);
 		cache.dirty = false;
+
+		rebuildPickingSpans(cache.text, cache.origin, cache.scale);
+		spanCount = static_cast<uint32_t>(spansCPU.size());
+		if (rayTracing) {
+			dynamic_cast<TextRayTracing *>(rayTracing.get())->uploadSpans(spansCPU);
+		}
 	}
 	if (cache.idx.empty())
 		return;
