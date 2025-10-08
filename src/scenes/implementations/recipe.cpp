@@ -6,6 +6,9 @@
 Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
+	randomText = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was "
+				 "popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.";
+
 	grid = make_unique<Grid>(this, mvp, screenParams);
 	grid->grid->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 	grid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
@@ -36,6 +39,11 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, grid->mvp, grid->bgSp, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+
+	Text::FontParams fp{};
+	for (size_t i = 0; i < grid->numItems; i++) {
+		steps.emplace_back(make_unique<Text>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));
+	}
 }
 
 void Recipe::updateScreenParams() {
@@ -73,7 +81,7 @@ void Recipe::swapChainUpdate() {
 	const float usableH = h * 0.5 - padT;
 	grid->styleParams.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	grid->styleParams.gridDim = vec2(w * 0.8, usableH);
-	grid->styleParams.cellSize = vec2((w - grid->styleParams.scrollBarWidth * 2) * 0.8, 180);
+	grid->styleParams.cellSize = vec2((w - grid->styleParams.scrollBarWidth * 2) * 0.8, 250);
 	grid->styleParams.cellColor = Colors::Green;
 	grid->styleParams.margins = vec4(50.0f);
 	grid->styleParams.numCols = 1;
@@ -81,7 +89,10 @@ void Recipe::swapChainUpdate() {
 	grid->setGridItem = [&](int idx, float x, float y, vec2 cellSize, MVP mvp) {
 		if (idx == grid->numItems) {
 			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.y * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
-		}
+		} else {
+            steps[idx]->textParams.text = randomText;
+            steps[idx]->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)));
+        }
 	};
 	grid->swapChainUpdate();
 
@@ -95,6 +106,9 @@ void Recipe::computePass() {}
 void Recipe::updateUniformBuffers() {
 	grid->updateUniformBuffers();
 	addStepIcon->updateMVP(std::nullopt, grid->mvp.view);
+	for (size_t i = 0; i < grid->numItems; i++) {
+		steps[i]->updateMVP(std::nullopt, grid->mvp.view);
+	}
 }
 
 void Recipe::renderPass() {}
@@ -103,4 +117,7 @@ void Recipe::renderPass1() {
 	modal->render();
 	grid->render();
 	addStepIcon->render();
+	for (size_t i = 0; i < grid->numItems; i++) {
+		steps[i]->render();
+	}
 }

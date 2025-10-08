@@ -34,5 +34,10 @@ class Recipe : public Scene {
 	unique_ptr<InstancedRectangle> modal;
 	unique_ptr<Texture> addStepIcon;
 
+	std::string randomText;
+
+	vector<unique_ptr<Text>> steps;
+	unique_ptr<TextInput> textInput;
+
 	void createModal();
 };
