@@ -69,14 +69,7 @@ static inline size_t cp_right(const std::string &s, size_t pos) {
 } // namespace
 
 TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
-	textModel = std::make_unique<Text>(scene, mvp, screenParams, textParams, renderPass);
-    caret = &textModel->textParams.caret;
-    textModel->enableRayTracing(true);
-    textModel->setOnMouseClick([&](int button, int action, int mods) {
-        int id = textModel->rayTracing->hitMapped->primId;
-        std::cout << id << std::endl;
-    });
-
+	textField = std::make_unique<TextField>(scene, mvp, screenParams, textParams, renderPass);
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
 			return;
@@ -209,44 +202,56 @@ void TextInput::utf8_pop_back(std::string &s, size_t position) {
 }
 
 void TextInput::swapChainUpdate() {
-    auto &p = styleParams;
+	auto &p = styleParams;
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
 	container->params.borderRadius = p.borderRadius;
 	container->updateMVP(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)), mvp.view, mvp.proj);
-	textModel->updateMVP(translate(mat4(1.0f), vec3(p.textCenter, 0.0f)), mvp.view, mvp.proj);
+
+    textField->params.center = vec2(p.center.x - p.dim.x * 0.5, p.center.y - p.dim.y * 0.5);
+    textField->params.dim = p.dim;
+    textField->params.lineSpacing = p.lineSpacing;
+    textField->mvp = mvp;
+    textField->swapChainUpdate();
+
+	textModel = textField->textModel.get();
+	caret = &textModel->textParams.caret;
+    textModel->enableRayTracing(true);
+	textModel->setOnMouseClick([&](int button, int action, int mods) {
+        if (textField->textModel->rayTracing->hitMapped) {
+            int id = textField->textModel->rayTracing->hitMapped->primId;
+            std::cout << id << std::endl;
+        }
+	});
+
 }
 
 void TextInput::render() {
 	Widget::render();
 	if (text.empty() && !selected) {
-		textModel->textParams.text = styleParams.placeholderText;
-        textModel->textParams.origin = Geometry::alignTextCentered(*textModel, styleParams.placeholderText);
-		textModel->textParams.color = styleParams.placeholderTextColor;
-        textModel->textParams.caret.on = false;
-		textModel->render();
+		textField->params.text = styleParams.placeholderText;
+		textField->params.textColor = styleParams.placeholderTextColor;
+		textModel->textParams.caret.on = false;
+		textField->render();
 	} else {
 		if (selected) {
 			if (text.empty()) {
-				textModel->textParams.text = "";
-                textModel->textParams.origin = Geometry::alignTextCentered(*textModel, "");
-				textModel->textParams.color = styleParams.activeTextColor;
+				textField->params.text = "";
+				textField->params.textColor = styleParams.activeTextColor;
 				textModel->textParams.caret.on = true;
-				textModel->render();
+				textField->render();
 			} else {
-				textModel->textParams.text = text;
-                textModel->textParams.origin = Geometry::alignTextCentered(*textModel, text);
-				textModel->textParams.color = styleParams.activeTextColor;
+				textField->params.text = text;
+				textField->params.textColor = styleParams.activeTextColor;
 				textModel->textParams.caret.on = true;
-				textModel->render();
+				textField->render();
 			}
 		} else {
-            textModel->textParams.text = text;
-            textModel->textParams.origin = Geometry::alignTextCentered(*textModel, text);
-            textModel->textParams.color = styleParams.textColor;
-            textModel->textParams.caret.on = false;
-			textModel->render();
+			textField->params.text = text;
+			textField->params.textColor = styleParams.textColor;
+			textModel->textParams.caret.on = false;
+			textField->render();
 		}
 	}
 }

@@ -35,7 +35,7 @@ class Grid : public Widget {
 	bool enableControls = true;
 
 	StyleParams styleParams{};
-	size_t numItems = 200;
+	size_t numItems = 0;
 
 	unique_ptr<InstancedRectangle> grid;
 	unique_ptr<InstancedRectangle> scrollBar;

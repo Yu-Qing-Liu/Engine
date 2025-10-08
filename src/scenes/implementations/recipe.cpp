@@ -39,11 +39,6 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, grid->mvp, grid->bgSp, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
-
-	Text::FontParams fp{};
-	for (size_t i = 0; i < grid->numItems; i++) {
-		steps.emplace_back(make_unique<Text>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));
-	}
 }
 
 void Recipe::updateScreenParams() {
@@ -86,13 +81,23 @@ void Recipe::swapChainUpdate() {
 	grid->styleParams.margins = vec4(50.0f);
 	grid->styleParams.numCols = 1;
 	grid->numItems = 10;
+
+	Text::FontParams fp{};
+	for (size_t i = 0; i < grid->numItems; i++) {
+		steps.emplace_back(make_unique<TextField>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));
+	}
+
 	grid->setGridItem = [&](int idx, float x, float y, vec2 cellSize, MVP mvp) {
 		if (idx == grid->numItems) {
 			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.y * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
 		} else {
-            steps[idx]->textParams.text = randomText;
-            steps[idx]->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)));
-        }
+			steps[idx]->params.text = randomText;
+            auto topX = x - cellSize.x * 0.5 + 20;
+            auto topY = y - cellSize.y * 0.5 + 10;
+			steps[idx]->params.center = vec2(topX, topY);
+			steps[idx]->params.dim = cellSize - vec2(20, 10);
+            steps[idx]->swapChainUpdate();
+		}
 	};
 	grid->swapChainUpdate();
 
@@ -107,7 +112,7 @@ void Recipe::updateUniformBuffers() {
 	grid->updateUniformBuffers();
 	addStepIcon->updateMVP(std::nullopt, grid->mvp.view);
 	for (size_t i = 0; i < grid->numItems; i++) {
-		steps[i]->updateMVP(std::nullopt, grid->mvp.view);
+		steps[i]->updateUniformBuffers(grid->mvp);
 	}
 }
 

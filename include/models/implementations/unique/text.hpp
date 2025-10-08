@@ -79,6 +79,7 @@ class Text : public Model {
 		glm::vec4 selectionColor = Colors::Yellow(0.5f);
 		Caret caret{};
 		BillboardParams billboardParams{};
+        float lineAdvancePx = 0.0f;
 	};
 
 	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);

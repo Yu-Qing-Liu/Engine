@@ -1,7 +1,7 @@
 #pragma once
 
 #include "colors.hpp"
-#include "text.hpp"
+#include "textfield.hpp"
 #include "widget.hpp"
 
 class TextInput : public Widget {
@@ -23,6 +23,7 @@ class TextInput : public Widget {
 		vec4 activeOutlineColor{Colors::Blue};
 		float outlineWidth{1.0f};  // px
 		float borderRadius{12.0f}; // px
+		float lineSpacing{0.0f};
 
 		string placeholderText{"Enter Text!"};
 		vec4 placeholderTextColor{Colors::Gray};
@@ -44,6 +45,7 @@ class TextInput : public Widget {
 	StyleParams styleParams{};
 	string text{""};
 
-	std::unique_ptr<Text> textModel;
+	std::unique_ptr<TextField> textField;
+	Text *textModel;
 	Text::Caret *caret;
 };

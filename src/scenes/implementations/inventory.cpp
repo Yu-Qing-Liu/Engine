@@ -26,6 +26,7 @@ void Inventory::swapChainUpdate() {
 	grid->styleParams.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	grid->styleParams.gridDim = vec2(w * 0.95, usableH);
     grid->styleParams.cellSize = vec2(180.f);
+    grid->numItems = 200;
 	grid->swapChainUpdate();
 }
 

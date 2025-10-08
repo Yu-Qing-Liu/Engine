@@ -15,6 +15,74 @@ class TextRayTracing : public RayTracingPipeline {
 		rayTracingShaderPath = shaderDir; // overrides base path
 	}
 
+	virtual ~TextRayTracing() {
+		// Unmap first
+		if (spansMapped) {
+			vkUnmapMemory(Engine::device, spansMem);
+			spansMapped = nullptr;
+		}
+		if (pickUBOMapped) {
+			vkUnmapMemory(Engine::device, pickUBOMem);
+			pickUBOMapped = nullptr;
+		}
+		if (hitMapped) {
+			vkUnmapMemory(Engine::device, hitMem);
+			hitMapped = nullptr;
+		}
+
+		// Then destroy buffers & free memory
+		if (spansBuf) {
+			vkDestroyBuffer(Engine::device, spansBuf, nullptr);
+			spansBuf = VK_NULL_HANDLE;
+		}
+		if (spansMem) {
+			vkFreeMemory(Engine::device, spansMem, nullptr);
+			spansMem = VK_NULL_HANDLE;
+		}
+
+		if (pickUBO) {
+			vkDestroyBuffer(Engine::device, pickUBO, nullptr);
+			pickUBO = VK_NULL_HANDLE;
+		}
+		if (pickUBOMem) {
+			vkFreeMemory(Engine::device, pickUBOMem, nullptr);
+			pickUBOMem = VK_NULL_HANDLE;
+		}
+
+		if (hitBuf) {
+			vkDestroyBuffer(Engine::device, hitBuf, nullptr);
+			hitBuf = VK_NULL_HANDLE;
+		}
+		if (hitMem) {
+			vkFreeMemory(Engine::device, hitMem, nullptr);
+			hitMem = VK_NULL_HANDLE;
+		}
+
+		// Pipeline / descriptors
+		if (computePipeline) {
+			vkDestroyPipeline(Engine::device, computePipeline, nullptr);
+			computePipeline = VK_NULL_HANDLE;
+		}
+		if (computePipelineLayout) {
+			vkDestroyPipelineLayout(Engine::device, computePipelineLayout, nullptr);
+			computePipelineLayout = VK_NULL_HANDLE;
+		}
+		if (computePool) {
+			vkDestroyDescriptorPool(Engine::device, computePool, nullptr);
+			computePool = VK_NULL_HANDLE;
+		}
+		if (computeDescriptorSetLayout) {
+			vkDestroyDescriptorSetLayout(Engine::device, computeDescriptorSetLayout, nullptr);
+			computeDescriptorSetLayout = VK_NULL_HANDLE;
+		}
+
+		// Shader module if your Assets loader gave you ownership
+		if (rayTracingProgram.computeShader) {
+			vkDestroyShaderModule(Engine::device, rayTracingProgram.computeShader, nullptr);
+			rayTracingProgram.computeShader = VK_NULL_HANDLE;
+		}
+	}
+
 	// Engine calls:
 	void initialize() override {
 		if (!initialized) {

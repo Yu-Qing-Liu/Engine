@@ -16,7 +16,7 @@ void Button::swapChainUpdate() {
 void Button::render() {
 	Widget::render();
 	if (!styleParams.text.empty()) {
-		textModel->textParams.origin = Geometry::alignTextCentered(*textModel, styleParams.text);
+		textModel->textParams.origin = Geometry::alignTextCentered(*textModel);
 		textModel->textParams.text = styleParams.text;
 		textModel->textParams.color = styleParams.textColor;
 		textModel->render();

@@ -1,4 +1,5 @@
 #include "scenes.hpp"
+#include "addrecipestep.hpp"
 #include "background.hpp"
 #include "inventory.hpp"
 #include "menu.hpp"
@@ -21,12 +22,13 @@ Scenes::Scenes() {
 
 	currentScene = "Menu";
 
-	scenesContainer.emplace_back(make_shared<Background>(*this));
-	scenesContainer.emplace_back(make_shared<NavBar>(*this));
-	scenesContainer.emplace_back(make_shared<Menu>(*this));
-	scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
-	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
-	scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
+	// scenesContainer.emplace_back(make_shared<Background>(*this));
+	// scenesContainer.emplace_back(make_shared<NavBar>(*this));
+	// scenesContainer.emplace_back(make_shared<Menu>(*this));
+	// scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
+	// scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
+	// scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
+	scenesContainer.emplace_back(make_shared<AddRecipeStep>(*this, true));
 	for (const auto &sc : scenesContainer) {
 		scenes[sc->getName()] = {sc};
 	}

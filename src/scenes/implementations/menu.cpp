@@ -119,7 +119,7 @@ void Menu::swapChainUpdate() {
 		auto label = make_unique<Text>(this, mvp, screenParams, ft, Engine::renderPass1);
 		label->textParams.text = std::format("{:%a}", wday);
 		label->updateMVP(translate(mat4(1.0), vec3(day.model[3].x, day.model[3].y, day.model[3].z)));
-		label->textParams.origin = Geometry::alignTextCentered(*label, label->textParams.text);
+		label->textParams.origin = Geometry::alignTextCentered(*label);
 		label->textParams.color = Colors::White;
 		dayLabels.emplace_back(std::move(label));
 	}

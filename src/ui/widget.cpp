@@ -1,6 +1,6 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass) : scene(scene), mvp(mvp), screenParams(screenParams) {
+Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass) : scene(scene), mvp(mvp), screenParams(screenParams), renderPass(renderPass) {
 	container = std::make_unique<Rectangle>(scene, mvp, screenParams, renderPass);
 	container->enableRayTracing(true);
 }

@@ -28,5 +28,6 @@ class Widget {
 	Scene *scene;
 	Model::MVP mvp;
 	Model::ScreenParams &screenParams;
+	const VkRenderPass &renderPass;
 	std::unique_ptr<Rectangle> container;
 };

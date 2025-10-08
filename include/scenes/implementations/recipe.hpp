@@ -3,6 +3,7 @@
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
+#include "textfield.hpp"
 #include "textinput.hpp"
 #include "texture.hpp"
 
@@ -36,8 +37,7 @@ class Recipe : public Scene {
 
 	std::string randomText;
 
-	vector<unique_ptr<Text>> steps;
-	unique_ptr<TextInput> textInput;
+	vector<unique_ptr<TextField>> steps;
 
 	void createModal();
 };
