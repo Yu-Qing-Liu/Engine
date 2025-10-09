@@ -221,10 +221,9 @@ void TextInput::swapChainUpdate() {
 	textModel->setOnMouseClick([&](int button, int action, int mods) {
         if (textField->textModel->rayTracing->hitMapped) {
             int id = textField->textModel->rayTracing->hitMapped->primId;
-            std::cout << id << std::endl;
+            caret->byte = id;
         }
 	});
-
 }
 
 void TextInput::render() {
