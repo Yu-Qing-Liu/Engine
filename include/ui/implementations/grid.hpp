@@ -46,30 +46,9 @@ class Grid : public Widget {
 	Model::ScreenParams bgSp;
 
   private:
-	vec3 camPosOrtho = vec3(0.0f);
-	vec3 lookAtCoords = vec3(0.0f);
-	vec3 camTarget = vec3(0.0f);
-	float zoom = 1.0f;
-
-	double lastPointerX = -1.0;
-	double lastPointerY = -1.0;
-
-	float scrollMinY = 0.0f;
-	float scrollMaxY = 0.0f;
-
 	int rowsUsed = 0;
-	float contentH = 0.0f;
 	float gridW;
 	float gridH;
-
-	float trackX = 0.0f;
-	float trackY = 0.0f;
-	float trackH = 0.0f;
-
-	bool usingSlider = false;
-	bool s_hookedScroll = false;
-	bool s_initY = false;
-	float s_initialY = 0.0f;
 
 	InstancedRectangleData slider{};
 
@@ -80,6 +59,5 @@ class Grid : public Widget {
 	void updateSlider();
 
 	void dragSliderToCursor();
-	void applyVerticalDeltaClamped(float dy, float minY, float maxY);
 	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
 };

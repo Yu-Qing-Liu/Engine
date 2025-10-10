@@ -127,17 +127,6 @@ void Grid::dragSliderToCursor() {
 	camTarget.y = clamped;
 }
 
-void Grid::applyVerticalDeltaClamped(float dy, float minY, float maxY) {
-	// Clamp to [scrollMinY, scrollMaxY]
-	const float proposed = lookAtCoords.y + dy;
-	const float clamped = glm::clamp(proposed, minY, maxY);
-	const float applied = clamped - lookAtCoords.y;
-
-	camPosOrtho.y += applied;
-	lookAtCoords.y += applied;
-	camTarget.y += applied;
-}
-
 void Grid::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
 	GLFWwindow *win = Engine::window;
 	if (!win || !glfwGetWindowAttrib(win, GLFW_FOCUSED))

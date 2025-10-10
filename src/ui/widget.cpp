@@ -5,6 +5,17 @@ Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenP
 	container->enableRayTracing(true);
 }
 
+void Widget::applyVerticalDeltaClamped(float dy, float minY, float maxY) {
+	// Clamp to [scrollMinY, scrollMaxY]
+	const float proposed = lookAtCoords.y + dy;
+	const float clamped = glm::clamp(proposed, minY, maxY);
+	const float applied = clamped - lookAtCoords.y;
+
+	camPosOrtho.y += applied;
+	lookAtCoords.y += applied;
+	camTarget.y += applied;
+}
+
 void Widget::render() { container->render(); }
 
 void Widget::setOnMouseHover(std::function<void()> cb) { container->onMouseHover = cb; }
