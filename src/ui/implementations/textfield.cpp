@@ -197,6 +197,22 @@ void TextField::wrap() {
 	textModel->textParams.caret.byte = newCaret;
 }
 
+void TextField::createScrollBar() {
+
+}
+
+void TextField::updateSlider() {
+
+}
+
+void TextField::dragSliderToCursor() {
+
+}
+
+void TextField::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
+
+}
+
 void TextField::swapChainUpdate() {
 	updateScreenParams();
 	textModel = make_unique<Text>(scene, mvp, sp, textParams, renderPass);

@@ -23,7 +23,6 @@ class TextField : public Widget {
 
 	TextField(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
 
-	void updateScreenParams();
 	void swapChainUpdate();
 	void updateUniformBuffers(const Model::MVP &mvp);
 	void render() override;
@@ -40,5 +39,11 @@ class TextField : public Widget {
 	glm::mat4 projLocal{1.0f};
 
   private:
+	void updateScreenParams();
 	void wrap();
+
+	void createScrollBar();
+	void updateSlider();
+	void dragSliderToCursor();
+	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
 };

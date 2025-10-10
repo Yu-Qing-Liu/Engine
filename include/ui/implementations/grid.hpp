@@ -55,9 +55,9 @@ class Grid : public Widget {
 	void updateScreenParams();
 
 	void createGrid();
+
 	void createScrollBar();
 	void updateSlider();
-
 	void dragSliderToCursor();
 	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
 };
