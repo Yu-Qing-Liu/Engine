@@ -4,13 +4,13 @@
 #include "textfield.hpp"
 #include "widget.hpp"
 
-class TextInput : public Widget {
+class TextLabel : public Widget {
   public:
-	TextInput(TextInput &&) = delete;
-	TextInput(const TextInput &) = delete;
-	TextInput &operator=(TextInput &&) = delete;
-	TextInput &operator=(const TextInput &) = delete;
-	~TextInput() = default;
+	TextLabel(TextLabel &&) = delete;
+	TextLabel(const TextLabel &) = delete;
+	TextLabel &operator=(TextLabel &&) = delete;
+	TextLabel &operator=(const TextLabel &) = delete;
+	~TextLabel() = default;
 
 	struct StyleParams {
 		// container style
@@ -24,27 +24,21 @@ class TextInput : public Widget {
 		float outlineWidth{1.0f};  // px
 		float borderRadius{12.0f}; // px
 		float lineSpacing{0.0f};
-
-		string placeholderText{"Enter Text!"};
-		vec4 placeholderTextColor{Colors::Gray};
-
 		vec4 textColor{Colors::White};
-		vec4 activeTextColor{Colors::Green};
 	};
 
-	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
+	TextLabel(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
 
 	void swapChainUpdate();
 
-	void updateUniformBuffers(optional<Model::MVP> mvp);
+	void updateUniformBuffers(optional<Model::MVP> mvp = std::nullopt);
 
 	void render() override;
 
 	bool selected = false;
-	StyleParams styleParams{};
-	string text{""};
+	StyleParams params{};
+	string text{"Text Label"};
 
 	std::unique_ptr<TextField> textField;
 	Text *textModel;
-	Text::Caret *caret;
 };

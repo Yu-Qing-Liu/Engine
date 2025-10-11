@@ -89,6 +89,8 @@ class Text : public Model {
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight() const;
 
+    std::optional<bool> isRightHalfClick(size_t letterIdx) const;
+
 	TextParams textParams{};
 
 	void render() override;

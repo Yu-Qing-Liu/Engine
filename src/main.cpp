@@ -3,7 +3,7 @@
 #include "pipeline.hpp"
 #include "scenes.hpp"
 #include "text.hpp"
-#include "AppData.hpp"
+#include "appdata.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cstdint>

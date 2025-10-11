@@ -40,6 +40,7 @@ inline constexpr Color Black{{0.f, 0.f, 0.f}};
 inline constexpr Color Gray{{0.33f, 0.33f, 0.33f}};
 inline constexpr Color Red{{1.f, 0.f, 0.f}};
 inline constexpr Color Green{{0.f, 1.f, 0.f}};
+inline constexpr Color DarkGreen{{0.f, 0.4f, 0.f}};
 inline constexpr Color Blue{{0.f, 0.f, 1.f}};
 inline constexpr Color Yellow{{1.f, 1.f, 0.f}};
 inline constexpr Color Cyan{{0.f, 1.f, 1.f}};

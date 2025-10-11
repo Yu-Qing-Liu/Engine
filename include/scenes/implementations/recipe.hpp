@@ -3,8 +3,7 @@
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
-#include "textfield.hpp"
-#include "textinput.hpp"
+#include "textlabel.hpp"
 #include "texture.hpp"
 
 using namespace std::chrono;
@@ -37,7 +36,7 @@ class Recipe : public Scene {
 
 	std::string randomText;
 
-	vector<unique_ptr<TextField>> steps;
+	vector<unique_ptr<TextLabel>> steps;
 
 	void createModal();
 };

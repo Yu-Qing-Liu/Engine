@@ -2,12 +2,12 @@
 #include "engine.hpp"
 #include "scene.hpp"
 
-Grid::Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams) : Widget(scene, mvp, screenParams) {
+Grid::Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
 	auto itemInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
-	grid = make_unique<InstancedRectangle>(scene, mvp, sp, itemInstances);
+	grid = make_unique<InstancedRectangle>(scene, mvp, sp, itemInstances, 65536, renderPass);
 
 	auto barElements = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(4);
-	scrollBar = make_unique<InstancedRectangle>(scene, mvp, sp, barElements, 4);
+	scrollBar = make_unique<InstancedRectangle>(scene, mvp, sp, barElements, 4, renderPass);
 	scrollBar->enableRayTracing(true);
 	scrollBar->setOnMouseClick([&](int button, int action, int mods) {
 		if (!enableControls) {

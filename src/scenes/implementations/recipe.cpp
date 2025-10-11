@@ -2,6 +2,7 @@
 #include "colors.hpp"
 #include "engine.hpp"
 #include "textures.hpp"
+#include "scenes.hpp"
 
 Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
@@ -23,6 +24,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 				auto style = grid->grid->getInstance(id);
 				style.color = Colors::Lime;
 				grid->grid->updateInstance(id, style);
+                scenes.showScene("AddRecipeStep");
 			}
 		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = grid->grid->rayTracing->hitMapped->primId;
@@ -77,28 +79,30 @@ void Recipe::swapChainUpdate() {
 	grid->styleParams.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	grid->styleParams.gridDim = vec2(w * 0.8, usableH);
 	grid->styleParams.cellSize = vec2((w - grid->styleParams.scrollBarWidth * 2) * 0.8, 250);
-	grid->styleParams.cellColor = Colors::Green;
+	grid->styleParams.cellColor = Colors::DarkGreen;
 	grid->styleParams.margins = vec4(50.0f);
 	grid->styleParams.numCols = 1;
 	grid->numItems = 10;
 
+    grid->updateScreenParams();
+
 	Text::FontParams fp{};
 	for (size_t i = 0; i < grid->numItems; i++) {
-		steps.emplace_back(make_unique<TextField>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));
+		steps.emplace_back(make_unique<TextLabel>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));
 	}
 
 	grid->setGridItem = [&](int idx, float x, float y, vec2 cellSize, MVP mvp) {
 		if (idx == grid->numItems) {
 			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.y * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
 		} else {
-			steps[idx]->params.text = randomText;
-            auto topX = x - cellSize.x * 0.5 + 20;
-            auto topY = y - cellSize.y * 0.5 + 10;
-			steps[idx]->params.center = vec2(topX, topY);
-			steps[idx]->params.dim = cellSize - vec2(20, 10);
+            steps[idx]->mvp = mvp;
+			steps[idx]->text = randomText;
+			steps[idx]->params.center = vec2(x, y);
+			steps[idx]->params.dim = vec2(cellSize.x - 20, cellSize.y - 20);
             steps[idx]->swapChainUpdate();
 		}
 	};
+
 	grid->swapChainUpdate();
 
 	createModal();
@@ -112,7 +116,7 @@ void Recipe::updateUniformBuffers() {
 	grid->updateUniformBuffers();
 	addStepIcon->updateMVP(std::nullopt, grid->mvp.view);
 	for (size_t i = 0; i < grid->numItems; i++) {
-		steps[i]->updateUniformBuffers(grid->mvp);
+        steps[i]->updateUniformBuffers(grid->mvp);
 	}
 }
 

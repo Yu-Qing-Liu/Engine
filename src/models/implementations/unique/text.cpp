@@ -733,6 +733,27 @@ void Text::rebuildPickingSpans(const std::string &s, const glm::vec3 &origin, fl
 		spansCPU.resize(kMaxSpans);
 }
 
+std::optional<bool> Text::isRightHalfClick(size_t letterIdx) const {
+	if (!rayTracing)
+		return std::nullopt;
+	const auto &rt = *rayTracing;
+	if (!rt.hitPos)
+		return std::nullopt; // no click/hit this frame
+
+	// Bounds check
+	if (letterIdx >= spansCPU.size())
+		return std::nullopt;
+
+	const auto &span = spansCPU[letterIdx];
+	// span.p0 = x0,y0 (left), span.p3 = x1,y0 (right) as you emitted in rebuildPickingSpans
+	const float x0 = span.p0.x;
+	const float x1 = span.p3.x;
+	const float mid = 0.5f * (x0 + x1);
+
+	// Compare hit x against mid. Coordinates are in the same model space the shader used.
+	return rt.hitPos->x >= mid;
+}
+
 void Text::render() {
 	copyUBO(); // keep your existing UBO path
 

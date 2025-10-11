@@ -26,9 +26,10 @@ class Grid : public Widget {
 		int numCols = -1; // dynamic;
 	};
 
-	Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams);
+	Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass = Engine::renderPass);
 
 	void swapChainUpdate();
+	void updateScreenParams();
 	void updateUniformBuffers();
 	void render() override;
 
@@ -51,8 +52,6 @@ class Grid : public Widget {
 	float gridH;
 
 	InstancedRectangleData slider{};
-
-	void updateScreenParams();
 
 	void createGrid();
 

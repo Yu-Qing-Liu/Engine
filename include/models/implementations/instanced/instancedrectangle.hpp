@@ -49,7 +49,7 @@ class InstancedRectangle : public InstancedModel<InstancedRectangleData> {
 		}
 	};
 
-	InstancedRectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances = 65536, VkRenderPass &renderPass = Engine::renderPass);
+	InstancedRectangle(Scene *scene, const MVP &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances = 65536, const VkRenderPass &renderPass = Engine::renderPass);
 	~InstancedRectangle() override = default;
 
   protected:
