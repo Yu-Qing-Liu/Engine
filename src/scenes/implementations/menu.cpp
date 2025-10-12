@@ -13,7 +13,7 @@ Menu::Menu(Scenes &scenes) : Scene(scenes) {
 
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 	dayBtns = Shapes::slantedRectangles(this, mvp, screenParams, 7);
-	dayBtns->enableBlur(true);
+	dayBtns->enableBlur();
 	dayBtns->enableRayTracing(true);
 	dayBtns->onMouseEnter = [&]() {
 		if (!dayBtns->rayTracing->hitMapped) {
@@ -79,9 +79,7 @@ Menu::Menu(Scenes &scenes) : Scene(scenes) {
 
 	auto mealBtnsInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>(3);
 	mealBtns = make_unique<InstancedRectangle>(this, mvp, screenParams, mealBtnsInstances, 3);
-	mealBtns->enableBlur(false);
-    mealBtns->blur->shaderPath = Assets::shaderRootPath + "/instanced/blur/irectblur/";
-    mealBtns->blur->initialize();
+	mealBtns->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 }
 
 void Menu::updateScreenParams() {
@@ -121,7 +119,7 @@ void Menu::swapChainUpdate() {
 		auto label = make_unique<Text>(this, mvp, screenParams, ft, Engine::renderPass1);
 		label->textParams.text = std::format("{:%a}", wday);
 		label->updateMVP(translate(mat4(1.0), vec3(day.model[3].x, day.model[3].y, day.model[3].z)));
-		label->textParams.origin = Geometry::alignTextCentered(*label, label->textParams.text);
+		label->textParams.origin = Geometry::alignTextCentered(*label);
 		label->textParams.color = Colors::White;
 		dayLabels.emplace_back(std::move(label));
 	}
@@ -145,7 +143,7 @@ void Menu::swapChainUpdate() {
 		float cy = topOffset + (i + 0.5f) * rowH;
 
 		InstancedRectangleData btn{};
-		btn.color = Colors::LightBlue(0.3f);
+		btn.color = Colors::Gray(0.3f);
 		btn.model = glm::translate(mat4(1.0f), vec3(cx, cy, 0.0f)) * glm::scale(mat4(1.0f), btnSize);
         btn.borderRadius = 50.0f;
 

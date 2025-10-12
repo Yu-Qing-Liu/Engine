@@ -10,7 +10,7 @@ class Scenes;
 
 class Scene {
   public:
-	Scene(Scenes &scenes);
+	Scene(Scenes &scenes, bool show = true);
 	Scene(Scene &&) = delete;
 	Scene(const Scene &) = delete;
 	Scene &operator=(Scene &&) = delete;
@@ -26,10 +26,11 @@ class Scene {
 
 	vector<Model *> models;
 	bool is3D = true;
+	bool show = true;
 
 	void updateRayTraceUniformBuffers();
 	ClosestHit rayTraces();
-	void applyHover(Model* globalClosest);
+	void applyHover(Model *globalClosest);
 
 	virtual void updateScreenParams();
 
@@ -40,6 +41,7 @@ class Scene {
 	virtual void renderPass();
 	virtual void renderPass1();
 	virtual void swapChainUpdate();
+
 
   protected:
 	Scenes &scenes;
@@ -76,6 +78,9 @@ class Scene {
 
 	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
 
+	bool scrollTopInit = false;
+	float scrollTopY = 0.0f;
+
 	void disableMouseMode();
 	void enableMouseMode();
 
@@ -85,5 +90,10 @@ class Scene {
 	void mapMouseControls();
 	void mapKeyboardControls();
 
+	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
+
 	std::function<void(double)> mouseScrollCallback;
+
+  private:
+	void applyVerticalDeltaClamped(float dy, float minY, float maxY);
 };

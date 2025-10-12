@@ -13,7 +13,7 @@ class Button : public Widget {
 	Button &operator=(Button &&) = delete;
 	Button &operator=(const Button &) = delete;
 
-	struct StyleParams {
+	struct Params {
 		vec2 center{0.0f};		 // button center in screen pixels
 		vec2 textCenter{0.0f};	 // text center
 		vec2 dim{200.0f, 64.0f}; // button size in pixels (W,H)
@@ -33,14 +33,10 @@ class Button : public Widget {
 	Button(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams);
 	~Button() = default;
 
-	void updateUniformBuffers(const Model::MVP &ubo) override;
-	void setParams(const StyleParams &params, std::optional<std::unique_ptr<Model>> icon = std::nullopt);
-
+	void swapChainUpdate();
 	void render() override;
 
 	// models
 	std::unique_ptr<Text> textModel;
-	std::unique_ptr<Model> icon;
-
-	StyleParams styleParams{};
+	Params params{};
 };

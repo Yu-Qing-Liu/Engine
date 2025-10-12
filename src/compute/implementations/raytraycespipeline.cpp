@@ -43,8 +43,8 @@ void RayTraycesPipeline::updateComputeUniformBuffer() {
 	Platform::GetPointerInFramebufferPixels(mousePx, mousePy);
 	setRayTraceFromViewportPx(mousePx, mousePy, model->screenParams.viewport);
 
-	glm::mat4 invVP = inverse(model->ubo.proj * model->ubo.view);
-	glm::mat4 invV = inverse(model->ubo.view);
+	glm::mat4 invVP = inverse(model->mvp.proj * model->mvp.view);
+	glm::mat4 invV = inverse(model->mvp.view);
 	glm::vec3 cam = glm::vec3(invV[3]);
 
 	PickingUBO p{};

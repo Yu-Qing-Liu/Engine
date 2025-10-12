@@ -1,17 +1,22 @@
 #include "widget.hpp"
 
-Widget::Widget(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams) {
-	container = std::make_unique<Rectangle>(scene, ubo, screenParams);
+Widget::Widget(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const VkRenderPass &renderPass) : scene(scene), mvp(mvp), screenParams(screenParams), renderPass(renderPass) {
+	container = std::make_unique<Rectangle>(scene, mvp, screenParams, renderPass);
 	container->enableRayTracing(true);
 }
 
-void Widget::updateUniformBuffers(const Model::MVP &ubo) {
-    container->updateUniformBuffer(ubo);
+void Widget::applyVerticalDeltaClamped(float dy, float minY, float maxY) {
+	// Clamp to [scrollMinY, scrollMaxY]
+	const float proposed = lookAtCoords.y + dy;
+	const float clamped = glm::clamp(proposed, minY, maxY);
+	const float applied = clamped - lookAtCoords.y;
+
+	camPosOrtho.y += applied;
+	lookAtCoords.y += applied;
+	camTarget.y += applied;
 }
 
-void Widget::render() {
-    container->render();
-}
+void Widget::render() { container->render(); }
 
 void Widget::setOnMouseHover(std::function<void()> cb) { container->onMouseHover = cb; }
 void Widget::setOnMouseEnter(std::function<void()> cb) { container->onMouseEnter = cb; }

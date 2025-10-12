@@ -17,11 +17,6 @@ class Scenes {
 	Scenes &operator=(const Scenes &) = delete;
 	~Scenes() = default;
 
-	struct SceneEntry {
-		shared_ptr<Scene> scene;
-		bool show = false;
-	};
-
 	void updateComputeUniformBuffers();
 	void computePass();
 
@@ -34,9 +29,11 @@ class Scenes {
 	void showScene(const string &sceneName);
 	void hideScene(const string &sceneName);
 
+	string currentScene;
+
   private:
 	std::vector<shared_ptr<Scene>> scenesContainer;
-	std::map<string, SceneEntry> scenes;
+	std::map<string, shared_ptr<Scene>> scenes;
 
 	std::unique_ptr<BlurPipeline> blur;
 
