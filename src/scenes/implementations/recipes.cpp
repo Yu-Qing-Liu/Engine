@@ -41,9 +41,9 @@ void Recipes::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	const float padT = 100;
 	const float usableH = h - padT * 2;
-	grid->styleParams.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
-	grid->styleParams.gridDim = vec2(w * 0.95, usableH);
-	grid->styleParams.cellSize = vec2(360.f);
+	grid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
+	grid->params.gridDim = vec2(w * 0.95, usableH);
+	grid->params.cellSize = vec2(360.f);
     grid->numItems = 10;
     grid->setGridItem = [&](int idx, float x, float y, vec2 cellSize, MVP mvp) {
         if (idx == grid->numItems) {

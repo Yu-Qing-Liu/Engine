@@ -76,12 +76,12 @@ void Recipe::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	const float padT = 175;
 	const float usableH = h * 0.5 - padT;
-	grid->styleParams.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
-	grid->styleParams.gridDim = vec2(w * 0.8, usableH);
-	grid->styleParams.cellSize = vec2((w - grid->styleParams.scrollBarWidth * 2) * 0.8, 250);
-	grid->styleParams.cellColor = Colors::DarkGreen;
-	grid->styleParams.margins = vec4(50.0f);
-	grid->styleParams.numCols = 1;
+	grid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
+	grid->params.gridDim = vec2(w * 0.8, usableH);
+	grid->params.cellSize = vec2((w - grid->params.scrollBarWidth * 2) * 0.8, 250);
+	grid->params.cellColor = Colors::DarkGreen;
+	grid->params.margins = vec4(50.0f);
+	grid->params.numCols = 1;
 	grid->numItems = 10;
 
     grid->updateScreenParams();

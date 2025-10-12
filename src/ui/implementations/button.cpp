@@ -4,7 +4,7 @@
 Button::Button(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams) : Widget(scene, ubo, screenParams) { textModel = std::make_unique<Text>(scene, ubo, screenParams, textParams); }
 
 void Button::swapChainUpdate() {
-	auto &p = styleParams;
+	auto &p = params;
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
@@ -15,10 +15,10 @@ void Button::swapChainUpdate() {
 
 void Button::render() {
 	Widget::render();
-	if (!styleParams.text.empty()) {
+	if (!params.text.empty()) {
 		textModel->textParams.origin = Geometry::alignTextCentered(*textModel);
-		textModel->textParams.text = styleParams.text;
-		textModel->textParams.color = styleParams.textColor;
+		textModel->textParams.text = params.text;
+		textModel->textParams.color = params.textColor;
 		textModel->render();
 	}
 }

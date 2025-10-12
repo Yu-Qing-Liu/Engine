@@ -13,7 +13,7 @@ class Button : public Widget {
 	Button &operator=(Button &&) = delete;
 	Button &operator=(const Button &) = delete;
 
-	struct StyleParams {
+	struct Params {
 		vec2 center{0.0f};		 // button center in screen pixels
 		vec2 textCenter{0.0f};	 // text center
 		vec2 dim{200.0f, 64.0f}; // button size in pixels (W,H)
@@ -38,5 +38,5 @@ class Button : public Widget {
 
 	// models
 	std::unique_ptr<Text> textModel;
-	StyleParams styleParams{};
+	Params params{};
 };

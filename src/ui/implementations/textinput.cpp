@@ -87,14 +87,14 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		if (action == Events::ACTION_PRESS) {
 			selected = textModel->mouseIsOver || container->mouseIsOver;
 			if (selected) {
-				container->params.color = styleParams.activeBgColor;
-				container->params.outlineColor = styleParams.activeOutlineColor;
+				container->params.color = params.activeBgColor;
+				container->params.outlineColor = params.activeOutlineColor;
 #if ANDROID_VK
 				Events::showSoftKeyboard(true);
 #endif
 			} else {
-				container->params.color = styleParams.bgColor;
-				container->params.outlineColor = styleParams.outlineColor;
+				container->params.color = params.bgColor;
+				container->params.outlineColor = params.outlineColor;
 				textField->viewTop();
 #if ANDROID_VK
 				Events::hideSoftKeyboard(true);
@@ -109,7 +109,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 }
 
 void TextInput::swapChainUpdate() {
-	auto &p = styleParams;
+	auto &p = params;
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
@@ -165,26 +165,26 @@ void TextInput::updateUniformBuffers(optional<Model::MVP> mvp) {
 void TextInput::render() {
 	Widget::render();
 	if (text.empty() && !selected) {
-		textField->params.text = styleParams.placeholderText;
-		textField->params.textColor = styleParams.placeholderTextColor;
+		textField->params.text = params.placeholderText;
+		textField->params.textColor = params.placeholderTextColor;
 		textModel->textParams.caret.on = false;
 		textField->render();
 	} else {
 		if (selected) {
 			if (text.empty()) {
 				textField->params.text = "";
-				textField->params.textColor = styleParams.activeTextColor;
+				textField->params.textColor = params.activeTextColor;
 				textModel->textParams.caret.on = true;
 				textField->render();
 			} else {
 				textField->params.text = text;
-				textField->params.textColor = styleParams.activeTextColor;
+				textField->params.textColor = params.activeTextColor;
 				textModel->textParams.caret.on = true;
 				textField->render();
 			}
 		} else {
 			textField->params.text = text;
-			textField->params.textColor = styleParams.textColor;
+			textField->params.textColor = params.textColor;
 			textModel->textParams.caret.on = false;
 			textField->render();
 		}

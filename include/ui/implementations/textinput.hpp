@@ -12,7 +12,7 @@ class TextInput : public Widget {
 	TextInput &operator=(const TextInput &) = delete;
 	~TextInput() = default;
 
-	struct StyleParams {
+	struct Params {
 		// container style
 		vec2 center{0.0f};				   // center in screen pixels
 		vec2 textCenter{0.0f};			   // text center
@@ -41,7 +41,7 @@ class TextInput : public Widget {
 	void render() override;
 
 	bool selected = false;
-	StyleParams styleParams{};
+	Params params{};
 	string text{""};
 
 	std::unique_ptr<TextField> textField;

@@ -44,8 +44,8 @@ void AddRecipeStep::swapChainUpdate() {
     auto h = screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-    textInput->styleParams.center = vec2(w * 0.5f, h * 0.5f);
-    textInput->styleParams.dim = vec2(200, 100);
+    textInput->params.center = vec2(w * 0.5f, h * 0.5f);
+    textInput->params.dim = vec2(200, 100);
     textInput->textField->params.scrollBarWidth = 8.0f;
     textInput->mvp = mvp;
     textInput->swapChainUpdate();

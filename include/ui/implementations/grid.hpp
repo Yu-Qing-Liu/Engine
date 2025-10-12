@@ -12,7 +12,7 @@ class Grid : public Widget {
 	Grid &operator=(const Grid &) = delete;
 	~Grid() = default;
 
-	struct StyleParams {
+	struct Params {
 		vec2 cellSize = vec2(50.0f);
 		vec4 cellColor = Colors::Gray(0.3);
 		float cellBorderRadius = 25.0f;
@@ -35,7 +35,7 @@ class Grid : public Widget {
 
 	bool enableControls = true;
 
-	StyleParams styleParams{};
+	Params params{};
 	size_t numItems = 0;
 
 	unique_ptr<InstancedRectangle> grid;

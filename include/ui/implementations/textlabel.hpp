@@ -12,7 +12,7 @@ class TextLabel : public Widget {
 	TextLabel &operator=(const TextLabel &) = delete;
 	~TextLabel() = default;
 
-	struct StyleParams {
+	struct Params {
 		// container style
 		vec2 center{0.0f};				   // center in screen pixels
 		vec2 textCenter{0.0f};			   // text center
@@ -36,7 +36,7 @@ class TextLabel : public Widget {
 	void render() override;
 
 	bool selected = false;
-	StyleParams params{};
+	Params params{};
 	string text{"Text Label"};
 
 	std::unique_ptr<TextField> textField;

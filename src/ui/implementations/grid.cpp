@@ -17,7 +17,7 @@ Grid::Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParam
 			int id = scrollBar->rayTracing->hitMapped->primId;
 			if (id == 1) {
 				usingSlider = true;
-				slider.color = styleParams.sliderColorPressed;
+				slider.color = params.sliderColorPressed;
 			}
 		}
 	});
@@ -26,7 +26,7 @@ Grid::Grid(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParam
 			return;
 		}
 		if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
-			slider.color = styleParams.sliderColor;
+			slider.color = params.sliderColor;
 			usingSlider = false;
 		}
 	});
@@ -37,10 +37,10 @@ void Grid::updateScreenParams() {
 	const float swapH = screenParams.viewport.height;
 
 	// ----- Inner (grid only) -----
-	const float desiredX = styleParams.gridCenter.x - styleParams.gridDim.x * 0.5f;
-	const float desiredY = styleParams.gridCenter.y - styleParams.gridDim.y * 0.5f;
-	const float desiredW = styleParams.gridDim.x;
-	const float desiredH = styleParams.gridDim.y;
+	const float desiredX = params.gridCenter.x - params.gridDim.x * 0.5f;
+	const float desiredY = params.gridCenter.y - params.gridDim.y * 0.5f;
+	const float desiredW = params.gridDim.x;
+	const float desiredH = params.gridDim.y;
 
 	const float ix = std::max(0.0f, desiredX);
 	const float iy = std::max(0.0f, desiredY);
@@ -61,10 +61,10 @@ void Grid::updateScreenParams() {
 	sp.scissor.extent = {(uint32_t)std::floor(iW), (uint32_t)std::floor(iH)};
 
 	// ----- Outer (grid + margins) -> bgSp -----
-	const float mL = styleParams.margins.x;
-	const float mT = styleParams.margins.y;
-	const float mR = styleParams.margins.z;
-	const float mB = styleParams.margins.w;
+	const float mL = params.margins.x;
+	const float mT = params.margins.y;
+	const float mR = params.margins.z;
+	const float mB = params.margins.w;
 
 	const float ex = desiredX - mL;
 	const float ey = desiredY - mT;
@@ -103,8 +103,8 @@ void Grid::dragSliderToCursor() {
 
 	const float localY = cursorFbY - sp.viewport.y;
 
-	const auto gh = styleParams.gridDim.y;
-	const auto btnH = styleParams.scrollBarWidth;
+	const auto gh = params.gridDim.y;
+	const auto btnH = params.scrollBarWidth;
 
 	const float innerH = std::max(0.0f, gh - 2.0f * btnH);
 	float thumbH = (contentH <= gh || innerH <= 0.0f) ? innerH : std::max(btnH, innerH * (gh / std::max(gh, contentH))) / 2.0f;
@@ -184,7 +184,7 @@ void Grid::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
 		const float fx = float(mx) * xs;
 		const float fy = float(my) * ys;
 
-		const bool inside = fx >= sp.viewport.x && fx <= sp.viewport.x + sp.viewport.width - styleParams.scrollBarWidth - styleParams.gap && fy >= sp.viewport.y && fy <= sp.viewport.y + sp.viewport.height;
+		const bool inside = fx >= sp.viewport.x && fx <= sp.viewport.x + sp.viewport.width - params.scrollBarWidth - params.gap && fy >= sp.viewport.y && fy <= sp.viewport.y + sp.viewport.height;
 
 		if (!inside) {
 			// reset anchor so there’s no jump when re-entering
@@ -229,19 +229,19 @@ void Grid::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
 void Grid::createGrid() {
 	float curX = 0;
 	float curY = 0;
-	const auto gw = styleParams.gridDim.x;
-	const auto gh = styleParams.gridDim.y;
-	const auto cellSizeW = styleParams.cellSize.x;
-	const auto cellSizeH = styleParams.cellSize.y;
-	const auto scrollBarWidth = styleParams.scrollBarWidth;
-	const auto gap = styleParams.gap;
+	const auto gw = params.gridDim.x;
+	const auto gh = params.gridDim.y;
+	const auto cellSizeW = params.cellSize.x;
+	const auto cellSizeH = params.cellSize.y;
+	const auto scrollBarWidth = params.scrollBarWidth;
+	const auto gap = params.gap;
 	const auto pitch = cellSizeH + gap;
 
 	const float rightEdge = std::max(cellSizeW, gw);
 
 	int lastRow = 0;
 	for (size_t i = 0; i <= numItems; ++i) {
-		if (styleParams.numCols != -1 || curX + cellSizeW + scrollBarWidth + gap > rightEdge) {
+		if (params.numCols != -1 || curX + cellSizeW + scrollBarWidth + gap > rightEdge) {
 			curX = 0;
 			++lastRow;
 		}
@@ -250,18 +250,18 @@ void Grid::createGrid() {
 		const float y = curY + cellSizeH * 0.5;
 
 		InstancedRectangleData fr{};
-		fr.color = styleParams.cellColor;
-		fr.borderRadius = styleParams.cellBorderRadius;
+		fr.color = params.cellColor;
+		fr.borderRadius = params.cellBorderRadius;
 		fr.model = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(cellSizeW, cellSizeH, 1.0f));
 		grid->updateInstance((int)i, fr);
 
 		if (setGridItem) {
-			setGridItem(i, x, y, styleParams.cellSize, mvp);
+			setGridItem(i, x, y, params.cellSize, mvp);
 		}
 
 		curX += cellSizeW + gap;
 
-		if (styleParams.numCols != -1 || curX + cellSizeW + scrollBarWidth + gap > rightEdge) {
+		if (params.numCols != -1 || curX + cellSizeW + scrollBarWidth + gap > rightEdge) {
 			curY += pitch;
 		}
 	}
@@ -278,10 +278,10 @@ void Grid::createGrid() {
 }
 
 void Grid::createScrollBar() {
-	const auto sbW = styleParams.scrollBarWidth;
-	const auto btnH = styleParams.scrollBarWidth;
-	const auto gw = styleParams.gridDim.x;
-	const auto gh = styleParams.gridDim.y;
+	const auto sbW = params.scrollBarWidth;
+	const auto btnH = params.scrollBarWidth;
+	const auto gw = params.gridDim.x;
+	const auto gh = params.gridDim.y;
 
 	// Scroll limits from content
 	scrollMinY = 0.0f;
@@ -329,10 +329,10 @@ void Grid::createScrollBar() {
 }
 
 void Grid::updateSlider() {
-	const auto sbW = styleParams.scrollBarWidth;
-	const auto btnH = styleParams.scrollBarWidth;
-	const auto gw = styleParams.gridDim.x;
-	const auto gh = styleParams.gridDim.y;
+	const auto sbW = params.scrollBarWidth;
+	const auto btnH = params.scrollBarWidth;
+	const auto gw = params.gridDim.x;
+	const auto gh = params.gridDim.y;
 
 	const float innerH = std::max(0.0f, trackH - 2.0f * btnH);
 
@@ -348,7 +348,7 @@ void Grid::updateSlider() {
 
 void Grid::swapChainUpdate() {
 	updateScreenParams();
-	mvp.proj = ortho(0.0f, styleParams.gridDim.x, 0.0f, -styleParams.gridDim.y, -1.0f, 1.0f);
+	mvp.proj = ortho(0.0f, params.gridDim.x, 0.0f, -params.gridDim.y, -1.0f, 1.0f);
 	createGrid();
 	createScrollBar();
 }
