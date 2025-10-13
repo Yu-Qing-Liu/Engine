@@ -4,6 +4,7 @@
 #include "instancedrectangle.hpp"
 #include "recipesqueries.hpp"
 #include "scene.hpp"
+#include "textinput.hpp"
 #include "textlabel.hpp"
 #include "texture.hpp"
 
@@ -38,6 +39,7 @@ class Recipe : public Scene {
 	unique_ptr<Grid> grid;
 	unique_ptr<InstancedRectangle> modal;
 	unique_ptr<Texture> addStepIcon;
+	unique_ptr<TextInput> recipeNameInput;
 
 	string recipeName;
 	RecipeData recipe;

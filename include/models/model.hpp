@@ -93,6 +93,9 @@ class Model {
 	void updateMVP(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 	void updateMVP(const MVP &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
+	void translate(const vec3 &pos, const mat4 &model = mat4(1.0f));
+	void scale(const vec3 &scale, const mat4 &model = mat4(1.0f));
+	void rotate(float angle, const vec3 &rotation, const mat4 &model = mat4(1.0f));
 	void copyUBO();
 
 	virtual void buildBVH();

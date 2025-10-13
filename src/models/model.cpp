@@ -176,6 +176,18 @@ void Model::updateMVP(const MVP &mvp) {
 	this->mvp.proj[1][1] *= -1;
 }
 
+void Model::translate(const vec3 &pos, const mat4 &model) {
+    mvp.model = glm::translate(model, pos);
+}
+
+void Model::scale(const vec3 &scale, const mat4 &model) {
+    mvp.model = glm::scale(model, scale);
+}
+
+void Model::rotate(float angle, const vec3 &axis, const mat4 &model) {
+    mvp.model = glm::rotate(model, angle, axis);
+}
+
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
 
 void Model::buildBVH() {}

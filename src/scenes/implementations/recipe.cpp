@@ -39,6 +39,9 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, grid->mvp, grid->bgSp, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+
+	Text::FontParams fp{};
+    recipeNameInput = make_unique<TextInput>(this, mvp, screenParams, fp, Engine::renderPass1);
 }
 
 void Recipe::fetchData() {
@@ -80,6 +83,14 @@ void Recipe::createModal() {
 void Recipe::swapChainUpdate() {
 	const auto w = (float)screenParams.viewport.width;
 	const auto h = (float)screenParams.viewport.height;
+	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
+
+    recipeNameInput->params.center = vec2(w * 0.5, h * 0.5);
+    recipeNameInput->params.dim = vec2(1000, 200);
+    recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
+    recipeNameInput->mvp = mvp;
+    recipeNameInput->swapChainUpdate();
+
 	const float padT = 175;
 	const float usableH = h * 0.5 - padT;
 	grid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
@@ -122,6 +133,7 @@ void Recipe::updateUniformBuffers() {
 	for (size_t i = 0; i < grid->numItems; i++) {
         steps[i]->updateUniformBuffers(grid->mvp);
 	}
+	recipeNameInput->updateUniformBuffers(mvp);
 }
 
 void Recipe::renderPass() {}
@@ -133,4 +145,5 @@ void Recipe::renderPass1() {
 	for (size_t i = 0; i < grid->numItems; i++) {
 		steps[i]->render();
 	}
+    recipeNameInput->render();
 }
