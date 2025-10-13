@@ -1,9 +1,11 @@
+#include "appdata.hpp"
 #include "engine.hpp"
 #include "events.hpp"
+#include "inventoryqueries.hpp"
 #include "pipeline.hpp"
+#include "recipesqueries.hpp"
 #include "scenes.hpp"
 #include "text.hpp"
-#include "appdata.hpp"
 
 #include <GLFW/glfw3.h>
 #include <cstdint>
@@ -99,7 +101,7 @@ class Application {
 	}
 
 	void cleanup() {
-        Text::Text_ShutdownUploadRings();
+		Text::Text_ShutdownUploadRings();
 		Pipeline::cleanupSwapChain();
 		vkDestroyRenderPass(device, renderPass, nullptr);
 		vkDestroyRenderPass(device, renderPass1, nullptr);
@@ -289,8 +291,10 @@ class Application {
 
 int main() {
 	Assets::initialize();
-    AppData::openDB();
-    AppData::printTables();
+	AppData::openDB();
+	AppData::printTables();
+	RecipesQueries::createTable();
+	InventoryQueries::createTable();
 	Application app;
 	try {
 		app.run();

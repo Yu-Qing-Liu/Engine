@@ -1,12 +1,16 @@
 #pragma once
 
-#include "scene.hpp"
-#include "texture.hpp"
 #include "grid.hpp"
+#include "recipesqueries.hpp"
+#include "scene.hpp"
+#include "textlabel.hpp"
+#include "texture.hpp"
 
 using namespace std::chrono;
 
 class Recipes : public Scene {
+	using Recipe = RecipesQueries::Recipe;
+
   public:
 	Recipes(Scenes &scenes, bool show = true);
 	Recipes(Recipes &&) = delete;
@@ -16,6 +20,8 @@ class Recipes : public Scene {
 	~Recipes() = default;
 
 	std::string getName() override { return "Recipes"; }
+
+	void fetchData() override;
 
 	void updateScreenParams() override;
 
@@ -30,4 +36,8 @@ class Recipes : public Scene {
   private:
 	unique_ptr<Grid> grid;
 	unique_ptr<Texture> addRecipeIcon;
+
+	vector<unique_ptr<TextLabel>> recipeNames;
+
+	vector<Recipe> recipes;
 };

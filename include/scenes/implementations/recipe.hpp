@@ -2,6 +2,7 @@
 
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
+#include "recipesqueries.hpp"
 #include "scene.hpp"
 #include "textlabel.hpp"
 #include "texture.hpp"
@@ -9,6 +10,8 @@
 using namespace std::chrono;
 
 class Recipe : public Scene {
+	using RecipeData = RecipesQueries::Recipe;
+
   public:
 	Recipe(Scenes &scenes, bool show = true);
 	Recipe(Recipe &&) = delete;
@@ -18,6 +21,8 @@ class Recipe : public Scene {
 	~Recipe() = default;
 
 	std::string getName() override { return "Recipe"; }
+
+	void fetchData() override;
 
 	void updateScreenParams() override;
 
@@ -34,7 +39,8 @@ class Recipe : public Scene {
 	unique_ptr<InstancedRectangle> modal;
 	unique_ptr<Texture> addStepIcon;
 
-	std::string randomText;
+	string recipeName;
+	RecipeData recipe;
 
 	vector<unique_ptr<TextLabel>> steps;
 

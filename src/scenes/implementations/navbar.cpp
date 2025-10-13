@@ -31,6 +31,7 @@ NavBar::NavBar(Scenes &scenes) : Scene(scenes) {
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			scenes.hideScene(scenes.currentScene);
 			scenes.currentScene = "Recipes";
+            scenes.getScene(scenes.currentScene)->fetchData();
 			scenes.showScene(scenes.currentScene);
 		}
 	});

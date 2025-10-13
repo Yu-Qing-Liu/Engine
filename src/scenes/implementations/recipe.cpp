@@ -1,14 +1,12 @@
 #include "recipe.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
+#include "pipeline.hpp"
 #include "textures.hpp"
 #include "scenes.hpp"
 
 Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
-
-	randomText = "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was "
-				 "popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.";
 
 	grid = make_unique<Grid>(this, mvp, screenParams);
 	grid->grid->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
@@ -41,6 +39,14 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, grid->mvp, grid->bgSp, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+}
+
+void Recipe::fetchData() {
+    if (!recipeName.empty()) {
+        recipe = RecipesQueries::fetchRecipe(recipeName);
+    }
+    Pipeline::recreateSwapChain();
+    swapChainUpdate();
 }
 
 void Recipe::updateScreenParams() {
@@ -82,9 +88,7 @@ void Recipe::swapChainUpdate() {
 	grid->params.cellColor = Colors::DarkGreen;
 	grid->params.margins = vec4(50.0f);
 	grid->params.numCols = 1;
-	grid->numItems = 10;
-
-    grid->updateScreenParams();
+	grid->numItems = recipe.steps.size();
 
 	Text::FontParams fp{};
 	for (size_t i = 0; i < grid->numItems; i++) {
@@ -96,7 +100,7 @@ void Recipe::swapChainUpdate() {
 			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.y * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
 		} else {
             steps[idx]->mvp = mvp;
-			steps[idx]->text = randomText;
+			steps[idx]->text = recipe.steps[idx].instruction;
 			steps[idx]->params.center = vec2(x, y);
 			steps[idx]->params.dim = vec2(cellSize.x - 20, cellSize.y - 20);
             steps[idx]->swapChainUpdate();

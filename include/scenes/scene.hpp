@@ -32,6 +32,8 @@ class Scene {
 	ClosestHit rayTraces();
 	void applyHover(Model *globalClosest);
 
+	virtual void fetchData();
+
 	virtual void updateScreenParams();
 
 	virtual void updateComputeUniformBuffers();
@@ -41,7 +43,6 @@ class Scene {
 	virtual void renderPass();
 	virtual void renderPass1();
 	virtual void swapChainUpdate();
-
 
   protected:
 	Scenes &scenes;
