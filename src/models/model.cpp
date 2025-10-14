@@ -84,22 +84,31 @@ Model::~Model() {
 	if (pipelineLayout != VK_NULL_HANDLE) {
 		vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 	}
+
+	if (onMouseClickCbIdx != -1 && onMouseClickCbIdx < (int)Events::mouseCallbacks.size()) {
+		Events::mouseCallbacks[onMouseClickCbIdx] = [](int, int, int) {}; // empty function
+		onMouseClickCbIdx = -1;
+	}
+	if (onKbCbIdx != -1 && onKbCbIdx < (int)Events::keyboardCallbacks.size()) {
+		Events::keyboardCallbacks[onKbCbIdx] = [](int, int, int, int) {};
+		onKbCbIdx = -1;
+	}
 }
 
 void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
-    auto callback = [this, cb](int button, int action, int mods) {
-        if (this->rayTracing->hitPos) {
-            cb(button, action, mods);
-        }
-    };
+	auto callback = [this, cb](int button, int action, int mods) {
+		if (this->rayTracing->hitPos) {
+			cb(button, action, mods);
+		}
+	};
 	if (onMouseClickCbIdx == -1) {
 		Events::mouseCallbacks.push_back(callback);
-        onMouseClickCbIdx = Events::mouseCallbacks.size() - 1;
+		onMouseClickCbIdx = Events::mouseCallbacks.size() - 1;
 	} else {
-        Events::mouseCallbacks[onMouseClickCbIdx] = callback;
-    }
+		Events::mouseCallbacks[onMouseClickCbIdx] = callback;
+	}
 }
 
 void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
@@ -110,10 +119,10 @@ void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
 	};
 	if (onKbCbIdx == -1) {
 		Events::keyboardCallbacks.push_back(callback);
-        onKbCbIdx = Events::keyboardCallbacks.size() - 1;
+		onKbCbIdx = Events::keyboardCallbacks.size() - 1;
 	} else {
-        Events::keyboardCallbacks[onMouseClickCbIdx] = callback;
-    }
+		Events::keyboardCallbacks[onKbCbIdx] = callback;
+	}
 }
 
 void Model::setMouseIsOver(bool over) {
