@@ -1,9 +1,10 @@
 #include "recipe.hpp"
 #include "colors.hpp"
 #include "engine.hpp"
+#include "fonts.hpp"
 #include "pipeline.hpp"
-#include "textures.hpp"
 #include "scenes.hpp"
+#include "textures.hpp"
 
 Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
@@ -22,7 +23,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 				auto style = grid->grid->getInstance(id);
 				style.color = Colors::Lime;
 				grid->grid->updateInstance(id, style);
-                scenes.showScene("AddRecipeStep");
+				scenes.showScene("AddRecipeStep");
 			}
 		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = grid->grid->rayTracing->hitMapped->primId;
@@ -41,15 +42,17 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 
 	Text::FontParams fp{};
-    recipeNameInput = make_unique<TextInput>(this, mvp, screenParams, fp, Engine::renderPass1);
+	fp.fontPath = Fonts::ArialBold;
+	recipeNameInput = make_unique<TextInput>(this, grid->mvp, grid->bgSp, fp, Engine::renderPass1);
+	recipeNameInput->textField->showScrollBar = false;
 }
 
 void Recipe::fetchData() {
-    if (!recipeName.empty()) {
-        recipe = RecipesQueries::fetchRecipe(recipeName);
-    }
-    Pipeline::recreateSwapChain();
-    swapChainUpdate();
+	if (!recipeName.empty()) {
+		recipe = RecipesQueries::fetchRecipe(recipeName);
+	}
+	Pipeline::recreateSwapChain();
+	swapChainUpdate();
 }
 
 void Recipe::updateScreenParams() {
@@ -85,20 +88,15 @@ void Recipe::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-    recipeNameInput->params.center = vec2(200, 125);
-    recipeNameInput->params.dim = vec2(200, 30);
-    recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
-    recipeNameInput->mvp = mvp;
-    recipeNameInput->swapChainUpdate();
-
 	const float padT = 200;
 	const float usableH = h * 0.5 - padT;
 	grid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	grid->params.gridDim = vec2(w * 0.8, usableH);
 	grid->params.cellSize = vec2((w - grid->params.scrollBarWidth * 2) * 0.8, 250);
 	grid->params.cellColor = Colors::DarkGreen;
-	grid->params.margins = vec4(50.0f);
+	grid->params.margins = vec4(50.0f, 100.0f, 50.0f, 50.0f);
 	grid->params.numCols = 1;
+	grid->mvp = mvp;
 	grid->numItems = recipe.steps.size();
 
 	Text::FontParams fp{};
@@ -110,15 +108,23 @@ void Recipe::swapChainUpdate() {
 		if (idx == grid->numItems) {
 			addStepIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.y * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
 		} else {
-            steps[idx]->mvp = mvp;
+			steps[idx]->mvp = mvp;
 			steps[idx]->text = recipe.steps[idx].instruction;
 			steps[idx]->params.center = vec2(x, y);
 			steps[idx]->params.dim = vec2(cellSize.x - 20, cellSize.y - 20);
-            steps[idx]->swapChainUpdate();
+			steps[idx]->swapChainUpdate();
 		}
 	};
 
 	grid->swapChainUpdate();
+
+	recipeNameInput->params.center = vec2(250, 35);
+	recipeNameInput->params.dim = vec2(400, 40);
+	recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
+	recipeNameInput->textField->params.margins = vec4(5.0f, 4.0f, 0.0f, 0.0f);
+	recipeNameInput->mvp = grid->mvp;
+	recipeNameInput->screenParams = grid->bgSp;
+	recipeNameInput->swapChainUpdate();
 
 	createModal();
 }
@@ -131,9 +137,9 @@ void Recipe::updateUniformBuffers() {
 	grid->updateUniformBuffers();
 	addStepIcon->updateMVP(std::nullopt, grid->mvp.view);
 	for (size_t i = 0; i < grid->numItems; i++) {
-        steps[i]->updateUniformBuffers(grid->mvp);
+		steps[i]->updateUniformBuffers(grid->mvp);
 	}
-	recipeNameInput->updateUniformBuffers(mvp);
+	recipeNameInput->updateUniformBuffers(grid->mvp);
 }
 
 void Recipe::renderPass() {}
@@ -145,5 +151,5 @@ void Recipe::renderPass1() {
 	for (size_t i = 0; i < grid->numItems; i++) {
 		steps[i]->render();
 	}
-    recipeNameInput->render();
+	recipeNameInput->render();
 }

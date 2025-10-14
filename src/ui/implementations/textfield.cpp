@@ -33,17 +33,31 @@ TextField::TextField(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 void TextField::updateScreenParams() {
 	sp.viewport = screenParams.viewport;
 
-	// field rect in GRID-LOCAL pixels (top-left inside the grid)
+	// Field rect in GRID-LOCAL pixels (top-left inside the grid)
 	const float localX = params.center.x;
 	const float localY = params.center.y;
 	const float localW = params.dim.x;
 	const float localH = params.dim.y;
 
-	// convert to FRAMEBUFFER space by offsetting with the grid’s viewport origin
-	const float fbX = sp.viewport.x + localX;
-	const float fbY = sp.viewport.y + localY;
-	const float fbX2 = sp.viewport.x + std::min(localX + localW, sp.viewport.width);
-	const float fbY2 = sp.viewport.y + std::min(localY + localH, sp.viewport.height);
+	// Apply margins: inner content box (L,T,R,B)
+	const float innerX = localX + params.margins.x;
+	const float innerY = localY + params.margins.y;
+	const float innerW0 = std::max(0.0f, localW + (params.margins.x + params.margins.z));
+	const float innerH = std::max(0.0f, localH + (params.margins.y + params.margins.w));
+
+	// Reserve space for the vertical scrollbar inside the inner box (if visible)
+	const float barW = (showScrollBar ? params.scrollBarWidth : 0.0f);
+	const float innerW = std::max(0.0f, innerW0 - barW);
+
+	// Clamp inner rect to the parent viewport (still in GRID-LOCAL coords)
+	const float innerRightLocal = std::min(innerX + innerW, sp.viewport.width);
+	const float innerBottomLocal = std::min(innerY + innerH, sp.viewport.height);
+
+	// Convert to FRAMEBUFFER space by offsetting with the parent viewport origin
+	const float fbX = sp.viewport.x + innerX;
+	const float fbY = sp.viewport.y + innerY;
+	const float fbX2 = sp.viewport.x + innerRightLocal;
+	const float fbY2 = sp.viewport.y + innerBottomLocal;
 
 	const float iW = std::max(0.0f, fbX2 - fbX);
 	const float iH = std::max(0.0f, fbY2 - fbY);
@@ -52,7 +66,7 @@ void TextField::updateScreenParams() {
 		sp.scissor.offset = {(int32_t)std::floor(fbX), (int32_t)std::floor(fbY)};
 		sp.scissor.extent = {(uint32_t)std::floor(iW), (uint32_t)std::floor(iH)};
 	} else {
-		sp.scissor = screenParams.scissor;
+		sp.scissor = screenParams.scissor; // no cropping: keep parent scissor
 	}
 }
 
@@ -206,8 +220,8 @@ void TextField::wrap() {
 	}
 
 	// 4) Configure text model
-	const float desiredX = params.center.x;
-	const float desiredY = params.center.y;
+	const float desiredX = params.center.x + params.margins.x;
+	const float desiredY = params.center.y + params.margins.y;
 	textModel->textParams.text = std::move(para);
 	textModel->textParams.color = params.textColor;
 	textModel->textParams.origin = glm::vec3(desiredX, desiredY + lineH, 0.0f);
@@ -700,7 +714,7 @@ void TextField::moveCaretRightInto(const std::string &external) {
 
 void TextField::render() {
 	textModel->render();
-    if (showScrollBar) {
-        scrollBar->render();
-    }
+	if (showScrollBar) {
+		scrollBar->render();
+	}
 }
