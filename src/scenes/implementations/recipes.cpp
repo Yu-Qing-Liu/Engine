@@ -15,15 +15,16 @@ Recipes::Recipes(Scenes &scenes, bool show) : Scene(scenes, show) {
 		if (!this->show || !grid->enableControls) {
 			return;
 		}
-		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+		if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
             if (!grid->grid->rayTracing->hitMapped) {
                 return;
             }
 			int id = grid->grid->rayTracing->hitMapped->primId;
 			if (id == grid->numItems) {
-				grid->enableControls = false;
-				scenes.showScene("Recipe");
-                scenes.getScene("Recipe")->fetchData();
+                disable();
+                const auto &recipeScene = scenes.getScene("Recipe");
+                recipeScene->show = true;
+                recipeScene->fetchData();
 			}
 		}
 	});
@@ -35,6 +36,14 @@ void Recipes::fetchData() {
     recipes = RecipesQueries::fetchRecipes(); 
     Pipeline::recreateSwapChain();
     swapChainUpdate();
+}
+
+void Recipes::onDisable() {
+    grid->enableControls = false;
+}
+
+void Recipes::onEnable() {
+    grid->enableControls = true;
 }
 
 void Recipes::updateScreenParams() {
@@ -58,6 +67,7 @@ void Recipes::swapChainUpdate() {
 	grid->params.cellSize = vec2(360.f);
 	grid->numItems = recipes.size();
 
+    recipeNames.clear();
 	Text::FontParams fp{};
 	for (size_t i = 0; i < grid->numItems; i++) {
 		recipeNames.emplace_back(make_unique<TextLabel>(this, grid->mvp, grid->sp, fp, Engine::renderPass1));

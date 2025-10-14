@@ -2,6 +2,7 @@
 
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
+#include "polygon.hpp"
 #include "recipesqueries.hpp"
 #include "scene.hpp"
 #include "textinput.hpp"
@@ -36,10 +37,15 @@ class Recipe : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<Grid> grid;
-	unique_ptr<InstancedRectangle> modal;
+	unique_ptr<Grid> stepsGrid;
+	unique_ptr<InstancedRectangle> stepsModal;
 	unique_ptr<Texture> addStepIcon;
+
 	unique_ptr<TextInput> recipeNameInput;
+
+	unique_ptr<Polygon> closeBtn;
+	unique_ptr<Texture> closeBtnIcon;
+    bool closePressed = false;
 
 	string recipeName;
 	RecipeData recipe;
