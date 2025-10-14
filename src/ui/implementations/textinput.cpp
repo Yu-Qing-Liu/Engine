@@ -22,9 +22,9 @@ inline bool is_press_or_repeat(int action) { return action == Events::ACTION_PRE
 
 TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
 	textField = std::make_unique<TextField>(scene, mvp, screenParams, textParams, renderPass);
-    textField->enableScrolling = true;
-    textField->enableSlider = true;
-    textField->enableMouseDrag = true;
+	textField->enableScrolling = true;
+	textField->enableSlider = true;
+	textField->enableMouseDrag = true;
 
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
@@ -85,7 +85,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		(void)mods;
 		// Selection toggled by whether the mouse/pointer is over us on click
 		if (action == Events::ACTION_PRESS) {
-			selected = textModel->mouseIsOver || container->mouseIsOver;
+			selected = textModel->rayTracing->hitPos || container->rayTracing->hitPos;
 			if (selected) {
 				container->params.color = params.activeBgColor;
 				container->params.outlineColor = params.activeOutlineColor;
@@ -119,7 +119,7 @@ void TextInput::swapChainUpdate() {
 	textField->params.center = vec2(p.center.x - p.dim.x * 0.5, p.center.y - p.dim.y * 0.5);
 	textField->params.dim = p.dim;
 	textField->params.lineSpacing = p.lineSpacing;
-    textField->params.scrollBarOffset = p.borderRadius;
+	textField->params.scrollBarOffset = p.borderRadius;
 	textField->mvp = mvp;
 	textField->swapChainUpdate();
 
@@ -128,10 +128,15 @@ void TextInput::swapChainUpdate() {
 	textModel->enableRayTracing(true);
 
 	textModel->setOnMouseClick([&](int button, int action, int mods) {
-		if (!textField->textModel->rayTracing->hitMapped)
+		if (!textField->textModel->rayTracing->hitMapped) {
 			return;
-		if (action != Events::ACTION_PRESS || button != Events::MOUSE_BUTTON_LEFT)
+		}
+		if (action != Events::ACTION_PRESS || button != Events::MOUSE_BUTTON_LEFT) {
 			return;
+		}
+		if (!selected) {
+			return;
+		}
 
 		// primId == caret position (codepoint index) in the *wrapped* string
 		const int prim = textField->textModel->rayTracing->hitMapped->primId;
@@ -159,32 +164,32 @@ void TextInput::swapChainUpdate() {
 
 void TextInput::updateUniformBuffers(optional<Model::MVP> mvp) {
 	textField->updateUniformBuffers(mvp);
-    container->updateMVP(std::nullopt, mvp->view, mvp->proj);
+	container->updateMVP(std::nullopt, mvp->view, mvp->proj);
 }
 
 void TextInput::render() {
 	Widget::render();
-	if (text.empty() && !selected) {
-		textField->params.text = params.placeholderText;
-		textField->params.textColor = params.placeholderTextColor;
-		textModel->textParams.caret.on = false;
-		textField->render();
-	} else {
-		if (selected) {
-			if (text.empty()) {
-				textField->params.text = "";
-				textField->params.textColor = params.activeTextColor;
-				textModel->textParams.caret.on = true;
-				textField->render();
-			} else {
-				textField->params.text = text;
-				textField->params.textColor = params.activeTextColor;
-				textModel->textParams.caret.on = true;
-				textField->render();
-			}
+	if (selected) {
+		if (text.empty()) {
+			textField->params.text = "";
+			textModel->textParams.color = params.activeTextColor;
+			textModel->textParams.caret.on = true;
+			textField->render();
 		} else {
 			textField->params.text = text;
-			textField->params.textColor = params.textColor;
+			textModel->textParams.color = params.activeTextColor;
+			textModel->textParams.caret.on = true;
+			textField->render();
+		}
+	} else {
+		if (text.empty()) {
+			textField->params.text = params.placeholderText;
+			textModel->textParams.color = params.placeholderTextColor;
+			textModel->textParams.caret.on = false;
+			textField->render();
+		} else {
+			textField->params.text = text;
+			textModel->textParams.color = params.textColor;
 			textModel->textParams.caret.on = false;
 			textField->render();
 		}

@@ -12,15 +12,18 @@ Recipes::Recipes(Scenes &scenes, bool show) : Scene(scenes, show) {
 	grid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 	grid->grid->enableRayTracing(true);
 	grid->grid->setOnMouseClick([&](int button, int action, int mods) {
-		if (!this->show) {
+		if (!this->show || !grid->enableControls) {
 			return;
 		}
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+            if (!grid->grid->rayTracing->hitMapped) {
+                return;
+            }
 			int id = grid->grid->rayTracing->hitMapped->primId;
 			if (id == grid->numItems) {
+				grid->enableControls = false;
 				scenes.showScene("Recipe");
                 scenes.getScene("Recipe")->fetchData();
-				grid->enableControls = false;
 			}
 		}
 	});

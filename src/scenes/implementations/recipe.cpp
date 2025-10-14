@@ -85,13 +85,13 @@ void Recipe::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-    recipeNameInput->params.center = vec2(w * 0.5, h * 0.5);
-    recipeNameInput->params.dim = vec2(1000, 200);
+    recipeNameInput->params.center = vec2(200, 125);
+    recipeNameInput->params.dim = vec2(200, 30);
     recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
     recipeNameInput->mvp = mvp;
     recipeNameInput->swapChainUpdate();
 
-	const float padT = 175;
+	const float padT = 200;
 	const float usableH = h * 0.5 - padT;
 	grid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	grid->params.gridDim = vec2(w * 0.8, usableH);

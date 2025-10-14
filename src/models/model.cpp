@@ -8,7 +8,7 @@
 #include <vulkan/vulkan_core.h>
 
 Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), mvp(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
-    rayTracing = std::make_unique<RayTracingPipeline>(this);
+	rayTracing = std::make_unique<RayTracingPipeline>(this);
 	this->mvp.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
@@ -89,12 +89,17 @@ Model::~Model() {
 void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
-	auto callback = [this, cb](int button, int action, int mods) {
-		if (this->rayTracing->hitPos) {
-			cb(button, action, mods);
-		}
-	};
-	Events::mouseCallbacks.push_back(callback);
+    auto callback = [this, cb](int button, int action, int mods) {
+        if (this->rayTracing->hitPos) {
+            cb(button, action, mods);
+        }
+    };
+	if (onMouseClickCbIdx == -1) {
+		Events::mouseCallbacks.push_back(callback);
+        onMouseClickCbIdx = Events::mouseCallbacks.size() - 1;
+	} else {
+        Events::mouseCallbacks[onMouseClickCbIdx] = callback;
+    }
 }
 
 void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
@@ -103,7 +108,12 @@ void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
 			cb(key, scancode, action, mods);
 		}
 	};
-	Events::keyboardCallbacks.push_back(callback);
+	if (onKbCbIdx == -1) {
+		Events::keyboardCallbacks.push_back(callback);
+        onKbCbIdx = Events::keyboardCallbacks.size() - 1;
+	} else {
+        Events::keyboardCallbacks[onMouseClickCbIdx] = callback;
+    }
 }
 
 void Model::setMouseIsOver(bool over) {
@@ -176,17 +186,11 @@ void Model::updateMVP(const MVP &mvp) {
 	this->mvp.proj[1][1] *= -1;
 }
 
-void Model::translate(const vec3 &pos, const mat4 &model) {
-    mvp.model = glm::translate(model, pos);
-}
+void Model::translate(const vec3 &pos, const mat4 &model) { mvp.model = glm::translate(model, pos); }
 
-void Model::scale(const vec3 &scale, const mat4 &model) {
-    mvp.model = glm::scale(model, scale);
-}
+void Model::scale(const vec3 &scale, const mat4 &model) { mvp.model = glm::scale(model, scale); }
 
-void Model::rotate(float angle, const vec3 &axis, const mat4 &model) {
-    mvp.model = glm::rotate(model, angle, axis);
-}
+void Model::rotate(float angle, const vec3 &axis, const mat4 &model) { mvp.model = glm::rotate(model, angle, axis); }
 
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
 

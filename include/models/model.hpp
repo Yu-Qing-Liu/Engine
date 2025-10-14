@@ -69,7 +69,9 @@ class Model {
 		return std::abs(mvp.proj[2][3]) < epsilon && std::abs(mvp.proj[3][3] - 1.0f) < epsilon;
 	}
 
+	int onMouseClickCbIdx = -1;
 	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	int onKbCbIdx = -1;
 	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	void enableRayTracing(bool v) {
