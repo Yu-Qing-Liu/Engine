@@ -62,8 +62,8 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 		}
 	});
 
-	addStepIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
-	addIngredientIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+	addStepIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addstep.png", Engine::renderPass1);
+	addIngredientIcon = Textures::icon(this, ingredientsGrid->mvp, ingredientsGrid->sp, Assets::textureRootPath + "/icons/addingredient.png", Engine::renderPass1);
 
 	auto stepsBgInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	stepsGridBg = make_unique<InstancedRectangle>(this, stepsGrid->mvp, stepsGrid->bgSp, stepsBgInstances, 2);
@@ -269,6 +269,7 @@ void Recipe::computePass() {}
 void Recipe::updateUniformBuffers() {
 	stepsGrid->updateUniformBuffers();
 	addStepIcon->updateMVP(std::nullopt, stepsGrid->mvp.view);
+	addIngredientIcon->updateMVP(std::nullopt, ingredientsGrid->mvp.view);
 	for (size_t i = 0; i < stepsGrid->numItems; i++) {
 		steps[i]->updateUniformBuffers(stepsGrid->mvp);
 	}
@@ -283,6 +284,7 @@ void Recipe::renderPass1() {
 	stepsGrid->render();
 	ingredientsGrid->render();
 	addStepIcon->render();
+    addIngredientIcon->render();
 	for (size_t i = 0; i < stepsGrid->numItems; i++) {
 		steps[i]->render();
 	}
