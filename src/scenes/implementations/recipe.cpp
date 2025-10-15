@@ -167,8 +167,9 @@ void Recipe::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-	float padT = 250;
-	float usableH = h * 0.4 - padT;
+	float padT = 275;
+    float margin = 2.0f;
+	float usableH = h * 0.5 - padT - margin;
 	stepsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	stepsGrid->params.gridDim = vec2(w * 0.8, usableH);
 	stepsGrid->params.cellSize = vec2((w - stepsGrid->params.scrollBarWidth * 2) * 0.8, 150);
@@ -198,12 +199,12 @@ void Recipe::swapChainUpdate() {
 
 	stepsGrid->swapChainUpdate();
 
-	padT += usableH += 150;
+	padT += usableH + stepsGrid->params.margins.y + margin;
 	ingredientsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	ingredientsGrid->params.gridDim = vec2(w * 0.8, usableH);
 	ingredientsGrid->params.cellSize = vec2(150, 150);
 	ingredientsGrid->params.cellColor = Colors::DarkOrange;
-	ingredientsGrid->params.margins = vec4(50.0f, 100.0f, 50.0f, 125.0f);
+	ingredientsGrid->params.margins = vec4(50.0f, 100.0f, 50.0f, 50.0f);
 	ingredientsGrid->mvp = mvp;
 	ingredientsGrid->numItems = recipe.ingredients.size();
 
