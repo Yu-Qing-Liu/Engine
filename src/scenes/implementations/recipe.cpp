@@ -36,14 +36,46 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 		}
 	});
 
-	addStepIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+	ingredientsGrid = make_unique<Grid>(this, mvp, screenParams);
+	ingredientsGrid->grid->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+	ingredientsGrid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+	ingredientsGrid->grid->enableRayTracing(true);
+	ingredientsGrid->grid->setOnMouseClick([&](int button, int action, int mods) {
+		if (!this->show) {
+			return;
+		}
+		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
+			if (id == ingredientsGrid->numItems) {
+				auto style = ingredientsGrid->grid->getInstance(id);
+				style.color = Colors::Lime;
+				ingredientsGrid->grid->updateInstance(id, style);
+				// scenes.showScene("AddRecipeStep");
+			}
+		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
+			if (id == ingredientsGrid->numItems) {
+				auto style = ingredientsGrid->grid->getInstance(id);
+				style.color = Colors::Green;
+				ingredientsGrid->grid->updateInstance(id, style);
+			}
+		}
+	});
 
-	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
-	stepsModal = make_unique<InstancedRectangle>(this, stepsGrid->mvp, stepsGrid->bgSp, mInstances, 2);
-	stepsModal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+	addStepIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+	addIngredientIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->sp, Assets::textureRootPath + "/icons/addfile.png", Engine::renderPass1);
+
+	auto stepsBgInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
+	stepsGridBg = make_unique<InstancedRectangle>(this, stepsGrid->mvp, stepsGrid->bgSp, stepsBgInstances, 2);
+	stepsGridBg->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+
+	auto ingredientsBgInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
+	ingredientsGridBg = make_unique<InstancedRectangle>(this, ingredientsGrid->mvp, ingredientsGrid->bgSp, ingredientsBgInstances, 2);
+	ingredientsGridBg->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 
 	Text::FontParams fp{};
 	fp.fontPath = Fonts::ArialBold;
+    fp.pixelHeight = 32;
 	recipeNameInput = make_unique<TextInput>(this, stepsGrid->mvp, stepsGrid->bgSp, fp, Engine::renderPass1);
 	recipeNameInput->textField->showScrollBar = false;
 
@@ -72,7 +104,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			const auto &recipesScene = scenes.getScene("Recipes");
 			if (recipesScene) {
 				recipesScene->enable();
-            }
+			}
 		}
 	});
 }
@@ -96,7 +128,7 @@ void Recipe::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void Recipe::createModal() {
+void Recipe::createStepsGridBg() {
 	const float w = stepsGrid->bgSp.viewport.width;
 	const float h = stepsGrid->bgSp.viewport.height;
 
@@ -108,9 +140,26 @@ void Recipe::createModal() {
 	m.borderRadius = 25.0f;
 	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w, h, 1.0f));
 
-	stepsModal->updateInstance(0, m);
+	stepsGridBg->updateInstance(0, m);
 	// Pin to viewport: identity view; local projection
-	stepsModal->updateMVP(std::nullopt, mat4(1.0f), projLocal);
+	stepsGridBg->updateMVP(std::nullopt, mat4(1.0f), projLocal);
+}
+
+void Recipe::createIngredientsGridBg() {
+	const float w = ingredientsGrid->bgSp.viewport.width;
+	const float h = ingredientsGrid->bgSp.viewport.height;
+
+	// Build a projection in the modal’s own viewport space
+	auto projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
+
+	InstancedRectangleData m{};
+	m.color = Colors::Gray(0.5f);
+	m.borderRadius = 25.0f;
+	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w, h, 1.0f));
+
+	ingredientsGridBg->updateInstance(0, m);
+	// Pin to viewport: identity view; local projection
+	ingredientsGridBg->updateMVP(std::nullopt, mat4(1.0f), projLocal);
 }
 
 void Recipe::swapChainUpdate() {
@@ -118,13 +167,13 @@ void Recipe::swapChainUpdate() {
 	const auto h = (float)screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-	const float padT = 200;
-	const float usableH = h * 0.5 - padT;
+	float padT = 250;
+	float usableH = h * 0.4 - padT;
 	stepsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	stepsGrid->params.gridDim = vec2(w * 0.8, usableH);
-	stepsGrid->params.cellSize = vec2((w - stepsGrid->params.scrollBarWidth * 2) * 0.8, 250);
+	stepsGrid->params.cellSize = vec2((w - stepsGrid->params.scrollBarWidth * 2) * 0.8, 150);
 	stepsGrid->params.cellColor = Colors::DarkGreen;
-	stepsGrid->params.margins = vec4(50.0f, 100.0f, 50.0f, 50.0f);
+	stepsGrid->params.margins = vec4(50.0f, 150.0f, 50.0f, 50.0f);
 	stepsGrid->params.numCols = 1;
 	stepsGrid->mvp = mvp;
 	stepsGrid->numItems = recipe.steps.size();
@@ -149,22 +198,50 @@ void Recipe::swapChainUpdate() {
 
 	stepsGrid->swapChainUpdate();
 
-	recipeNameInput->params.center = vec2(250, 35);
-	recipeNameInput->params.dim = vec2(400, 40);
-	recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
-	recipeNameInput->textField->params.margins = vec4(5.0f, 4.0f, 0.0f, 0.0f);
-	recipeNameInput->mvp = stepsGrid->mvp;
-	recipeNameInput->screenParams = stepsGrid->bgSp;
-	recipeNameInput->swapChainUpdate();
+	padT += usableH += 150;
+	ingredientsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
+	ingredientsGrid->params.gridDim = vec2(w * 0.8, usableH);
+	ingredientsGrid->params.cellSize = vec2(150, 150);
+	ingredientsGrid->params.cellColor = Colors::Orange;
+	ingredientsGrid->params.margins = vec4(50.0f, 100.0f, 50.0f, 125.0f);
+	ingredientsGrid->mvp = mvp;
+	ingredientsGrid->numItems = recipe.ingredients.size();
 
-	closeBtnIcon->updateMVP(std::nullopt, std::nullopt, stepsGrid->mvp.proj);
-	closeBtnIcon->translate(vec3(400, 35, 0.0));
+	ingredients.clear();
+	for (size_t i = 0; i < ingredientsGrid->numItems; i++) {
+		ingredients.emplace_back(make_unique<TextLabel>(this, ingredientsGrid->mvp, stepsGrid->sp, fp, Engine::renderPass1));
+	}
+
+	ingredientsGrid->setGridItem = [&](int idx, float x, float y, vec2 cellSize, MVP mvp) {
+		if (idx == ingredientsGrid->numItems) {
+			addIngredientIcon->updateMVP(translate(mat4(1.0f), vec3(x, y, 0.0f)) * scale(mat4(1.0f), vec3(cellSize.x * 0.6, cellSize.y * 0.6, 1.0f)), mvp.view, mvp.proj);
+		} else {
+			ingredients[idx]->mvp = mvp;
+			ingredients[idx]->text = recipe.ingredients[idx].name;
+			ingredients[idx]->params.center = vec2(x, y);
+			ingredients[idx]->params.dim = vec2(cellSize.x - 20, cellSize.y - 20);
+			ingredients[idx]->swapChainUpdate();
+		}
+	};
+
+	ingredientsGrid->swapChainUpdate();
 
 	const float vw = stepsGrid->bgSp.viewport.width;
 	const float vh = stepsGrid->bgSp.viewport.height;
 	const glm::mat4 projLocal = ortho(0.0f, vw, 0.0f, -vh, -1.0f, 1.0f);
 
 	const glm::mat4 viewLocal = glm::mat4(1.0f);
+
+	recipeNameInput->params.center = vec2(250, 50);
+	recipeNameInput->params.dim = vec2(400, 50);
+	recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
+	recipeNameInput->textField->params.margins = vec4(10.0f, 4.0f, 0.0f, 0.0f);
+	recipeNameInput->mvp = Model::MVP{mat4(1.0f), viewLocal, projLocal};
+	recipeNameInput->screenParams = stepsGrid->bgSp;
+	recipeNameInput->swapChainUpdate();
+
+	closeBtnIcon->updateMVP(std::nullopt, std::nullopt, stepsGrid->mvp.proj);
+	closeBtnIcon->translate(vec3(400, 35, 0.0));
 
 	closeBtn->updateMVP(std::nullopt, viewLocal, projLocal);
 	closeBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
@@ -181,7 +258,8 @@ void Recipe::swapChainUpdate() {
 	closeBtnIcon->translate(vec3(closeBtn->mvp.model[3].x, closeBtn->mvp.model[3].y, closeBtn->mvp.model[3].z));
 	closeBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), closeBtnIcon->mvp.model);
 
-	createModal();
+	createStepsGridBg();
+	createIngredientsGridBg();
 }
 
 void Recipe::updateComputeUniformBuffers() {}
@@ -194,14 +272,16 @@ void Recipe::updateUniformBuffers() {
 	for (size_t i = 0; i < stepsGrid->numItems; i++) {
 		steps[i]->updateUniformBuffers(stepsGrid->mvp);
 	}
-	recipeNameInput->updateUniformBuffers(stepsGrid->mvp);
+	recipeNameInput->updateUniformBuffers(recipeNameInput->mvp);
 }
 
 void Recipe::renderPass() {}
 
 void Recipe::renderPass1() {
-	stepsModal->render();
+	stepsGridBg->render();
+	ingredientsGridBg->render();
 	stepsGrid->render();
+	ingredientsGrid->render();
 	addStepIcon->render();
 	for (size_t i = 0; i < stepsGrid->numItems; i++) {
 		steps[i]->render();

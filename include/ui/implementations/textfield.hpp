@@ -39,7 +39,7 @@ class TextField : public Widget {
 	bool enableMouseDrag = false;
 	bool enableScrolling = false;
 	bool enableSlider = false;
-    bool showScrollBar = true;
+	bool showScrollBar = true;
 
 	Params params{};
 	Text::FontParams textParams;

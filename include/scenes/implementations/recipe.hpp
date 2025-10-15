@@ -38,19 +38,26 @@ class Recipe : public Scene {
 
   private:
 	unique_ptr<Grid> stepsGrid;
-	unique_ptr<InstancedRectangle> stepsModal;
 	unique_ptr<Texture> addStepIcon;
+
+	unique_ptr<Grid> ingredientsGrid;
+	unique_ptr<Texture> addIngredientIcon;
+
+	unique_ptr<InstancedRectangle> stepsGridBg;
+	unique_ptr<InstancedRectangle> ingredientsGridBg;
 
 	unique_ptr<TextInput> recipeNameInput;
 
 	unique_ptr<Polygon> closeBtn;
 	unique_ptr<Texture> closeBtnIcon;
-    bool closePressed = false;
+	bool closePressed = false;
 
 	string recipeName;
 	RecipeData recipe;
 
 	vector<unique_ptr<TextLabel>> steps;
+	vector<unique_ptr<TextLabel>> ingredients;
 
-	void createModal();
+	void createStepsGridBg();
+	void createIngredientsGridBg();
 };
