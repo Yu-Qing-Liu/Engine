@@ -22,7 +22,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			int id = stepsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == stepsGrid->numItems) {
 				auto style = stepsGrid->grid->getInstance(id);
-				style.color = Colors::Lime;
+				style.color = Colors::Green;
 				stepsGrid->grid->updateInstance(id, style);
 				scenes.showScene("AddRecipeStep");
 			}
@@ -30,7 +30,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			int id = stepsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == stepsGrid->numItems) {
 				auto style = stepsGrid->grid->getInstance(id);
-				style.color = Colors::Green;
+				style.color = Colors::DarkGreen;
 				stepsGrid->grid->updateInstance(id, style);
 			}
 		}
@@ -48,7 +48,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == ingredientsGrid->numItems) {
 				auto style = ingredientsGrid->grid->getInstance(id);
-				style.color = Colors::Lime;
+				style.color = Colors::Orange;
 				ingredientsGrid->grid->updateInstance(id, style);
 				// scenes.showScene("AddRecipeStep");
 			}
@@ -56,7 +56,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == ingredientsGrid->numItems) {
 				auto style = ingredientsGrid->grid->getInstance(id);
-				style.color = Colors::Green;
+				style.color = Colors::DarkOrange;
 				ingredientsGrid->grid->updateInstance(id, style);
 			}
 		}
