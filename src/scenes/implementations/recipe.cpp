@@ -202,7 +202,7 @@ void Recipe::swapChainUpdate() {
 	ingredientsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	ingredientsGrid->params.gridDim = vec2(w * 0.8, usableH);
 	ingredientsGrid->params.cellSize = vec2(150, 150);
-	ingredientsGrid->params.cellColor = Colors::Orange;
+	ingredientsGrid->params.cellColor = Colors::DarkOrange;
 	ingredientsGrid->params.margins = vec4(50.0f, 100.0f, 50.0f, 125.0f);
 	ingredientsGrid->mvp = mvp;
 	ingredientsGrid->numItems = recipe.ingredients.size();
