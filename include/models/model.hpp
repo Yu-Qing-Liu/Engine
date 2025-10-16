@@ -98,7 +98,10 @@ class Model {
 	void translate(const vec3 &pos, const mat4 &model = mat4(1.0f));
 	void scale(const vec3 &scale, const mat4 &model = mat4(1.0f));
 	void rotate(float angle, const vec3 &rotation, const mat4 &model = mat4(1.0f));
-	void copyUBO();
+
+    vec3 getPosition();
+
+	void copyMVP();
 
 	virtual void buildBVH();
 	virtual void render();

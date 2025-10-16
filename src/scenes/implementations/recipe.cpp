@@ -107,6 +107,35 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 			}
 		}
 	});
+
+    confirmBtnIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->bgSp, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
+	confirmBtn = Shapes::polygon2D(this, stepsGrid->mvp, stepsGrid->bgSp, 64, Engine::renderPass1);
+	confirmBtn->enableRayTracing(true);
+
+	confirmBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
+		if (!this->show)
+			return;
+		if (button != Events::MOUSE_BUTTON_LEFT)
+			return;
+
+		if (action == Events::ACTION_PRESS) {
+			// record that this button was actually pressed
+			confirmPressed = true;
+			return;
+		}
+
+		if (action == Events::ACTION_RELEASE) {
+			if (!confirmPressed)
+				return;			  // ignore stray releases (e.g. from prior scene)
+			confirmPressed = false; // reset for next time
+
+			this->show = false; // hide this scene
+			const auto &recipesScene = scenes.getScene("Recipes");
+			if (recipesScene) {
+				recipesScene->enable();
+			}
+		}
+	});
 }
 
 void Recipe::fetchData() {
@@ -241,23 +270,29 @@ void Recipe::swapChainUpdate() {
 	recipeNameInput->screenParams = stepsGrid->bgSp;
 	recipeNameInput->swapChainUpdate();
 
-	closeBtnIcon->updateMVP(std::nullopt, std::nullopt, stepsGrid->mvp.proj);
-	closeBtnIcon->translate(vec3(400, 35, 0.0));
-
-	closeBtn->updateMVP(std::nullopt, viewLocal, projLocal);
-	closeBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
-
 	const float inset = 25.0f;
 	const float btnSize = 35.0f;
 	const float iconSize = 15.0f;
 
-	closeBtn->params.color = Colors::Red;
-	closeBtn->params.outlineColor = Colors::Red;
+	closeBtn->params.color = Colors::DarkRed;
+	closeBtn->params.outlineColor = Colors::DarkRed;
 	closeBtn->translate(vec3(vw - (btnSize * 0.5f) - inset, (btnSize * 0.5f) + inset, 0.0f));
 	closeBtn->scale(vec3(btnSize, btnSize, 1.0f), closeBtn->mvp.model);
+	closeBtn->updateMVP(std::nullopt, viewLocal, projLocal);
 
-	closeBtnIcon->translate(vec3(closeBtn->mvp.model[3].x, closeBtn->mvp.model[3].y, closeBtn->mvp.model[3].z));
+	closeBtnIcon->translate(closeBtn->getPosition());
 	closeBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), closeBtnIcon->mvp.model);
+	closeBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
+    
+	confirmBtn->params.color = Colors::DarkGreen;
+	confirmBtn->params.outlineColor = Colors::DarkGreen;
+	confirmBtn->translate(vec3(vw - (btnSize * 0.5f) * 2 - inset * 2, (btnSize * 0.5f) + inset, 0.0f));
+	confirmBtn->scale(vec3(btnSize, btnSize, 1.0f), confirmBtn->mvp.model);
+	confirmBtn->updateMVP(std::nullopt, viewLocal, projLocal);
+
+	confirmBtnIcon->translate(confirmBtn->getPosition());
+	confirmBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), confirmBtnIcon->mvp.model);
+	confirmBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
 
 	createStepsGridBg();
 	createIngredientsGridBg();
@@ -292,4 +327,6 @@ void Recipe::renderPass1() {
 	recipeNameInput->render();
 	closeBtn->render();
 	closeBtnIcon->render();
+	confirmBtn->render();
+	confirmBtnIcon->render();
 }

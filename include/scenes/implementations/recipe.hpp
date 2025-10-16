@@ -52,6 +52,10 @@ class Recipe : public Scene {
 	unique_ptr<Texture> closeBtnIcon;
 	bool closePressed = false;
 
+	unique_ptr<Polygon> confirmBtn;
+	unique_ptr<Texture> confirmBtnIcon;
+	bool confirmPressed = false;
+
 	string recipeName;
 	RecipeData recipe;
 

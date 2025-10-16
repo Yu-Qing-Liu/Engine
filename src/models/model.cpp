@@ -95,7 +95,7 @@ Model::~Model() {
 	}
 }
 
-void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
+void Model::copyMVP() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 	auto callback = [this, cb](int button, int action, int mods) {
@@ -200,6 +200,10 @@ void Model::translate(const vec3 &pos, const mat4 &model) { mvp.model = glm::tra
 void Model::scale(const vec3 &scale, const mat4 &model) { mvp.model = glm::scale(model, scale); }
 
 void Model::rotate(float angle, const vec3 &axis, const mat4 &model) { mvp.model = glm::rotate(model, angle, axis); }
+
+vec3 Model::getPosition() {
+    return vec3(mvp.model[3].x, mvp.model[3].y, mvp.model[3].z);
+}
 
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
 
@@ -406,7 +410,7 @@ void Model::createGraphicsPipeline() {
 }
 
 void Model::render() {
-	copyUBO();
+	copyMVP();
 
 	auto cmd = Engine::currentCommandBuffer();
 

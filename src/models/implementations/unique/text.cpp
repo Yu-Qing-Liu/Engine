@@ -755,7 +755,7 @@ std::optional<bool> Text::isRightHalfClick(size_t letterIdx) const {
 }
 
 void Text::render() {
-	copyUBO(); // keep your existing UBO path
+	copyMVP(); // keep your existing UBO path
 
 	const bool billboard = textParams.billboardParams.on;
 	const auto caretOpt = textParams.caret;
