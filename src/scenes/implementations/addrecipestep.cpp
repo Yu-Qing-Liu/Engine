@@ -30,7 +30,7 @@ void AddRecipeStep::createModal() {
 	auto projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 
 	InstancedRectangleData m{};
-	m.color = Colors::DarkBlue(0.5f);
+	m.color = Colors::DarkBlue(0.8f);
 	m.borderRadius = 25.0f;
 	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w, h, 1.0f));
 
@@ -45,9 +45,10 @@ void AddRecipeStep::swapChainUpdate() {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
 	textInput->params.center = vec2(w * 0.5f, h * 0.5f);
-	textInput->params.dim = vec2(200, 100);
-	textInput->textField->params.margins = vec4(50.0f, 50.0f, 50.0f, 50.0f);
+	textInput->params.dim = vec2(800, 400);
+	textInput->textField->params.margins = vec4(50.0f, 60.0f, 50.0f, 50.0f);
 	textInput->textField->params.scrollBarWidth = 8.0f;
+	textInput->textField->params.padding = vec4(20.0f, 20.0f, 0.0f, 0.0f);
 	textInput->mvp = mvp;
 	textInput->swapChainUpdate();
 	createModal();
