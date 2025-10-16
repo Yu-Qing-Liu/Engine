@@ -3,8 +3,8 @@
 AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-    Text::FontParams fp{};
-    textInput = make_unique<TextInput>(this, mvp, screenParams, fp, Engine::renderPass1);
+	Text::FontParams fp{};
+	textInput = make_unique<TextInput>(this, mvp, screenParams, fp, Engine::renderPass1);
 
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, textInput->mvp, textInput->textField->bgSp, mInstances, 2);
@@ -30,7 +30,7 @@ void AddRecipeStep::createModal() {
 	auto projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 
 	InstancedRectangleData m{};
-	m.color = Colors::Gray(0.5f);
+	m.color = Colors::DarkBlue(0.5f);
 	m.borderRadius = 25.0f;
 	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w, h, 1.0f));
 
@@ -40,15 +40,16 @@ void AddRecipeStep::createModal() {
 }
 
 void AddRecipeStep::swapChainUpdate() {
-    auto w = screenParams.viewport.width;
-    auto h = screenParams.viewport.height;
+	auto w = screenParams.viewport.width;
+	auto h = screenParams.viewport.height;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-    textInput->params.center = vec2(w * 0.5f, h * 0.5f);
-    textInput->params.dim = vec2(200, 100);
-    textInput->textField->params.scrollBarWidth = 8.0f;
-    textInput->mvp = mvp;
-    textInput->swapChainUpdate();
+	textInput->params.center = vec2(w * 0.5f, h * 0.5f);
+	textInput->params.dim = vec2(200, 100);
+	textInput->textField->params.margins = vec4(50.0f, 50.0f, 50.0f, 50.0f);
+	textInput->textField->params.scrollBarWidth = 8.0f;
+	textInput->mvp = mvp;
+	textInput->swapChainUpdate();
 	createModal();
 }
 
@@ -56,13 +57,11 @@ void AddRecipeStep::updateComputeUniformBuffers() {}
 
 void AddRecipeStep::computePass() {}
 
-void AddRecipeStep::updateUniformBuffers() {
-	textInput->updateUniformBuffers(mvp);
-}
+void AddRecipeStep::updateUniformBuffers() { textInput->updateUniformBuffers(mvp); }
 
 void AddRecipeStep::renderPass() {}
 
 void AddRecipeStep::renderPass1() {
-	// modal->render();
-    textInput->render();
+	modal->render();
+	textInput->render();
 }

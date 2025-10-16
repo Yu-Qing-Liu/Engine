@@ -265,7 +265,7 @@ void Recipe::swapChainUpdate() {
 	recipeNameInput->params.center = vec2(250, 50);
 	recipeNameInput->params.dim = vec2(400, 50);
 	recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
-	recipeNameInput->textField->params.margins = vec4(10.0f, 4.0f, 0.0f, 0.0f);
+	recipeNameInput->textField->params.padding = vec4(10.0f, 4.0f, 0.0f, 0.0f);
 	recipeNameInput->mvp = Model::MVP{mat4(1.0f), viewLocal, projLocal};
 	recipeNameInput->screenParams = stepsGrid->bgSp;
 	recipeNameInput->swapChainUpdate();
