@@ -26,6 +26,9 @@ class Recipe : public Scene {
 
 	void fetchData() override;
 
+	void onEnable() override;
+	void onDisable() override;
+
 	void updateScreenParams() override;
 
 	void updateComputeUniformBuffers() override;
