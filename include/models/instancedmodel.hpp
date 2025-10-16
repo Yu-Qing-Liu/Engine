@@ -110,7 +110,7 @@ template <typename T> class InstancedModel : public Model {
 			return;
 		}
 		// Update UBO once per-frame (view/proj still needed; model can be identity/ignored)
-		copyUBO();
+		copyMVP();
 		uploadIfDirty();
 
 		if (blur) {

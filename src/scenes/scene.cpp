@@ -485,6 +485,8 @@ void Scene::applyHover(Model *globalClosest) {
 	}
 }
 
+void Scene::fetchData() {}
+
 void Scene::updateScreenParams() {}
 
 void Scene::updateComputeUniformBuffers() {}

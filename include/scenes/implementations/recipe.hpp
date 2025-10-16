@@ -2,13 +2,18 @@
 
 #include "grid.hpp"
 #include "instancedrectangle.hpp"
+#include "polygon.hpp"
+#include "recipesqueries.hpp"
 #include "scene.hpp"
+#include "textinput.hpp"
 #include "textlabel.hpp"
 #include "texture.hpp"
 
 using namespace std::chrono;
 
 class Recipe : public Scene {
+	using RecipeData = RecipesQueries::Recipe;
+
   public:
 	Recipe(Scenes &scenes, bool show = true);
 	Recipe(Recipe &&) = delete;
@@ -18,6 +23,8 @@ class Recipe : public Scene {
 	~Recipe() = default;
 
 	std::string getName() override { return "Recipe"; }
+
+	void fetchData() override;
 
 	void updateScreenParams() override;
 
@@ -30,13 +37,31 @@ class Recipe : public Scene {
 	void swapChainUpdate() override;
 
   private:
-	unique_ptr<Grid> grid;
-	unique_ptr<InstancedRectangle> modal;
+	unique_ptr<Grid> stepsGrid;
 	unique_ptr<Texture> addStepIcon;
 
-	std::string randomText;
+	unique_ptr<Grid> ingredientsGrid;
+	unique_ptr<Texture> addIngredientIcon;
+
+	unique_ptr<InstancedRectangle> stepsGridBg;
+	unique_ptr<InstancedRectangle> ingredientsGridBg;
+
+	unique_ptr<TextInput> recipeNameInput;
+
+	unique_ptr<Polygon> closeBtn;
+	unique_ptr<Texture> closeBtnIcon;
+	bool closePressed = false;
+
+	unique_ptr<Polygon> confirmBtn;
+	unique_ptr<Texture> confirmBtnIcon;
+	bool confirmPressed = false;
+
+	string recipeName;
+	RecipeData recipe;
 
 	vector<unique_ptr<TextLabel>> steps;
+	vector<unique_ptr<TextLabel>> ingredients;
 
-	void createModal();
+	void createStepsGridBg();
+	void createIngredientsGridBg();
 };

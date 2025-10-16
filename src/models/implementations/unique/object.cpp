@@ -608,7 +608,7 @@ void Object::setupGraphicsPipeline() {
 
 // ---------- render ----------
 void Object::render() {
-	copyUBO();
+	copyMVP();
 
 	VkCommandBuffer cmd = Engine::currentCommandBuffer();
 

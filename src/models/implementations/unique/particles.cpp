@@ -271,7 +271,7 @@ void Particles::compute() {
 }
 
 void Particles::render() {
-	copyUBO();
+	copyMVP();
 
 	vkCmdBindPipeline(Engine::currentCommandBuffer(), VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 

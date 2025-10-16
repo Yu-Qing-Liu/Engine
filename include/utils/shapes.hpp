@@ -302,7 +302,7 @@ inline std::vector<uint32_t> makeFanIndices(uint32_t n, uint32_t base = 0) {
 	return idx;
 }
 
-inline std::unique_ptr<Polygon> polygon2D(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int numVertices, float radius = 0.5f) {
+inline std::unique_ptr<Polygon> polygon2D(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int numVertices, const VkRenderPass &renderPass = Engine::renderPass, float radius = 0.5f) {
 	using V = Polygon::Vertex;
 	const uint32_t N = static_cast<uint32_t>(std::max(3, numVertices));
 
@@ -318,7 +318,7 @@ inline std::unique_ptr<Polygon> polygon2D(Scene *scene, const MVP &ubo, ScreenPa
 	}
 
 	auto indices = makeFanIndices(N);
-	return std::make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices));
+	return std::make_unique<Polygon>(scene, ubo, screenParams, std::move(vertices), std::move(indices), renderPass);
 }
 
 inline std::unique_ptr<InstancedPolygon> polygons2D(Scene *scene, const MVP &ubo, ScreenParams &screenParams, int instances = 65536, int numVertices = 3, float radius = 0.5f) {

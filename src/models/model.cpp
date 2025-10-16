@@ -8,7 +8,7 @@
 #include <vulkan/vulkan_core.h>
 
 Model::Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass) : scene(scene), mvp(ubo), screenParams(screenParams), shaderPath(shaderPath), renderPass(renderPass) {
-    rayTracing = std::make_unique<RayTracingPipeline>(this);
+	rayTracing = std::make_unique<RayTracingPipeline>(this);
 	this->mvp.proj[1][1] *= -1;
 	if (scene) {
 		scene->models.emplace_back(this);
@@ -84,9 +84,18 @@ Model::~Model() {
 	if (pipelineLayout != VK_NULL_HANDLE) {
 		vkDestroyPipelineLayout(Engine::device, pipelineLayout, nullptr);
 	}
+
+	if (onMouseClickCbIdx != -1 && onMouseClickCbIdx < (int)Events::mouseCallbacks.size()) {
+		Events::mouseCallbacks[onMouseClickCbIdx] = [](int, int, int) {}; // empty function
+		onMouseClickCbIdx = -1;
+	}
+	if (onKbCbIdx != -1 && onKbCbIdx < (int)Events::keyboardCallbacks.size()) {
+		Events::keyboardCallbacks[onKbCbIdx] = [](int, int, int, int) {};
+		onKbCbIdx = -1;
+	}
 }
 
-void Model::copyUBO() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
+void Model::copyMVP() { memcpy(mvpBuffersMapped[Engine::currentFrame], &mvp, sizeof(mvp)); }
 
 void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 	auto callback = [this, cb](int button, int action, int mods) {
@@ -94,7 +103,12 @@ void Model::setOnMouseClick(std::function<void(int, int, int)> cb) {
 			cb(button, action, mods);
 		}
 	};
-	Events::mouseCallbacks.push_back(callback);
+	if (onMouseClickCbIdx == -1) {
+		Events::mouseCallbacks.push_back(callback);
+		onMouseClickCbIdx = Events::mouseCallbacks.size() - 1;
+	} else {
+		Events::mouseCallbacks[onMouseClickCbIdx] = callback;
+	}
 }
 
 void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
@@ -103,7 +117,12 @@ void Model::setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb) {
 			cb(key, scancode, action, mods);
 		}
 	};
-	Events::keyboardCallbacks.push_back(callback);
+	if (onKbCbIdx == -1) {
+		Events::keyboardCallbacks.push_back(callback);
+		onKbCbIdx = Events::keyboardCallbacks.size() - 1;
+	} else {
+		Events::keyboardCallbacks[onKbCbIdx] = callback;
+	}
 }
 
 void Model::setMouseIsOver(bool over) {
@@ -174,6 +193,16 @@ void Model::updateMVP(optional<mat4> model, optional<mat4> view, optional<mat4> 
 void Model::updateMVP(const MVP &mvp) {
 	this->mvp = mvp;
 	this->mvp.proj[1][1] *= -1;
+}
+
+void Model::translate(const vec3 &pos, const mat4 &model) { mvp.model = glm::translate(model, pos); }
+
+void Model::scale(const vec3 &scale, const mat4 &model) { mvp.model = glm::scale(model, scale); }
+
+void Model::rotate(float angle, const vec3 &axis, const mat4 &model) { mvp.model = glm::rotate(model, angle, axis); }
+
+vec3 Model::getPosition() {
+    return vec3(mvp.model[3].x, mvp.model[3].y, mvp.model[3].z);
 }
 
 void Model::updateScreenParams(const ScreenParams &screenParams) { this->screenParams = screenParams; }
@@ -381,7 +410,7 @@ void Model::createGraphicsPipeline() {
 }
 
 void Model::render() {
-	copyUBO();
+	copyMVP();
 
 	auto cmd = Engine::currentCommandBuffer();
 

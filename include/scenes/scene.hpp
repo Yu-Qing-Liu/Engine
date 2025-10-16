@@ -27,10 +27,26 @@ class Scene {
 	vector<Model *> models;
 	bool is3D = true;
 	bool show = true;
+	bool disabled = false;
 
 	void updateRayTraceUniformBuffers();
 	ClosestHit rayTraces();
 	void applyHover(Model *globalClosest);
+
+	void disable() {
+		disabled = true;
+		onDisable();
+	}
+
+	void enable() {
+		disabled = false;
+		onEnable();
+	}
+
+	virtual void onDisable() {};
+	virtual void onEnable() {};
+
+	virtual void fetchData();
 
 	virtual void updateScreenParams();
 
@@ -41,7 +57,6 @@ class Scene {
 	virtual void renderPass();
 	virtual void renderPass1();
 	virtual void swapChainUpdate();
-
 
   protected:
 	Scenes &scenes;

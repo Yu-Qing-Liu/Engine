@@ -69,7 +69,9 @@ class Model {
 		return std::abs(mvp.proj[2][3]) < epsilon && std::abs(mvp.proj[3][3] - 1.0f) < epsilon;
 	}
 
+	int onMouseClickCbIdx = -1;
 	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	int onKbCbIdx = -1;
 	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	void enableRayTracing(bool v) {
@@ -93,7 +95,13 @@ class Model {
 	void updateMVP(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
 	void updateMVP(const MVP &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
-	void copyUBO();
+	void translate(const vec3 &pos, const mat4 &model = mat4(1.0f));
+	void scale(const vec3 &scale, const mat4 &model = mat4(1.0f));
+	void rotate(float angle, const vec3 &rotation, const mat4 &model = mat4(1.0f));
+
+    vec3 getPosition();
+
+	void copyMVP();
 
 	virtual void buildBVH();
 	virtual void render();
