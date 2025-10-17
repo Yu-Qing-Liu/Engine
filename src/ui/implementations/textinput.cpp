@@ -1,6 +1,7 @@
 #include "textinput.hpp"
 #include "events.hpp"
 #include "geometry.hpp"
+#include <algorithm>
 
 namespace {
 
@@ -18,6 +19,12 @@ constexpr int KEY_KP_ENTER = 335;
 
 inline bool is_press_or_repeat(int action) { return action == Events::ACTION_PRESS || action == Events::ACTION_REPEAT; }
 
+inline bool is_empty(const std::string &s) {
+    return std::all_of(s.begin(), s.end(), [](unsigned char ch) {
+        return std::isspace(ch); // returns true for ' ', '\t', '\n', '\r', '\f', '\v'
+    });
+}
+
 } // namespace
 
 TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
@@ -31,8 +38,13 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		if (!selected)
 			return;
 
+		if (std::isspace(static_cast<char>(codepoint)) && codepoint != 32) {
+			return;
+		}
+
 		textField->insertCodepointAtCaretInto(text, codepoint);
 		textField->onTextChangedExternally();
+        textField->wrap();
 		textField->viewBottom();
 	};
 
@@ -47,6 +59,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		case KEY_BACKSPACE:
 			textField->backspaceAtCaretInto(text);
 			textField->onTextChangedExternally();
+            textField->wrap();
 			textField->viewBottom();
 			break;
 
@@ -54,6 +67,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		case KEY_KP_ENTER:
 			textField->insertCodepointAtCaretInto(text, '\n');
 			textField->onTextChangedExternally();
+            textField->wrap();
 			textField->viewBottom();
 			break;
 
@@ -63,6 +77,7 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->onTextChangedExternally();
+            textField->wrap();
 			textField->viewBottom();
 			break;
 
@@ -173,7 +188,7 @@ void TextInput::updateUniformBuffers(optional<Model::MVP> mvp) {
 void TextInput::render() {
 	Widget::render();
 	if (selected) {
-		if (text.empty()) {
+		if (is_empty(text)) {
 			textField->params.text = "";
 			textModel->textParams.color = params.activeTextColor;
 			textModel->textParams.caret.on = true;
@@ -185,7 +200,7 @@ void TextInput::render() {
 			textField->render();
 		}
 	} else {
-		if (text.empty()) {
+		if (is_empty(text)) {
 			textField->params.text = params.placeholderText;
 			textModel->textParams.color = params.placeholderTextColor;
 			textModel->textParams.caret.on = false;

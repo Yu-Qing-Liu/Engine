@@ -74,6 +74,8 @@ class TextField : public Widget {
 	// Call this whenever you mutate params.text externally (typing, delete, paste, etc.)
 	inline void onTextChangedExternally() { caretFromWrapped = false; }
 
+	void wrap();
+
   private:
 	InstancedRectangleData slider{};
 
@@ -95,7 +97,6 @@ class TextField : public Widget {
 
 	void updateScreenParams();
 	void recomputeScissorForCurrentView();
-	void wrap();
 
 	void createScrollBar();
 	void updateSlider();
