@@ -39,6 +39,9 @@ class Recipe : public Scene {
 	void renderPass1() override;
 	void swapChainUpdate() override;
 
+	string recipeName;
+	RecipeData recipe;
+
   private:
 	unique_ptr<Grid> stepsGrid;
 	unique_ptr<Texture> addStepIcon;
@@ -58,9 +61,6 @@ class Recipe : public Scene {
 	unique_ptr<Polygon> confirmBtn;
 	unique_ptr<Texture> confirmBtnIcon;
 	bool confirmPressed = false;
-
-	string recipeName;
-	RecipeData recipe;
 
 	vector<unique_ptr<TextLabel>> steps;
 	vector<unique_ptr<TextLabel>> ingredients;

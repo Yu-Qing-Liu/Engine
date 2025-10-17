@@ -3,6 +3,8 @@
 #include "instancedrectangle.hpp"
 #include "scene.hpp"
 #include "textinput.hpp"
+#include "polygon.hpp"
+#include "texture.hpp"
 
 using namespace std::chrono;
 
@@ -29,7 +31,15 @@ class AddRecipeStep : public Scene {
 
   private:
 	unique_ptr<TextInput> textInput;
-    unique_ptr<InstancedRectangle> modal;
+	unique_ptr<InstancedRectangle> modal;
 
-    void createModal();
+	unique_ptr<Polygon> closeBtn;
+	unique_ptr<Texture> closeBtnIcon;
+	bool closePressed = false;
+
+	unique_ptr<Polygon> confirmBtn;
+	unique_ptr<Texture> confirmBtnIcon;
+	bool confirmPressed = false;
+
+	void createModal();
 };

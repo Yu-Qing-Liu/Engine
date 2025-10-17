@@ -1,4 +1,8 @@
 #include "addrecipestep.hpp"
+#include "recipe.hpp"
+#include "scenes.hpp"
+#include "shapes.hpp"
+#include "textures.hpp"
 
 AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
@@ -9,6 +13,73 @@ AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, textInput->mvp, textInput->textField->bgSp, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+
+	closeBtnIcon = Textures::icon(this, textInput->mvp, textInput->textField->bgSp, Assets::textureRootPath + "/icons/close.png", Engine::renderPass1);
+	closeBtn = Shapes::polygon2D(this, textInput->mvp, textInput->textField->bgSp, 64, Engine::renderPass1);
+	closeBtn->enableRayTracing(true);
+
+	closeBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
+		if (!this->show || disabled)
+			return;
+		if (button != Events::MOUSE_BUTTON_LEFT)
+			return;
+
+		if (action == Events::ACTION_PRESS) {
+			// record that this button was actually pressed
+			closePressed = true;
+			return;
+		}
+
+		if (action == Events::ACTION_RELEASE) {
+			if (!closePressed)
+				return;			  // ignore stray releases (e.g. from prior scene)
+			closePressed = false; // reset for next time
+
+			this->show = false; // hide this scene
+			const auto &sc = scenes.getScene("Recipe");
+			if (sc) {
+				sc->enable();
+			}
+		}
+	});
+
+	confirmBtnIcon = Textures::icon(this, textInput->mvp, textInput->textField->bgSp, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
+	confirmBtn = Shapes::polygon2D(this, textInput->mvp, textInput->textField->bgSp, 64, Engine::renderPass1);
+	confirmBtn->enableRayTracing(true);
+
+	confirmBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
+		if (!this->show || disabled)
+			return;
+		if (button != Events::MOUSE_BUTTON_LEFT)
+			return;
+
+		if (action == Events::ACTION_PRESS) {
+			// record that this button was actually pressed
+			confirmPressed = true;
+			return;
+		}
+
+		if (action == Events::ACTION_RELEASE) {
+			if (!confirmPressed)
+				return;				// ignore stray releases (e.g. from prior scene)
+			confirmPressed = false; // reset for next time
+
+			this->show = false; // hide this scene
+			const auto &sc = scenes.getScene("Recipe");
+			if (!sc) {
+				return;
+			}
+
+			if (!textInput->text.empty()) {
+				auto r = dynamic_cast<Recipe *>(sc.get());
+				RecipesQueries::Step step{};
+				step.instruction = textInput->text;
+				r->recipe.steps.emplace_back(std::move(step));
+			}
+
+			sc->enable();
+		}
+	});
 }
 
 void AddRecipeStep::updateScreenParams() {
@@ -51,6 +122,37 @@ void AddRecipeStep::swapChainUpdate() {
 	textInput->textField->params.padding = vec4(20.0f, 20.0f, 0.0f, 0.0f);
 	textInput->mvp = mvp;
 	textInput->swapChainUpdate();
+
+	const float vw = textInput->textField->bgSp.viewport.width;
+	const float vh = textInput->textField->bgSp.viewport.height;
+	const glm::mat4 projLocal = ortho(0.0f, vw, 0.0f, -vh, -1.0f, 1.0f);
+
+	const glm::mat4 viewLocal = glm::mat4(1.0f);
+
+	const float inset = 15.0f;
+	const float btnSize = 35.0f;
+	const float iconSize = 15.0f;
+
+	closeBtn->params.color = Colors::DarkRed;
+	closeBtn->params.outlineColor = Colors::DarkRed;
+	closeBtn->translate(vec3(vw - (btnSize * 0.5f) - inset, (btnSize * 0.5f) + inset, 0.0f));
+	closeBtn->scale(vec3(btnSize, btnSize, 1.0f), closeBtn->mvp.model);
+	closeBtn->updateMVP(std::nullopt, viewLocal, projLocal);
+
+	closeBtnIcon->translate(closeBtn->getPosition());
+	closeBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), closeBtnIcon->mvp.model);
+	closeBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
+
+	confirmBtn->params.color = Colors::DarkGreen;
+	confirmBtn->params.outlineColor = Colors::DarkGreen;
+	confirmBtn->translate(vec3(vw - (btnSize * 0.5f) * 2 - inset * 2 - 10, (btnSize * 0.5f) + inset, 0.0f));
+	confirmBtn->scale(vec3(btnSize, btnSize, 1.0f), confirmBtn->mvp.model);
+	confirmBtn->updateMVP(std::nullopt, viewLocal, projLocal);
+
+	confirmBtnIcon->translate(confirmBtn->getPosition());
+	confirmBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), confirmBtnIcon->mvp.model);
+	confirmBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
+
 	createModal();
 }
 
@@ -64,5 +166,9 @@ void AddRecipeStep::renderPass() {}
 
 void AddRecipeStep::renderPass1() {
 	modal->render();
+	closeBtn->render();
+	closeBtnIcon->render();
+	confirmBtn->render();
+	confirmBtnIcon->render();
 	textInput->render();
 }

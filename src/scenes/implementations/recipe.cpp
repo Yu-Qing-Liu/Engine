@@ -157,6 +157,8 @@ void Recipe::fetchData() {
 void Recipe::onEnable() {
 	stepsGrid->enableControls = false;
 	ingredientsGrid->enableControls = false;
+	Pipeline::recreateSwapChain();
+    swapChainUpdate();
 }
 
 void Recipe::onDisable() {
