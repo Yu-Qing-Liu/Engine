@@ -224,7 +224,7 @@ void TextField::wrap() {
 		size_t e = b;
 		while (e > a) {
 			char ch = src[e - 1];
-			if (ch == ' ' || ch == '\t' || ch == '\r')
+			if (ch == '\t' || ch == '\r')
 				--e;
 			else
 				break;

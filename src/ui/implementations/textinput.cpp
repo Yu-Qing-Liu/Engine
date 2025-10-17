@@ -26,24 +26,17 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 	textField->enableSlider = true;
 	textField->enableMouseDrag = true;
 
+	// --- character input callback ---
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
 			return;
-		if (codepoint == '\n' || codepoint == '\r' || codepoint == '\t')
-			return;
-		if (codepoint < 0x20u)
-			return;
 
-		// 1) Edit via TextField (wrapped-aware; operates in ORIGINAL space)
 		textField->insertCodepointAtCaretInto(text, codepoint);
-
-		// 2) Tell the field its text changed (so wrap() will map caret correctly next update)
 		textField->onTextChangedExternally();
-
-		// 3) Optional: scroll after the change
 		textField->viewBottom();
 	};
 
+	// --- keyboard press handler ---
 	auto kbPress = [this](int key, int scancode, int action, int mods) {
 		(void)scancode;
 		(void)mods;
@@ -59,7 +52,18 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 
 		case KEY_ENTER:
 		case KEY_KP_ENTER:
-			selected = false;
+			textField->insertCodepointAtCaretInto(text, '\n');
+			textField->onTextChangedExternally();
+			textField->viewBottom();
+			break;
+
+		case KEY_TAB:
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->onTextChangedExternally();
+			textField->viewBottom();
 			break;
 
 		case KEY_ESCAPE:
@@ -68,7 +72,6 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 
 		case KEY_LEFT:
 			textField->moveCaretLeftInto(text);
-			// movement doesn't change text; no onTextChangedExternally() needed
 			break;
 
 		case KEY_RIGHT:
