@@ -65,7 +65,9 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 				auto style = ingredientsGrid->grid->getInstance(id);
 				style.color = Colors::Orange;
 				ingredientsGrid->grid->updateInstance(id, style);
-				// scenes.showScene("AddRecipeStep");
+
+                disable();
+				scenes.showScene("AddIngredient");
 			}
 		}
 	});

@@ -1,4 +1,5 @@
 #include "scenes.hpp"
+#include "addingredient.hpp"
 #include "addrecipestep.hpp"
 #include "background.hpp"
 #include "inventory.hpp"
@@ -29,6 +30,7 @@ Scenes::Scenes() {
 	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
 	scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
 	scenesContainer.emplace_back(make_shared<AddRecipeStep>(*this, false));
+	scenesContainer.emplace_back(make_shared<AddIngredient>(*this, false));
 	for (const auto &sc : scenesContainer) {
 		scenes[sc->getName()] = {sc};
 	}
