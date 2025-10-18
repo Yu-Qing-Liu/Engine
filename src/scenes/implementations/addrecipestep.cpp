@@ -7,15 +7,15 @@
 AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-	Text::FontParams fp{};
-	textInput = make_unique<TextInput>(this, mvp, screenParams, fp, Engine::renderPass1);
-
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
-	modal = make_unique<InstancedRectangle>(this, textInput->mvp, textInput->textField->bgSp, mInstances, 2);
+	modal = make_unique<InstancedRectangle>(this, mvp, screenParams, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 
-	closeBtnIcon = Textures::icon(this, textInput->mvp, textInput->textField->bgSp, Assets::textureRootPath + "/icons/close.png", Engine::renderPass1);
-	closeBtn = Shapes::polygon2D(this, textInput->mvp, textInput->textField->bgSp, 64, Engine::renderPass1);
+	Text::FontParams fp{};
+	textInput = make_unique<TextInput>(this, modal->mvp, modal->screenParams, fp, Engine::renderPass1);
+
+	closeBtnIcon = Textures::icon(this, modal->mvp, modal->screenParams, Assets::textureRootPath + "/icons/close.png", Engine::renderPass1);
+	closeBtn = Shapes::polygon2D(this, modal->mvp, modal->screenParams, 64, Engine::renderPass1);
 	closeBtn->enableRayTracing(true);
 
 	closeBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
@@ -43,8 +43,8 @@ AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 		}
 	});
 
-	confirmBtnIcon = Textures::icon(this, textInput->mvp, textInput->textField->bgSp, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
-	confirmBtn = Shapes::polygon2D(this, textInput->mvp, textInput->textField->bgSp, 64, Engine::renderPass1);
+	confirmBtnIcon = Textures::icon(this, modal->mvp, modal->screenParams, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
+	confirmBtn = Shapes::polygon2D(this, modal->mvp, modal->screenParams, 64, Engine::renderPass1);
 	confirmBtn->enableRayTracing(true);
 
 	confirmBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
@@ -94,8 +94,8 @@ void AddRecipeStep::updateScreenParams() {
 }
 
 void AddRecipeStep::createModal() {
-	const float w = textInput->textField->bgSp.viewport.width;
-	const float h = textInput->textField->bgSp.viewport.height;
+	const float w = screenParams.viewport.width;
+	const float h = screenParams.viewport.height;
 
 	// Build a projection in the modal’s own viewport space
 	auto projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
@@ -103,7 +103,7 @@ void AddRecipeStep::createModal() {
 	InstancedRectangleData m{};
 	m.color = Colors::DarkBlue(0.8f);
 	m.borderRadius = 25.0f;
-	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w, h, 1.0f));
+	m.model = translate(mat4(1.0f), vec3(w * 0.5f, h * 0.5f, 0.0f)) * scale(mat4(1.0f), vec3(w * 0.8, h * 0.6, 1.0f));
 
 	modal->updateInstance(0, m);
 	// Pin to viewport: identity view; local projection
@@ -113,29 +113,29 @@ void AddRecipeStep::createModal() {
 void AddRecipeStep::swapChainUpdate() {
 	auto w = screenParams.viewport.width;
 	auto h = screenParams.viewport.height;
+	auto mw = w * 0.9f;
+	auto mh = h * 0.2f;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
-	textInput->params.center = vec2(w * 0.5f, h * 0.5f);
-	textInput->params.dim = vec2(800, 400);
-	textInput->textField->params.margins = vec4(50.0f, 60.0f, 50.0f, 50.0f);
-	textInput->textField->params.scrollBarWidth = 8.0f;
-	textInput->textField->params.padding = vec4(20.0f, 20.0f, 0.0f, 0.0f);
-	textInput->mvp = mvp;
-	textInput->swapChainUpdate();
+	createModal();
 
-	const float vw = textInput->textField->bgSp.viewport.width;
-	const float vh = textInput->textField->bgSp.viewport.height;
-	const glm::mat4 projLocal = ortho(0.0f, vw, 0.0f, -vh, -1.0f, 1.0f);
-
+	const glm::mat4 projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
 	const glm::mat4 viewLocal = glm::mat4(1.0f);
 
 	const float inset = 15.0f;
 	const float btnSize = 35.0f;
 	const float iconSize = 15.0f;
 
+	textInput->params.center = vec2(w * 0.5f, h * 0.5f + inset * 0.4 + btnSize / 2);
+	textInput->params.dim = vec2(w * 0.8f - inset * 2, h * 0.6 - inset * 3 - btnSize);
+	textInput->textField->params.scrollBarWidth = 8.0f;
+	textInput->textField->params.padding = vec4(20.0f, 20.0f, 0.0f, 0.0f);
+	textInput->mvp = modal->mvp;
+	textInput->swapChainUpdate();
+
 	closeBtn->params.color = Colors::DarkRed;
 	closeBtn->params.outlineColor = Colors::DarkRed;
-	closeBtn->translate(vec3(vw - (btnSize * 0.5f) - inset, (btnSize * 0.5f) + inset, 0.0f));
+	closeBtn->translate(vec3(mw - (btnSize * 0.5f) - inset, mh + (btnSize * 0.5f) + inset, 0.0f));
 	closeBtn->scale(vec3(btnSize, btnSize, 1.0f), closeBtn->mvp.model);
 	closeBtn->updateMVP(std::nullopt, viewLocal, projLocal);
 
@@ -145,15 +145,13 @@ void AddRecipeStep::swapChainUpdate() {
 
 	confirmBtn->params.color = Colors::DarkGreen;
 	confirmBtn->params.outlineColor = Colors::DarkGreen;
-	confirmBtn->translate(vec3(vw - (btnSize * 0.5f) * 2 - inset * 2 - 10, (btnSize * 0.5f) + inset, 0.0f));
+	confirmBtn->translate(vec3(mw - (btnSize * 0.5f) * 2 - inset * 2 - 10, mh + (btnSize * 0.5f) + inset, 0.0f));
 	confirmBtn->scale(vec3(btnSize, btnSize, 1.0f), confirmBtn->mvp.model);
 	confirmBtn->updateMVP(std::nullopt, viewLocal, projLocal);
 
 	confirmBtnIcon->translate(confirmBtn->getPosition());
 	confirmBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), confirmBtnIcon->mvp.model);
 	confirmBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
-
-	createModal();
 }
 
 void AddRecipeStep::updateComputeUniformBuffers() {}
