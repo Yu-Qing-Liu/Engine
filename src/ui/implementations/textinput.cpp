@@ -1,6 +1,7 @@
 #include "textinput.hpp"
 #include "events.hpp"
 #include "geometry.hpp"
+#include <algorithm>
 
 namespace {
 
@@ -18,6 +19,12 @@ constexpr int KEY_KP_ENTER = 335;
 
 inline bool is_press_or_repeat(int action) { return action == Events::ACTION_PRESS || action == Events::ACTION_REPEAT; }
 
+inline bool is_empty(const std::string &s) {
+    return std::all_of(s.begin(), s.end(), [](unsigned char ch) {
+        return std::isspace(ch); // returns true for ' ', '\t', '\n', '\r', '\f', '\v'
+    });
+}
+
 } // namespace
 
 TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass) : Widget(scene, mvp, screenParams, renderPass) {
@@ -26,24 +33,22 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 	textField->enableSlider = true;
 	textField->enableMouseDrag = true;
 
+	// --- character input callback ---
 	auto charInputCallback = [this](unsigned int codepoint) {
 		if (!selected)
 			return;
-		if (codepoint == '\n' || codepoint == '\r' || codepoint == '\t')
-			return;
-		if (codepoint < 0x20u)
-			return;
 
-		// 1) Edit via TextField (wrapped-aware; operates in ORIGINAL space)
+		if (std::isspace(static_cast<char>(codepoint)) && codepoint != 32) {
+			return;
+		}
+
 		textField->insertCodepointAtCaretInto(text, codepoint);
-
-		// 2) Tell the field its text changed (so wrap() will map caret correctly next update)
 		textField->onTextChangedExternally();
-
-		// 3) Optional: scroll after the change
+        textField->wrap();
 		textField->viewBottom();
 	};
 
+	// --- keyboard press handler ---
 	auto kbPress = [this](int key, int scancode, int action, int mods) {
 		(void)scancode;
 		(void)mods;
@@ -54,12 +59,26 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		case KEY_BACKSPACE:
 			textField->backspaceAtCaretInto(text);
 			textField->onTextChangedExternally();
+            textField->wrap();
 			textField->viewBottom();
 			break;
 
 		case KEY_ENTER:
 		case KEY_KP_ENTER:
-			selected = false;
+			textField->insertCodepointAtCaretInto(text, '\n');
+			textField->onTextChangedExternally();
+            textField->wrap();
+			textField->viewBottom();
+			break;
+
+		case KEY_TAB:
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->insertCodepointAtCaretInto(text, ' ');
+			textField->onTextChangedExternally();
+            textField->wrap();
+			textField->viewBottom();
 			break;
 
 		case KEY_ESCAPE:
@@ -68,7 +87,6 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 
 		case KEY_LEFT:
 			textField->moveCaretLeftInto(text);
-			// movement doesn't change text; no onTextChangedExternally() needed
 			break;
 
 		case KEY_RIGHT:
@@ -170,7 +188,7 @@ void TextInput::updateUniformBuffers(optional<Model::MVP> mvp) {
 void TextInput::render() {
 	Widget::render();
 	if (selected) {
-		if (text.empty()) {
+		if (is_empty(text)) {
 			textField->params.text = "";
 			textModel->textParams.color = params.activeTextColor;
 			textModel->textParams.caret.on = true;
@@ -182,7 +200,7 @@ void TextInput::render() {
 			textField->render();
 		}
 	} else {
-		if (text.empty()) {
+		if (is_empty(text)) {
 			textField->params.text = params.placeholderText;
 			textModel->textParams.color = params.placeholderTextColor;
 			textModel->textParams.caret.on = false;

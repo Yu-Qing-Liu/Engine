@@ -15,23 +15,28 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	stepsGrid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 	stepsGrid->grid->enableRayTracing(true);
 	stepsGrid->grid->setOnMouseClick([&](int button, int action, int mods) {
-		if (!this->show) {
+		if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = stepsGrid->grid->rayTracing->hitMapped->primId;
+			if (id == stepsGrid->numItems) {
+				auto style = stepsGrid->grid->getInstance(id);
+				style.color = Colors::DarkGreen;
+				stepsGrid->grid->updateInstance(id, style);
+			}
+		}
+
+		if (!this->show || disabled) {
 			return;
 		}
+
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = stepsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == stepsGrid->numItems) {
 				auto style = stepsGrid->grid->getInstance(id);
 				style.color = Colors::Green;
 				stepsGrid->grid->updateInstance(id, style);
+
+				disable();
 				scenes.showScene("AddRecipeStep");
-			}
-		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
-			int id = stepsGrid->grid->rayTracing->hitMapped->primId;
-			if (id == stepsGrid->numItems) {
-				auto style = stepsGrid->grid->getInstance(id);
-				style.color = Colors::DarkGreen;
-				stepsGrid->grid->updateInstance(id, style);
 			}
 		}
 	});
@@ -41,23 +46,28 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	ingredientsGrid->scrollBar->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 	ingredientsGrid->grid->enableRayTracing(true);
 	ingredientsGrid->grid->setOnMouseClick([&](int button, int action, int mods) {
-		if (!this->show) {
+		if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
+			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
+			if (id == ingredientsGrid->numItems) {
+				auto style = ingredientsGrid->grid->getInstance(id);
+				style.color = Colors::DarkOrange;
+				ingredientsGrid->grid->updateInstance(id, style);
+			}
+		}
+
+		if (!this->show || disabled) {
 			return;
 		}
+
 		if (action == Events::ACTION_PRESS && button == Events::MOUSE_BUTTON_LEFT) {
 			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
 			if (id == ingredientsGrid->numItems) {
 				auto style = ingredientsGrid->grid->getInstance(id);
 				style.color = Colors::Orange;
 				ingredientsGrid->grid->updateInstance(id, style);
-				// scenes.showScene("AddRecipeStep");
-			}
-		} else if (action == Events::ACTION_RELEASE && button == Events::MOUSE_BUTTON_LEFT) {
-			int id = ingredientsGrid->grid->rayTracing->hitMapped->primId;
-			if (id == ingredientsGrid->numItems) {
-				auto style = ingredientsGrid->grid->getInstance(id);
-				style.color = Colors::DarkOrange;
-				ingredientsGrid->grid->updateInstance(id, style);
+
+                disable();
+				scenes.showScene("AddIngredient");
 			}
 		}
 	});
@@ -75,7 +85,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 
 	Text::FontParams fp{};
 	fp.fontPath = Fonts::ArialBold;
-    fp.pixelHeight = 32;
+	fp.pixelHeight = 32;
 	recipeNameInput = make_unique<TextInput>(this, stepsGrid->mvp, stepsGrid->bgSp, fp, Engine::renderPass1);
 	recipeNameInput->textField->showScrollBar = false;
 
@@ -84,7 +94,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 	closeBtn->enableRayTracing(true);
 
 	closeBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
-		if (!this->show)
+		if (!this->show || disabled)
 			return;
 		if (button != Events::MOUSE_BUTTON_LEFT)
 			return;
@@ -108,12 +118,12 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 		}
 	});
 
-    confirmBtnIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->bgSp, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
+	confirmBtnIcon = Textures::icon(this, stepsGrid->mvp, stepsGrid->bgSp, Assets::textureRootPath + "/icons/confirm.png", Engine::renderPass1);
 	confirmBtn = Shapes::polygon2D(this, stepsGrid->mvp, stepsGrid->bgSp, 64, Engine::renderPass1);
 	confirmBtn->enableRayTracing(true);
 
 	confirmBtn->setOnMouseClick([&](int button, int action, int /*mods*/) {
-		if (!this->show)
+		if (!this->show || disabled)
 			return;
 		if (button != Events::MOUSE_BUTTON_LEFT)
 			return;
@@ -126,7 +136,7 @@ Recipe::Recipe(Scenes &scenes, bool show) : Scene(scenes, show) {
 
 		if (action == Events::ACTION_RELEASE) {
 			if (!confirmPressed)
-				return;			  // ignore stray releases (e.g. from prior scene)
+				return;				// ignore stray releases (e.g. from prior scene)
 			confirmPressed = false; // reset for next time
 
 			this->show = false; // hide this scene
@@ -144,6 +154,18 @@ void Recipe::fetchData() {
 	}
 	Pipeline::recreateSwapChain();
 	swapChainUpdate();
+}
+
+void Recipe::onEnable() {
+	stepsGrid->enableControls = false;
+	ingredientsGrid->enableControls = false;
+	Pipeline::recreateSwapChain();
+    swapChainUpdate();
+}
+
+void Recipe::onDisable() {
+	stepsGrid->enableControls = true;
+	ingredientsGrid->enableControls = true;
 }
 
 void Recipe::updateScreenParams() {
@@ -197,7 +219,7 @@ void Recipe::swapChainUpdate() {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
 	float padT = 275;
-    float margin = 2.0f;
+	float margin = 2.0f;
 	float usableH = h * 0.5 - padT - margin;
 	stepsGrid->params.gridCenter = vec2(w * 0.5, padT + usableH * 0.5f);
 	stepsGrid->params.gridDim = vec2(w * 0.8, usableH);
@@ -265,7 +287,7 @@ void Recipe::swapChainUpdate() {
 	recipeNameInput->params.center = vec2(250, 50);
 	recipeNameInput->params.dim = vec2(400, 50);
 	recipeNameInput->params.placeholderText = recipe.name.empty() ? "New Recipe" : recipe.name;
-	recipeNameInput->textField->params.margins = vec4(10.0f, 4.0f, 0.0f, 0.0f);
+	recipeNameInput->textField->params.padding = vec4(10.0f, 4.0f, 0.0f, 0.0f);
 	recipeNameInput->mvp = Model::MVP{mat4(1.0f), viewLocal, projLocal};
 	recipeNameInput->screenParams = stepsGrid->bgSp;
 	recipeNameInput->swapChainUpdate();
@@ -283,7 +305,7 @@ void Recipe::swapChainUpdate() {
 	closeBtnIcon->translate(closeBtn->getPosition());
 	closeBtnIcon->scale(vec3(iconSize, iconSize, 1.0f), closeBtnIcon->mvp.model);
 	closeBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
-    
+
 	confirmBtn->params.color = Colors::DarkGreen;
 	confirmBtn->params.outlineColor = Colors::DarkGreen;
 	confirmBtn->translate(vec3(vw - (btnSize * 0.5f) * 2 - inset * 2, (btnSize * 0.5f) + inset, 0.0f));
@@ -320,7 +342,7 @@ void Recipe::renderPass1() {
 	stepsGrid->render();
 	ingredientsGrid->render();
 	addStepIcon->render();
-    addIngredientIcon->render();
+	addIngredientIcon->render();
 	for (size_t i = 0; i < stepsGrid->numItems; i++) {
 		steps[i]->render();
 	}

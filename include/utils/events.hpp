@@ -4,20 +4,21 @@
 #include <vector>
 
 #if !ANDROID_VK
+#include "imgui_impl_glfw.h"
 #include <GLFW/glfw3.h>
 #else
 #include <android/input.h>
 #include <android_native_app_glue.h>
-#include <jni.h>
 #include <chrono>
 #include <deque>
+#include <jni.h>
 #endif
 
 // Your existing callback types:
 using MouseClickCallback = std::function<void(int /*button*/, int /*action*/, int /*mods*/)>;
 using KeyboardCallback = std::function<void(int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/)>;
 using CharacterInputCallback = std::function<void(unsigned int codepoint)>;
-using WindowFocusedCallback = std::function<void(GLFWwindow* win, int focused)>;
+using WindowFocusedCallback = std::function<void(GLFWwindow *win, int focused)>;
 using CursorCallback = std::function<void(float x, float y)>;
 using ScrollCallback = std::function<void(double xoff, double yoff)>;
 
@@ -55,19 +56,19 @@ inline void dispatchCharacter(unsigned int codepoint) {
 		cb(codepoint);
 }
 
-inline void dispatchWindowFocused(GLFWwindow* win, int focused) {
-    for (const auto &cb : windowFocusedCallbacks)
-        cb(win, focused);
+inline void dispatchWindowFocused(GLFWwindow *win, int focused) {
+	for (const auto &cb : windowFocusedCallbacks)
+		cb(win, focused);
 }
 
 inline void dispatchCursorCallback(float x, float y) {
-    for (const auto &cb : cursorCallbacks)
-        cb(x, y);
+	for (const auto &cb : cursorCallbacks)
+		cb(x, y);
 }
 
 inline void dispatchScrollCallback(double xoff, double yoff) {
-    for (const auto &cb : scrollCallbacks)
-        cb(xoff, yoff);
+	for (const auto &cb : scrollCallbacks)
+		cb(xoff, yoff);
 }
 
 inline void setAndroidApp(void *) {}
@@ -75,15 +76,27 @@ inline void setAndroidApp(void *) {}
 #if !ANDROID_VK
 // ======================= Desktop (GLFW) =======================
 // Keep the exact signatures so your current code compiles unchanged.
-inline void handleMouseCallbacks(GLFWwindow * /*window*/, int button, int action, int mods) { dispatchMouseButton(button, action, mods); }
+inline void handleMouseCallbacks(GLFWwindow *window, int button, int action, int mods) {
+	dispatchMouseButton(button, action, mods);
+	ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+}
 
-inline void handleKeyboardCallbacks(GLFWwindow * /*window*/, int key, int scancode, int action, int mods) { dispatchKey(key, scancode, action, mods); }
+inline void handleKeyboardCallbacks(GLFWwindow *window, int key, int scancode, int action, int mods) {
+	dispatchKey(key, scancode, action, mods);
+	ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+}
 
-inline void handleCharacterInputCallbacks(GLFWwindow *, unsigned int codepoint) { dispatchCharacter(codepoint); }
+inline void handleCharacterInputCallbacks(GLFWwindow *window, unsigned int codepoint) {
+	dispatchCharacter(codepoint);
+	ImGui_ImplGlfw_CharCallback(window, codepoint);
+}
 
-inline void handleWindowFocusedCallbacks(GLFWwindow * win, int focused) { dispatchWindowFocused(win, focused); }
+inline void handleWindowFocusedCallbacks(GLFWwindow *win, int focused) { dispatchWindowFocused(win, focused); }
 
-inline void handleScrollCallbacks(GLFWwindow * win, double xoff, double yoff) { dispatchScrollCallback(xoff, yoff); }
+inline void handleScrollCallbacks(GLFWwindow *win, double xoff, double yoff) {
+	dispatchScrollCallback(xoff, yoff);
+	ImGui_ImplGlfw_ScrollCallback(win, xoff, yoff);
+}
 
 #else
 // ======================= Android (NativeActivity) =======================
@@ -96,45 +109,51 @@ inline void setAndroidApp(android_app *app) { gAppForIme = app; }
 
 // Show/hide soft keyboard (IME) from native code.
 inline void showSoftKeyboard(bool forced = false) {
-	if (!gAppForIme || !gAppForIme->activity) return;
+	if (!gAppForIme || !gAppForIme->activity)
+		return;
 
 	// Try NDK (harmless if it does nothing)
-	ANativeActivity_showSoftInput(
-		gAppForIme->activity,
-		forced ? ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED
-			   : ANATIVEACTIVITY_SHOW_SOFT_INPUT_IMPLICIT);
+	ANativeActivity_showSoftInput(gAppForIme->activity, forced ? ANATIVEACTIVITY_SHOW_SOFT_INPUT_FORCED : ANATIVEACTIVITY_SHOW_SOFT_INPUT_IMPLICIT);
 
 	// Kotlin bridge (MainActivity.companion)
-	JNIEnv* env = nullptr;
-	if (gAppForIme->activity->vm->AttachCurrentThread(&env, nullptr) != JNI_OK || !env) return;
+	JNIEnv *env = nullptr;
+	if (gAppForIme->activity->vm->AttachCurrentThread(&env, nullptr) != JNI_OK || !env)
+		return;
 
 	jclass actCls = env->GetObjectClass(gAppForIme->activity->clazz);
-	if (!actCls) return;
+	if (!actCls)
+		return;
 	jmethodID mid = env->GetStaticMethodID(actCls, "imeShow", "(Landroid/app/Activity;Z)V");
 	if (mid) {
 		env->CallStaticVoidMethod(actCls, mid, gAppForIme->activity->clazz, (jboolean)forced);
-		if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
+		if (env->ExceptionCheck()) {
+			env->ExceptionDescribe();
+			env->ExceptionClear();
+		}
 	}
 	env->DeleteLocalRef(actCls);
 }
 
 inline void hideSoftKeyboard(bool implicitOnly = false) {
-	if (!gAppForIme || !gAppForIme->activity) return;
+	if (!gAppForIme || !gAppForIme->activity)
+		return;
 
-	ANativeActivity_hideSoftInput(
-		gAppForIme->activity,
-		implicitOnly ? ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY
-					 : ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
+	ANativeActivity_hideSoftInput(gAppForIme->activity, implicitOnly ? ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY : ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS);
 
-	JNIEnv* env = nullptr;
-	if (gAppForIme->activity->vm->AttachCurrentThread(&env, nullptr) != JNI_OK || !env) return;
+	JNIEnv *env = nullptr;
+	if (gAppForIme->activity->vm->AttachCurrentThread(&env, nullptr) != JNI_OK || !env)
+		return;
 
 	jclass actCls = env->GetObjectClass(gAppForIme->activity->clazz);
-	if (!actCls) return;
+	if (!actCls)
+		return;
 	jmethodID mid = env->GetStaticMethodID(actCls, "imeHide", "(Landroid/app/Activity;)V");
 	if (mid) {
 		env->CallStaticVoidMethod(actCls, mid, gAppForIme->activity->clazz);
-		if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
+		if (env->ExceptionCheck()) {
+			env->ExceptionDescribe();
+			env->ExceptionClear();
+		}
 	}
 	env->DeleteLocalRef(actCls);
 }
@@ -235,29 +254,44 @@ inline unsigned int asciiFromKeycode(int32_t code, int32_t meta) {
 	}
 	// Digits 0–9 (top row)
 	if (code >= AKEYCODE_0 && code <= AKEYCODE_9) {
-		static const char shifted[] = {')','!','@','#','$','%','^','&','*','('};
+		static const char shifted[] = {')', '!', '@', '#', '$', '%', '^', '&', '*', '('};
 		int d = code - AKEYCODE_0;
 		return shift ? shifted[d] : ('0' + d);
 	}
 
 	switch (code) {
-	case AKEYCODE_SPACE:        return ' ';
-	case AKEYCODE_TAB:          return '\t';
-	case AKEYCODE_ENTER:        return '\n';
+	case AKEYCODE_SPACE:
+		return ' ';
+	case AKEYCODE_TAB:
+		return '\t';
+	case AKEYCODE_ENTER:
+		return '\n';
 
 	// Basic US punctuation row (extend to your locale needs)
-	case AKEYCODE_COMMA:        return shift ? '<' : ',';
-	case AKEYCODE_PERIOD:       return shift ? '>' : '.';
-	case AKEYCODE_MINUS:        return shift ? '_' : '-';
-	case AKEYCODE_EQUALS:       return shift ? '+' : '=';
-	case AKEYCODE_SEMICOLON:    return shift ? ':' : ';';
-	case AKEYCODE_APOSTROPHE:   return shift ? '"' : '\'';
-	case AKEYCODE_SLASH:        return shift ? '?' : '/';
-	case AKEYCODE_BACKSLASH:    return shift ? '|' : '\\';
-	case AKEYCODE_LEFT_BRACKET: return shift ? '{' : '[';
-	case AKEYCODE_RIGHT_BRACKET:return shift ? '}' : ']';
-	case AKEYCODE_GRAVE:        return shift ? '~' : '`';
-	default:                    return 0;  // not a printable char
+	case AKEYCODE_COMMA:
+		return shift ? '<' : ',';
+	case AKEYCODE_PERIOD:
+		return shift ? '>' : '.';
+	case AKEYCODE_MINUS:
+		return shift ? '_' : '-';
+	case AKEYCODE_EQUALS:
+		return shift ? '+' : '=';
+	case AKEYCODE_SEMICOLON:
+		return shift ? ':' : ';';
+	case AKEYCODE_APOSTROPHE:
+		return shift ? '"' : '\'';
+	case AKEYCODE_SLASH:
+		return shift ? '?' : '/';
+	case AKEYCODE_BACKSLASH:
+		return shift ? '|' : '\\';
+	case AKEYCODE_LEFT_BRACKET:
+		return shift ? '{' : '[';
+	case AKEYCODE_RIGHT_BRACKET:
+		return shift ? '}' : ']';
+	case AKEYCODE_GRAVE:
+		return shift ? '~' : '`';
+	default:
+		return 0; // not a printable char
 	}
 }
 

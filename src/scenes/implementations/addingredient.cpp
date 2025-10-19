@@ -1,18 +1,27 @@
-#include "addrecipestep.hpp"
-#include "recipe.hpp"
+#include "addingredient.hpp"
+#include "colors.hpp"
 #include "scenes.hpp"
 #include "shapes.hpp"
 #include "textures.hpp"
 
-AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
+AddIngredient::AddIngredient(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
 	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, mvp, screenParams, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
 
-	Text::FontParams fp{};
-	textInput = make_unique<TextInput>(this, modal->mvp, modal->screenParams, fp, Engine::renderPass1);
+	image = Textures::icon(this, mvp, screenParams, Engine::renderPass1);
+	image->params.color = Colors::White;
+	image->enableRayTracing(true);
+	image->setOnMouseClick([&](int button, int action, int) {
+		if (button != Events::MOUSE_BUTTON_LEFT) {
+			return;
+		}
+		if (action == Events::ACTION_PRESS) {
+			showFileExplorer = true;
+		}
+	});
 
 	closeBtnIcon = Textures::icon(this, modal->mvp, modal->screenParams, Assets::textureRootPath + "/icons/close.png", Engine::renderPass1);
 	closeBtn = Shapes::polygon2D(this, modal->mvp, modal->screenParams, 64, Engine::renderPass1);
@@ -69,20 +78,12 @@ AddRecipeStep::AddRecipeStep(Scenes &scenes, bool show) : Scene(scenes, show) {
 			if (!sc) {
 				return;
 			}
-
-			if (!textInput->text.empty()) {
-				auto r = dynamic_cast<Recipe *>(sc.get());
-				RecipesQueries::Step step{};
-				step.instruction = textInput->text;
-				r->recipe.steps.emplace_back(std::move(step));
-			}
-
 			sc->enable();
 		}
 	});
 }
 
-void AddRecipeStep::updateScreenParams() {
+void AddIngredient::updateScreenParams() {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -93,7 +94,7 @@ void AddRecipeStep::updateScreenParams() {
 	screenParams.scissor.extent = {(uint32_t)screenParams.viewport.width, (uint32_t)screenParams.viewport.height};
 }
 
-void AddRecipeStep::createModal() {
+void AddIngredient::createModal() {
 	const float w = screenParams.viewport.width;
 	const float h = screenParams.viewport.height;
 
@@ -110,7 +111,99 @@ void AddRecipeStep::createModal() {
 	modal->updateMVP(std::nullopt, mat4(1.0f), projLocal);
 }
 
-void AddRecipeStep::swapChainUpdate() {
+void AddIngredient::createFileExplorer() {
+	if (!showFileExplorer)
+		return;
+	if (!ImGui::GetCurrentContext())
+		return; // safety
+
+	ImGui::SetNextWindowSize(ImVec2(720, 480), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Select Image", &showFileExplorer, ImGuiWindowFlags_NoCollapse)) {
+		// Header: path + up-dir
+		ImGui::TextUnformatted(currentDir.string().c_str());
+		ImGui::SameLine();
+		if (ImGui::Button("Up")) {
+			if (currentDir.has_parent_path())
+				currentDir = currentDir.parent_path();
+		}
+
+		ImGui::Separator();
+
+		// Left: directories
+		ImGui::BeginChild("dirs", ImVec2(240, 0), true);
+		try {
+			std::vector<directory_entry> dirs;
+			for (auto &de : directory_iterator(currentDir)) {
+				if (de.is_directory())
+					dirs.push_back(de);
+			}
+			std::sort(dirs.begin(), dirs.end(), [](auto &a, auto &b) { return a.path().filename().string() < b.path().filename().string(); });
+
+			for (auto &d : dirs) {
+				const std::string name = d.path().filename().string();
+				if (ImGui::Selectable((name + "/").c_str(), false)) {
+					currentDir = d.path();
+				}
+			}
+		} catch (...) {
+			// ignore permission errors etc.
+		}
+		ImGui::EndChild();
+		ImGui::SameLine();
+
+		// Right: files (filter images)
+		ImGui::BeginChild("files", ImVec2(0, 0), true);
+		static const char *exts[] = {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".gif", ".hdr", ".exr", ".ktx", ".dds"};
+		auto isImage = [&](const path &p) {
+			const std::string e = p.extension().string();
+			for (auto *x : exts)
+				if (!strcasecmp(e.c_str(), x))
+					return true;
+			return false;
+		};
+
+		path justSelected;
+		try {
+			std::vector<directory_entry> files;
+			for (auto &de : directory_iterator(currentDir)) {
+				if (de.is_regular_file() && isImage(de.path()))
+					files.push_back(de);
+			}
+			std::sort(files.begin(), files.end(), [](auto &a, auto &b) { return a.path().filename().string() < b.path().filename().string(); });
+
+			for (auto &f : files) {
+				const std::string name = f.path().filename().string();
+				if (ImGui::Selectable(name.c_str(), false)) {
+					justSelected = f.path();
+				}
+			}
+		} catch (...) {
+		}
+		ImGui::EndChild();
+
+		ImGui::Separator();
+		if (ImGui::Button("Cancel")) {
+			showFileExplorer = false;
+		}
+		ImGui::SameLine();
+		bool pickedNow = false;
+		if (!justSelected.empty()) {
+			selectedPath = justSelected;
+			pickedNow = true;
+			showFileExplorer = false;
+		}
+		if (ImGui::Button("OK") && !justSelected.empty()) {
+			selectedPath = justSelected;
+			showFileExplorer = false;
+			pickedNow = true;
+		}
+
+		(void)pickedNow;
+	}
+	ImGui::End();
+}
+
+void AddIngredient::swapChainUpdate() {
 	auto w = screenParams.viewport.width;
 	auto h = screenParams.viewport.height;
 	auto mw = w * 0.9f;
@@ -120,18 +213,19 @@ void AddRecipeStep::swapChainUpdate() {
 	createModal();
 
 	const glm::mat4 projLocal = ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f);
+
 	const glm::mat4 viewLocal = glm::mat4(1.0f);
 
 	const float inset = 15.0f;
 	const float btnSize = 35.0f;
 	const float iconSize = 15.0f;
 
-	textInput->params.center = vec2(w * 0.5f, h * 0.5f + inset * 0.4 + btnSize / 2);
-	textInput->params.dim = vec2(w * 0.8f - inset * 2, h * 0.6 - inset * 3 - btnSize);
-	textInput->textField->params.scrollBarWidth = 8.0f;
-	textInput->textField->params.padding = vec4(20.0f, 20.0f, 0.0f, 0.0f);
-	textInput->mvp = modal->mvp;
-	textInput->swapChainUpdate();
+	const float imgSize = 200.0f;
+
+	image->translate(vec3(w * 0.1f + imgSize * 0.5f + inset * 2, h * 0.2f + imgSize * 0.5f + inset * 2, 0.0));
+	image->scale(vec3(imgSize, imgSize, 1.0f), image->mvp.model);
+	image->updateMVP(std::nullopt, viewLocal, projLocal);
+	image->computeAspectUV();
 
 	closeBtn->params.color = Colors::DarkRed;
 	closeBtn->params.outlineColor = Colors::DarkRed;
@@ -154,19 +248,20 @@ void AddRecipeStep::swapChainUpdate() {
 	confirmBtnIcon->updateMVP(std::nullopt, viewLocal, projLocal);
 }
 
-void AddRecipeStep::updateComputeUniformBuffers() {}
+void AddIngredient::updateComputeUniformBuffers() {}
 
-void AddRecipeStep::computePass() {}
+void AddIngredient::computePass() {}
 
-void AddRecipeStep::updateUniformBuffers() { textInput->updateUniformBuffers(mvp); }
+void AddIngredient::updateUniformBuffers() {}
 
-void AddRecipeStep::renderPass() {}
+void AddIngredient::renderPass() {}
 
-void AddRecipeStep::renderPass1() {
+void AddIngredient::renderPass1() {
+	createFileExplorer();
 	modal->render();
 	closeBtn->render();
 	closeBtnIcon->render();
 	confirmBtn->render();
 	confirmBtnIcon->render();
-	textInput->render();
+	image->render();
 }

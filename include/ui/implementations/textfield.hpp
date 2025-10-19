@@ -18,7 +18,8 @@ class TextField : public Widget {
 		vec2 center = vec2(0.0f, 0.0f);	 // true center in screen pixels
 		vec2 dim = vec2(800.0f, 800.0f); // width/height in pixels
 		float lineSpacing = 0.0f;		 // extra spacing added to natural line height
-		vec4 margins = vec4(0.0f);		 // L,T,R,B
+		vec4 padding = vec4(0.0f);		 // L,T,R,B
+		vec4 margins = vec4(0.0f);
 		vec4 textColor = Colors::Red;
 		vec4 sliderColor = Colors::Gray(0.55);
 		vec4 sliderColorPressed = Colors::Gray;
@@ -73,6 +74,8 @@ class TextField : public Widget {
 	// Call this whenever you mutate params.text externally (typing, delete, paste, etc.)
 	inline void onTextChangedExternally() { caretFromWrapped = false; }
 
+	void wrap();
+
   private:
 	InstancedRectangleData slider{};
 
@@ -94,7 +97,6 @@ class TextField : public Widget {
 
 	void updateScreenParams();
 	void recomputeScissorForCurrentView();
-	void wrap();
 
 	void createScrollBar();
 	void updateSlider();

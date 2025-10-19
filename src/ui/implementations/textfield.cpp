@@ -37,10 +37,10 @@ void TextField::updateScreenParams() {
 	const float fieldL = params.center.x; // top-left, Y down
 	const float fieldT = params.center.y;
 
-	const float innerL0 = fieldL + params.margins.x;
-	const float innerT0 = fieldT + params.margins.y;
-	const float innerW0 = std::max(0.0f, params.dim.x - (params.margins.x + params.margins.z));
-	const float innerH0 = std::max(0.0f, params.dim.y - (params.margins.y + params.margins.w));
+	const float innerL0 = fieldL + params.padding.x;
+	const float innerT0 = fieldT + params.padding.y;
+	const float innerW0 = std::max(0.0f, params.dim.x - (params.padding.x + params.padding.z));
+	const float innerH0 = std::max(0.0f, params.dim.y - (params.padding.y + params.padding.w));
 
 	const float barW = showScrollBar ? params.scrollBarWidth : 0.0f;
 	const float innerW = std::max(0.0f, innerW0 - barW);
@@ -61,38 +61,72 @@ void TextField::updateScreenParams() {
 
 	if (!(params.crop && iW_grid > 0.0f && iH_grid > 0.0f)) {
 		sp.scissor = screenParams.scissor;
-		return;
+	} else {
+		// --- map GRID → FRAMEBUFFER per-axis ---
+		const VkViewport fbViewport = screenParams.viewport; // (x,y,width,height in FB px)
+
+		// Scale factors from grid to framebuffer **per axis**
+		const float sx = fbViewport.width / sp.viewport.width;
+		const float sy = fbViewport.height / sp.viewport.height; // this is your “~2.2”
+
+		// Map grid-inner rect into FB pixels (top-left anchored)
+		const float fbX = fbViewport.x + innerL * sx;
+		const float fbY = fbViewport.y + innerT * sy;
+		const float fbW = iW_grid * sx;
+		const float fbH = iH_grid * sy;
+
+		// Clamp to the *framebuffer* (or to fbViewport rectangle, either is fine)
+		const float raL = fbViewport.x;
+		const float raT = fbViewport.y;
+		const float raR = fbViewport.x + fbViewport.width;
+		const float raB = fbViewport.y + fbViewport.height;
+
+		const float scL = std::max(fbX, raL);
+		const float scT = std::max(fbY, raT);
+		const float scR = std::min(fbX + fbW, raR);
+		const float scB = std::min(fbY + fbH, raB);
+
+		const float scW = std::max(0.0f, scR - scL);
+		const float scH = std::max(0.0f, scB - scT);
+
+		sp.scissor.offset = {(int32_t)std::floor(scL), (int32_t)std::floor(scT)};
+		sp.scissor.extent = {(uint32_t)std::ceil(scW), (uint32_t)std::ceil(scH)};
 	}
 
-	// --- map GRID → FRAMEBUFFER per-axis ---
-	const VkViewport fbViewport = screenParams.viewport; // (x,y,width,height in FB px)
+	// ----- Outer (grid + margins) -> bgSp -----
+	const float swapW = screenParams.viewport.width;
+	const float swapH = screenParams.viewport.height;
 
-	// Scale factors from grid to framebuffer **per axis**
-	const float sx = fbViewport.width / sp.viewport.width;
-	const float sy = fbViewport.height / sp.viewport.height; // this is your “~2.2”
+	const float mL = params.margins.x;
+	const float mT = params.margins.y;
+	const float mR = params.margins.z;
+	const float mB = params.margins.w;
 
-	// Map grid-inner rect into FB pixels (top-left anchored)
-	const float fbX = fbViewport.x + innerL * sx;
-	const float fbY = fbViewport.y + innerT * sy;
-	const float fbW = iW_grid * sx;
-	const float fbH = iH_grid * sy;
+	const float desiredX = params.center.x;
+	const float desiredY = params.center.y;
+	const float desiredW = params.dim.x;
+	const float desiredH = params.dim.y;
 
-	// Clamp to the *framebuffer* (or to fbViewport rectangle, either is fine)
-	const float raL = fbViewport.x;
-	const float raT = fbViewport.y;
-	const float raR = fbViewport.x + fbViewport.width;
-	const float raB = fbViewport.y + fbViewport.height;
+	const float ex = desiredX - mL;
+	const float ey = desiredY - mT;
+	const float eW = desiredW + mL + mR;
+	const float eH = desiredH + mT + mB;
 
-	const float scL = std::max(fbX, raL);
-	const float scT = std::max(fbY, raT);
-	const float scR = std::min(fbX + fbW, raR);
-	const float scB = std::min(fbY + fbH, raB);
+	const float bix = std::max(0.0f, ex);
+	const float biy = std::max(0.0f, ey);
+	const float bix2 = std::min(ex + eW, swapW);
+	const float biy2 = std::min(ey + eH, swapH);
+	const float bW = std::max(0.0f, bix2 - bix);
+	const float bH = std::max(0.0f, biy2 - biy);
 
-	const float scW = std::max(0.0f, scR - scL);
-	const float scH = std::max(0.0f, scB - scT);
-
-	sp.scissor.offset = {(int32_t)std::floor(scL), (int32_t)std::floor(scT)};
-	sp.scissor.extent = {(uint32_t)std::ceil(scW), (uint32_t)std::ceil(scH)};
+	bgSp.viewport.x = bix;
+	bgSp.viewport.y = biy;
+	bgSp.viewport.width = bW;
+	bgSp.viewport.height = bH;
+	bgSp.viewport.minDepth = sp.viewport.minDepth; // or 0.0f
+	bgSp.viewport.maxDepth = sp.viewport.maxDepth; // or 1.0f
+	bgSp.scissor.offset = {(int32_t)std::floor(bix), (int32_t)std::floor(biy)};
+	bgSp.scissor.extent = {(uint32_t)std::floor(bW), (uint32_t)std::floor(bH)};
 }
 
 void TextField::setCaretFromWrappedCpIndex(size_t cpIndex) {
@@ -113,7 +147,7 @@ void TextField::setCaretFromWrappedCpIndex(size_t cpIndex) {
 
 void TextField::wrap() {
 	const std::string &src = params.text;
-	const float maxW = params.dim.x - (showScrollBar ? params.scrollBarWidth : 0.0f) - params.margins.x - params.margins.z;
+	const float maxW = params.dim.x - (showScrollBar ? params.scrollBarWidth : 0.0f) - params.padding.x - params.padding.z;
 
 	// Font metrics (fixed-size font)
 	const float lineH = textModel->getPixelHeight();
@@ -190,7 +224,7 @@ void TextField::wrap() {
 		size_t e = b;
 		while (e > a) {
 			char ch = src[e - 1];
-			if (ch == ' ' || ch == '\t' || ch == '\r')
+			if (ch == '\t' || ch == '\r')
 				--e;
 			else
 				break;
@@ -245,8 +279,8 @@ void TextField::wrap() {
 	}
 
 	// 4) Configure text model
-	const float desiredX = params.center.x + params.margins.x;
-	const float desiredY = params.center.y + params.margins.y;
+	const float desiredX = params.center.x + params.padding.x;
+	const float desiredY = params.center.y + params.padding.y;
 	textModel->textParams.text = std::move(para);
 	textModel->textParams.color = params.textColor;
 	textModel->textParams.origin = glm::vec3(desiredX, desiredY + lineH, 0.0f);
