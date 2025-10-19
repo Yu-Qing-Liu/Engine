@@ -35,6 +35,10 @@ inline VkQueue graphicsQueue = VK_NULL_HANDLE;
 inline VkQueue computeQueue = VK_NULL_HANDLE;
 inline VkQueue presentQueue = VK_NULL_HANDLE;
 
+inline uint32_t graphicsQueueFamilyIndex = UINT32_MAX;
+inline uint32_t presentQueueFamilyIndex  = UINT32_MAX;
+inline uint32_t computeQueueFamilyIndex  = UINT32_MAX;
+
 inline VkDevice device = VK_NULL_HANDLE;
 inline VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 

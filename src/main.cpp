@@ -1,4 +1,5 @@
 #include "appdata.hpp"
+#include "dimgui.hpp"
 #include "engine.hpp"
 #include "events.hpp"
 #include "inventoryqueries.hpp"
@@ -79,9 +80,12 @@ class Application {
 		Pipeline::createRenderPasses();
 		Pipeline::createSwapchainDependent();
 		Pipeline::createCommandPool();
+
 		Pipeline::createCommandBuffers();
 		Pipeline::createComputeCommandBuffers();
 		Pipeline::createSyncObjects();
+
+		DImGui::setup(window, instance, physicalDevice, device, Engine::graphicsQueueFamilyIndex, graphicsQueue, renderPass1, (uint32_t)swapChainImages.size(), MAX_FRAMES_IN_FLIGHT, VK_SAMPLE_COUNT_1_BIT, VK_NULL_HANDLE);
 		scenes = std::make_unique<Scenes>();
 	}
 
@@ -89,6 +93,7 @@ class Application {
 		double lastTime = glfwGetTime();
 		while (!glfwWindowShouldClose(window)) {
 			glfwPollEvents();
+			DImGui::newFrame();
 			drawFrame();
 			double currentTime = glfwGetTime();
 			deltaTime = currentTime - lastTime;
@@ -102,6 +107,7 @@ class Application {
 
 	void cleanup() {
 		Text::Text_ShutdownUploadRings();
+		DImGui::shutdown(device);
 		Pipeline::cleanupSwapChain();
 		vkDestroyRenderPass(device, renderPass, nullptr);
 		vkDestroyRenderPass(device, renderPass1, nullptr);
@@ -188,6 +194,8 @@ class Application {
 		// (the descriptor view is all-mips; sampler uses mipmapMode=LINEAR)
 		scenes->renderPass1();
 
+		DImGui::recordDraw(cmd /*, VK_NULL_HANDLE*/);
+
 		vkCmdEndRenderPass(cmd);
 
 		if (vkEndCommandBuffer(cmd) != VK_SUCCESS)
@@ -226,6 +234,7 @@ class Application {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			Pipeline::recreateSwapChain();
 			scenes->swapChainUpdate();
+			DImGui::onSwapchainRecreated(renderPass1, (uint32_t)swapChainImages.size(), MAX_FRAMES_IN_FLIGHT);
 			return;
 		} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 			throw std::runtime_error("failed to acquire swap chain image!");
@@ -281,6 +290,7 @@ class Application {
 			framebufferResized = false;
 			Pipeline::recreateSwapChain();
 			scenes->swapChainUpdate();
+			DImGui::onSwapchainRecreated(renderPass1, (uint32_t)swapChainImages.size(), MAX_FRAMES_IN_FLIGHT);
 		} else if (result != VK_SUCCESS) {
 			throw std::runtime_error("failed to present swap chain image!");
 		}

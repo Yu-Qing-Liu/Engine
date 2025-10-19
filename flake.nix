@@ -56,6 +56,7 @@
               pkgs.assimp.dev
               pkgs.openssl.dev
               pkgs.libpqxx.dev
+              pkgs.imgui
             ];
             PKG_CONFIG_PATH = pkgs.lib.makeSearchPath "lib/pkgconfig" [
               pkgs.shaderc.dev
@@ -63,6 +64,7 @@
               pkgs.openssl.dev
               pkgs.freetype.dev
               pkgs.libpqxx.dev
+              pkgs.imgui
             ];
             VULKAN_SDK = "${pkgs.vulkan-headers}";
             VK_LAYER_PATH =
@@ -73,6 +75,7 @@
             OpenSSL_DIR = "${pkgs.openssl.dev}";
             freetype_DIR = "${pkgs.freetype.dev}";
             libpqxx_DIR = "${pkgs.libpqxx.dev}";
+            imgui_DIR = "${pkgs.imgui}";
           };
         });
     };
