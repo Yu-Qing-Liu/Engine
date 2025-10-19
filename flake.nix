@@ -38,6 +38,7 @@
               vulkan-tools-lunarg
               spirv-tools
               # Dependencies
+              imgui
               shaderc
               glfw
               glm

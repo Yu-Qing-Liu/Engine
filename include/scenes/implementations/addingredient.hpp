@@ -1,5 +1,6 @@
 #pragma once
 
+#include "image.hpp"
 #include "instancedrectangle.hpp"
 #include "polygon.hpp"
 #include "scene.hpp"
@@ -28,6 +29,7 @@ class AddIngredient : public Scene {
 
   private:
 	unique_ptr<InstancedRectangle> modal;
+	unique_ptr<Image> image;
 
 	unique_ptr<Polygon> closeBtn;
 	unique_ptr<Texture> closeBtnIcon;

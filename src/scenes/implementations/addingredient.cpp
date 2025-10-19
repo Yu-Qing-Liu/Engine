@@ -7,9 +7,13 @@
 AddIngredient::AddIngredient(Scenes &scenes, bool show) : Scene(scenes, show) {
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, float(Engine::swapChainExtent.width), 0.0f, -float(Engine::swapChainExtent.height), -1.0f, 1.0f)};
 
-    auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
+	auto mInstances = std::make_shared<std::unordered_map<int, InstancedRectangleData>>();
 	modal = make_unique<InstancedRectangle>(this, mvp, screenParams, mInstances, 2);
 	modal->enableBlur(Assets::shaderRootPath + "/instanced/blur/irectblur/");
+
+	image = Textures::icon(this, mvp, screenParams, Engine::renderPass1);
+	image->params.color = Colors::White;
+	image->enableRayTracing(true);
 
 	closeBtnIcon = Textures::icon(this, modal->mvp, modal->screenParams, Assets::textureRootPath + "/icons/close.png", Engine::renderPass1);
 	closeBtn = Shapes::polygon2D(this, modal->mvp, modal->screenParams, 64, Engine::renderPass1);
@@ -102,8 +106,8 @@ void AddIngredient::createModal() {
 void AddIngredient::swapChainUpdate() {
 	auto w = screenParams.viewport.width;
 	auto h = screenParams.viewport.height;
-    auto mw = w * 0.9f;
-    auto mh = h * 0.2f;
+	auto mw = w * 0.9f;
+	auto mh = h * 0.2f;
 	mvp = {mat4(1.0f), mat4(1.0f), ortho(0.0f, w, 0.0f, -h, -1.0f, 1.0f)};
 
 	createModal();
@@ -115,6 +119,13 @@ void AddIngredient::swapChainUpdate() {
 	const float inset = 15.0f;
 	const float btnSize = 35.0f;
 	const float iconSize = 15.0f;
+
+    const float imgSize = 200.0f;
+
+	image->translate(vec3(w * 0.1f + imgSize * 0.5f + inset * 2, h * 0.2f + imgSize * 0.5f + inset * 2, 0.0));
+	image->scale(vec3(imgSize, imgSize, 1.0f), image->mvp.model);
+	image->updateMVP(std::nullopt, viewLocal, projLocal);
+	image->computeAspectUV();
 
 	closeBtn->params.color = Colors::DarkRed;
 	closeBtn->params.outlineColor = Colors::DarkRed;
@@ -151,4 +162,5 @@ void AddIngredient::renderPass1() {
 	closeBtnIcon->render();
 	confirmBtn->render();
 	confirmBtnIcon->render();
+	image->render();
 }
