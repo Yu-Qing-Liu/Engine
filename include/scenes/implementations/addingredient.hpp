@@ -5,6 +5,9 @@
 #include "polygon.hpp"
 #include "scene.hpp"
 #include "texture.hpp"
+#include <filesystem>
+
+using namespace std::filesystem;
 
 class AddIngredient : public Scene {
   public:
@@ -39,5 +42,10 @@ class AddIngredient : public Scene {
 	unique_ptr<Texture> confirmBtnIcon;
 	bool confirmPressed = false;
 
+	bool showFileExplorer = false;
+	path currentDir = current_path();
+	path selectedPath;
+
 	void createModal();
+	void createFileExplorer();
 };
