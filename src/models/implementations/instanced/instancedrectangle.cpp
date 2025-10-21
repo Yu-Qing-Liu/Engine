@@ -2,7 +2,7 @@
 #include "assets.hpp"
 #include <cstring>
 
-InstancedRectangle::InstancedRectangle(Scene* scene, const MVP &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances) : InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedrectangle", instances, maxInstances) {
+InstancedRectangle::InstancedRectangle(Scene* scene, const MVP &ubo, ScreenParams &screenParams, shared_ptr<unordered_map<int, InstancedRectangleData>> instances, uint32_t maxInstances, const VkRenderPass &renderPass) : InstancedModel(scene, ubo, screenParams, Assets::shaderRootPath + "/instanced/instancedrectangle", instances, maxInstances, renderPass) {
 	indices = {0, 1, 2, 2, 3, 0};
 
 	// Geometry
@@ -86,7 +86,7 @@ void InstancedRectangle::setupGraphicsPipeline() {
 
 	rasterizer.cullMode = VK_CULL_MODE_NONE;
 
-	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthTestEnable = isOrtho() ? VK_FALSE : VK_TRUE;
 	depthStencil.depthWriteEnable = VK_FALSE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 }

@@ -1,0 +1,130 @@
+#version 460
+
+layout(local_size_x = 128) in;
+
+// ---------- std140 UBO ----------
+struct PickingUBO {
+    mat4 invViewProj;
+    mat4 invModel;
+    vec2 mouseNdc;
+    vec2 _pad0;
+    vec3 camPos;
+    int count; // reuse CPU _pad slot for glyphCount
+};
+layout(std140, binding = 0) uniform UBO {
+    PickingUBO u;
+};
+
+// ---------- std430 buffers ----------
+struct GlyphSpanGPU {
+    vec4 p0;
+    vec4 p1;
+    vec4 p2;
+    vec4 p3;
+    uint letterIndex;
+    uint _p0;
+    uint _p1;
+    uint _p2; // pad to 80 bytes per element
+};
+layout(std430, binding = 1) readonly buffer Spans {
+    GlyphSpanGPU spans[];
+};
+
+struct HitOutCPU {
+    uint hit;
+    uint primId;
+    float t;
+    float rayLen;
+    vec4 hitPos;
+};
+layout(std430, binding = 2) coherent buffer Hit {
+    HitOutCPU outHit;
+};
+
+// ---------- helpers ----------
+bool rayTri(vec3 ro, vec3 rd, vec3 a, vec3 b, vec3 c, out float t, out vec3 p) {
+    vec3 ab = b - a, ac = c - a;
+    vec3 n = cross(ab, ac);
+    float d = dot(n, rd);
+    if (abs(d) < 1e-6) return false;
+    t = dot(n, a - ro) / d;
+    if (t < 0.0) return false;
+    p = ro + t * rd;
+
+    vec3 ap = p - a;
+    float d00 = dot(ab, ab), d01 = dot(ab, ac), d11 = dot(ac, ac);
+    float d20 = dot(ap, ab), d21 = dot(ap, ac);
+    float inv = 1.0 / (d00 * d11 - d01 * d01);
+    float v = (d11 * d20 - d01 * d21) * inv;
+    float w = (d00 * d21 - d01 * d20) * inv;
+    float u0 = 1.0 - v - w;
+    return (u0 >= 0.0 && v >= 0.0 && w >= 0.0);
+}
+
+vec3 unprojectClip(vec2 ndc, float z01) {
+    float zClip = 2.0 * z01 - 1.0;
+    vec4 p = u.invViewProj * vec4(ndc, zClip, 1.0);
+    return p.xyz / p.w;
+}
+
+// shared min-reduction
+shared uint bestTbits;
+shared uint bestId;
+shared vec3 bestPos;
+
+void main() {
+    if (gl_LocalInvocationIndex == 0u) {
+        bestTbits = floatBitsToUint(3.4e38);
+        bestId = 0xffffffffu;
+        bestPos = vec3(0);
+        outHit.hit = 0u;
+        outHit.t = 3.4e38;
+        outHit.primId = 0xffffffffu;
+        outHit.rayLen = 3.4e38;
+        outHit.hitPos = vec4(0);
+    }
+    barrier();
+
+    // Build a ray that also works for ORTHO:
+    vec3 pNearW = unprojectClip(u.mouseNdc, 0.001);
+    vec3 pFarW = unprojectClip(u.mouseNdc, 0.999);
+    vec3 roW = pNearW;
+    vec3 rdW = normalize(pFarW - pNearW);
+
+    // world -> model
+    vec3 roM = (u.invModel * vec4(roW, 1.0)).xyz;
+    vec3 rdM = normalize((u.invModel * vec4(rdW, 0.0)).xyz);
+
+    for (uint i = gl_LocalInvocationID.x; i < uint(u.count); i += gl_WorkGroupSize.x) {
+        GlyphSpanGPU g = spans[i];
+
+        float t;
+        vec3 hp;
+        bool h = false;
+        h = rayTri(roM, rdM, g.p0.xyz, g.p1.xyz, g.p2.xyz, t, hp)
+                || rayTri(roM, rdM, g.p0.xyz, g.p2.xyz, g.p3.xyz, t, hp);
+
+        if (h) {
+            uint tb = floatBitsToUint(t);
+            uint prev = atomicMin(bestTbits, tb);
+            if (tb < prev) {
+                bestId = g.letterIndex;
+                bestPos = hp;
+            }
+        }
+    }
+    barrier();
+
+    if (gl_LocalInvocationIndex == 0u && bestId != 0xffffffffu) {
+        float bestT = uintBitsToFloat(bestTbits);
+        outHit.hit = 1u;
+        outHit.primId = bestId;
+        outHit.t = bestT;
+        outHit.rayLen = bestT;
+
+        // model -> world for debug/visualization
+        mat4 model = inverse(u.invModel);
+        vec3 hitW = (model * vec4(bestPos, 1.0)).xyz;
+        outHit.hitPos = vec4(hitW, 1.0);
+    }
+}

@@ -1,5 +1,7 @@
+#pragma once
+
 #include "colors.hpp"
-#include "text.hpp"
+#include "textfield.hpp"
 #include "widget.hpp"
 
 class TextInput : public Widget {
@@ -10,7 +12,7 @@ class TextInput : public Widget {
 	TextInput &operator=(const TextInput &) = delete;
 	~TextInput() = default;
 
-	struct StyleParams {
+	struct Params {
 		// container style
 		vec2 center{0.0f};				   // center in screen pixels
 		vec2 textCenter{0.0f};			   // text center
@@ -21,6 +23,7 @@ class TextInput : public Widget {
 		vec4 activeOutlineColor{Colors::Blue};
 		float outlineWidth{1.0f};  // px
 		float borderRadius{12.0f}; // px
+		float lineSpacing{0.0f};
 
 		string placeholderText{"Enter Text!"};
 		vec4 placeholderTextColor{Colors::Gray};
@@ -29,20 +32,19 @@ class TextInput : public Widget {
 		vec4 activeTextColor{Colors::Green};
 	};
 
-	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams);
+	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
 
-	void utf8_append(std::string &out, unsigned int cp, size_t position);
-	void utf8_pop_back(std::string &s, size_t position);
+	void swapChainUpdate();
 
-	void updateUniformBuffers(const Model::MVP &ubo) override;
-	void setParams(const StyleParams &params);
+	void updateUniformBuffers(optional<Model::MVP> mvp);
 
 	void render() override;
 
 	bool selected = false;
-	StyleParams styleParams{};
+	Params params{};
 	string text{""};
 
-	std::unique_ptr<Text> textModel;
+	std::unique_ptr<TextField> textField;
+	Text *textModel;
 	Text::Caret *caret;
 };

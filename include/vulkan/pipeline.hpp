@@ -402,6 +402,9 @@ inline QueueFamilyIndices findQueueFamilies(VkPhysicalDevice dev) {
 		if (indices.isComplete())
 			break;
 	}
+	Engine::graphicsQueueFamilyIndex = indices.graphicsAndComputeFamily.value();
+	Engine::presentQueueFamilyIndex = indices.presentFamily.value();
+	Engine::computeQueueFamilyIndex = indices.graphicsAndComputeFamily.value();
 	return indices;
 }
 

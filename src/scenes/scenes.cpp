@@ -17,26 +17,32 @@ Scenes::Scenes() {
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
 
-	scenesContainer.emplace_back(make_shared<Buttons>(*this));
-	scenesContainer.emplace_back(make_shared<Default>(*this));
-	scenesContainer.emplace_back(make_shared<Instancing>(*this));
-	scenesContainer.emplace_back(make_shared<RayTracing>(*this));
+	currentScene = "Menu";
+
+	scenesContainer.emplace_back(make_shared<Background>(*this));
+	scenesContainer.emplace_back(make_shared<NavBar>(*this));
+	scenesContainer.emplace_back(make_shared<Menu>(*this));
+	scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
+	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
+	scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
+	scenesContainer.emplace_back(make_shared<AddRecipeStep>(*this, false));
+	scenesContainer.emplace_back(make_shared<AddIngredient>(*this, false));
 	for (const auto &sc : scenesContainer) {
-		scenes[sc->getName()] = {sc, true};
+		scenes[sc->getName()] = {sc};
 	}
 }
 
-void Scenes::showScene(const string &sceneName) { scenes[sceneName].show = true; }
+void Scenes::showScene(const string &sceneName) { scenes[sceneName]->show = true; }
 
-void Scenes::hideScene(const string &sceneName) { scenes[sceneName].show = false; }
+void Scenes::hideScene(const string &sceneName) { scenes[sceneName]->show = false; }
 
-shared_ptr<Scene> Scenes::getScene(const string &sceneName) { return scenes[sceneName].scene; }
+shared_ptr<Scene> Scenes::getScene(const string &sceneName) { return scenes[sceneName]; }
 
 void Scenes::updateComputeUniformBuffers() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateRayTraceUniformBuffers();
-			sc.second.scene->updateComputeUniformBuffers();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->updateRayTraceUniformBuffers();
+			sc->updateComputeUniformBuffers();
 		}
 	}
 }
@@ -48,12 +54,12 @@ void Scenes::computePass() {
 	std::vector<Scene *> visibleScenes;
 	visibleScenes.reserve(scenes.size());
 
-	for (const auto &sc : scenes) {
-		if (!sc.second.show)
+	for (const auto &sc : scenesContainer) {
+		if (!sc->show)
 			continue;
-		visibleScenes.push_back(sc.second.scene.get());
+		visibleScenes.push_back(sc.get());
 
-		Scene::ClosestHit hit = sc.second.scene->rayTraces();
+		Scene::ClosestHit hit = sc->rayTraces();
 		if (hit.model && hit.distance < bestLen) {
 			bestLen = hit.distance;
 			globalClosest = hit.model;
@@ -67,26 +73,26 @@ void Scenes::computePass() {
 }
 
 void Scenes::updateUniformBuffers() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateUniformBuffers();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->updateUniformBuffers();
 		}
 	}
 }
 
 void Scenes::renderPass() {
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->renderPass();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->renderPass();
 		}
 	}
 }
 
 void Scenes::renderPass1() {
 	blur->copy(Engine::currentCommandBuffer());
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->renderPass1();
+	for (const auto &sc : scenesContainer) {
+		if (sc->show) {
+			sc->renderPass1();
 		}
 	}
 }
@@ -97,10 +103,8 @@ void Scenes::swapChainUpdate() {
 	sc.offset = {(int32_t)vp.x, (int32_t)vp.y};
 	sc.extent = {(uint32_t)vp.width, (uint32_t)vp.height};
 	blur->updateCopyViewport(vp, sc);
-	for (const auto &sc : scenes) {
-		if (sc.second.show) {
-			sc.second.scene->updateScreenParams();
-			sc.second.scene->swapChainUpdate();
-		}
+	for (const auto &sc : scenesContainer) {
+		sc->updateScreenParams();
+		sc->swapChainUpdate();
 	}
 }

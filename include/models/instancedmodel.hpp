@@ -17,7 +17,7 @@ template <typename T> class InstancedModel : public Model {
 	InstancedModel &operator=(InstancedModel &&) = delete;
 	InstancedModel &operator=(const InstancedModel &) = delete;
 
-	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath) {
+	InstancedModel(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, shared_ptr<unordered_map<int, T>> instances, uint32_t maxInstances = 65536, const VkRenderPass &renderPass = Engine::renderPass) : instances(instances), maxInstances(maxInstances), Model(scene, ubo, screenParams, shaderPath, renderPass) {
 		createInstanceBuffers();
 		rayTracing = std::make_unique<RayTraycesPipeline>(this, instCPU, idsCPU, instanceCount, maxInstances);
 	}
@@ -36,13 +36,11 @@ template <typename T> class InstancedModel : public Model {
 		}
 	}
 
-	void enableBlur(bool init) override {
-		if (init && !blur) {
+	void enableBlur(const std::string &blurShaderPath = Assets::shaderRootPath + "/instanced/blur") override {
+		if (!blur) {
 			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
+			blur->shaderPath = blurShaderPath;
 			blur->initialize();
-		}
-		if (!init && !blur) {
-			blur = std::make_unique<BlursPipeline>(this, bindings, instanceBuffers, instanceCount);
 		}
 	}
 
@@ -112,7 +110,7 @@ template <typename T> class InstancedModel : public Model {
 			return;
 		}
 		// Update UBO once per-frame (view/proj still needed; model can be identity/ignored)
-		copyUBO();
+		copyMVP();
 		uploadIfDirty();
 
 		if (blur) {
