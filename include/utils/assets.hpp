@@ -59,7 +59,7 @@ inline std::string fontRootPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main
 inline std::string shaderCachePath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/assets/spirv";
 #endif
 
-inline std::string appdataPath = std::string(PROJECT_ROOT_DIR) + "/src/appdata";
+inline std::string appdataPath = std::string(PROJECT_ROOT_DIR) + "/app/src/main/appdata";
 
 // --------------------------- helpers ---------------------------
 inline std::string joinPath(const std::string &a, const std::string &b) {

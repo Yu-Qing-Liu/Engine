@@ -22,6 +22,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(assimp REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(imgui REQUIRED)
 
 file(GLOB MODELS       ${CMAKE_CURRENT_SOURCE_DIR}/src/models/*.cpp)
 file(GLOB MODELS_IMPL
@@ -39,7 +40,8 @@ file(GLOB COMPUTE_IMPL    ${CMAKE_CURRENT_SOURCE_DIR}/src/compute/implementation
 file(GLOB CIRCUIT         ${CMAKE_CURRENT_SOURCE_DIR}/src/circuit/*.cpp)
 
 add_library(SOURCES ${MODELS} ${MODELS_IMPL} ${SCENES} ${SCENES_IMPL} ${SCENES_DEFAULT} ${UI} ${UI_IMPL} ${COMPUTE} ${COMPUTE_IMPL} ${CIRCUIT})
-add_library(sqlite3 STATIC ${CMAKE_SOURCE_DIR}/include/thirdparty/sqlite3.c)
+add_library(sqlite3 STATIC ${CMAKE_SOURCE_DIR}/include/thirdparty/sqlite3/sqlite3.c)
+add_library(imguivulkan STATIC ${CMAKE_SOURCE_DIR}/include/thirdparty/imgui/imgui_impl_vulkan.cpp)
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp)
 
 if(WIN32)
@@ -48,10 +50,21 @@ if(WIN32)
     )
 endif()
 
+target_include_directories(sqlite3 PUBLIC
+  ${CMAKE_SOURCE_DIR}/include/thirdparty/sqlite3
+)
+
+target_include_directories(imguivulkan PUBLIC
+  ${CMAKE_SOURCE_DIR}/include/thirdparty/imgui
+)
+
 target_include_directories(SOURCES PUBLIC
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/thirdparty/stbimage
+    ${CMAKE_SOURCE_DIR}/include/thirdparty/sqlite3
+    ${CMAKE_SOURCE_DIR}/include/thirdparty/imgui
     ${CMAKE_SOURCE_DIR}/include/utils
-    ${CMAKE_SOURCE_DIR}/include/thirdparty
+    ${CMAKE_SOURCE_DIR}/include/persistence
     ${CMAKE_SOURCE_DIR}/include/vulkan
     ${CMAKE_SOURCE_DIR}/include/models
     ${CMAKE_SOURCE_DIR}/include/models/implementations/unique
@@ -85,6 +98,8 @@ endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE
     SOURCES
     sqlite3
+    imgui
+    imguivulkan
     Vulkan::Vulkan
     glm::glm
     glfw

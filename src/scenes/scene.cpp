@@ -5,7 +5,7 @@
 
 bool Scene::mouseMode = true;
 
-Scene::Scene(Scenes &scenes) : scenes(scenes) {
+Scene::Scene(Scenes &scenes, bool show) : scenes(scenes), show(show) {
 	screenParams.viewport.x = 0.0f;
 	screenParams.viewport.y = 0.0f;
 	screenParams.viewport.width = (float)Engine::swapChainExtent.width;
@@ -135,6 +135,10 @@ void Scene::mapMouseControls() {
 	static bool s_hookedScroll = false;
 	if (!s_hookedScroll) {
 		Events::scrollCallbacks.push_back([&](double /*xoff*/, double yoff) {
+            if (!show) {
+                return;
+            }
+
 			GLFWwindow *w = Engine::window;
 			if (!w)
 				return;
@@ -240,6 +244,103 @@ void Scene::mapMouseControls() {
 	camPosOrtho += pan;
 	lookAtCoords += pan;
 	camTarget += pan;
+}
+
+void Scene::applyVerticalDeltaClamped(float dy, float minY, float maxY) {
+    // Clamp to [scrollMinY, scrollMaxY]
+    const float proposed = lookAtCoords.y + dy;
+    const float clamped  = glm::clamp(proposed, minY, maxY);
+    const float applied  = clamped - lookAtCoords.y;
+
+    camPosOrtho.y  += applied;
+    lookAtCoords.y += applied;
+    camTarget.y    += applied;
+}
+
+void Scene::mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted) {
+	GLFWwindow *win = Engine::window;
+	if (!win || !Scene::mouseMode || !glfwGetWindowAttrib(win, GLFW_FOCUSED))
+		return;
+
+	// Remember the initial Y once (top-most allowed position)
+	static bool s_initY = false;
+	static float s_initialY = 0.0f;
+	if (!s_initY) {
+		s_initialY = camPosOrtho.y;
+		s_initY = true;
+	}
+
+	// Hook wheel: vertical pan only (no zoom)
+	static bool s_hookedScroll = false;
+	if (!s_hookedScroll) {
+		Events::scrollCallbacks.push_back([&](double /*xoff*/, double yoff) {
+            if (!show) {
+                return;
+            }
+
+			GLFWwindow *w = Engine::window;
+			if (!w)
+				return;
+			if (baseH == 0.0f || baseW == 0.0f)
+				return;
+
+			int winW = 0, winH = 0;
+			glfwGetWindowSize(w, &winW, &winH);
+			if (winW <= 0 || winH <= 0)
+				return;
+
+			const float aspect = screenParams.viewport.height > 0.f ? (screenParams.viewport.width / screenParams.viewport.height) : 1.0f;
+
+			const float visH = baseH / glm::max(zoom, 1e-6f);
+			const float visW = baseW / glm::max(zoom, 1e-6f);
+
+			float effH = (aspect >= 1.0f) ? (visW / aspect) : visH;
+
+			// yoff > 0 → scroll down; negative → up. Adjust sign to match your preference.
+			const float worldPerPxY = effH / float(winH);
+			const float scrollPixels = 40.0f;
+			const float dyWorld = float(yoff) * worldPerPxY * scrollPixels;
+
+			// Your original wheel code subtracted dyWorld; we fold sign into delta:
+			applyVerticalDeltaClamped(inverted ? -dyWorld : dyWorld, scrollMinY, scrollMaxY);
+		});
+		s_hookedScroll = true;
+	}
+
+	// Drag-to-pan (vertical only)
+	double mx = 0.0, my = 0.0;
+	glfwGetCursorPos(win, &mx, &my);
+	const bool lmb = glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+	if (lastPointerX < 0.0 || lastPointerY < 0.0) {
+		lastPointerX = mx;
+		lastPointerY = my;
+		return;
+	}
+
+	const double dy = my - lastPointerY;
+	lastPointerX = mx;
+	lastPointerY = my;
+
+	if (!lmb)
+		return;
+
+	int winW = 0, winH = 0;
+	glfwGetWindowSize(win, &winW, &winH);
+	if (winW <= 0 || winH <= 0)
+		return;
+
+	const float aspect = screenParams.viewport.height > 0.f ? (screenParams.viewport.width / screenParams.viewport.height) : 1.0f;
+
+	const float visH = baseH / glm::max(zoom, 1e-6f);
+	const float visW = baseW / glm::max(zoom, 1e-6f);
+
+	float effH = (aspect >= 1.0f) ? (visW / aspect) : visH;
+
+	const float worldPerPxY = effH / float(winH);
+
+	// Positive dy → mouse moved down; convert pixels to world and apply with clamp
+	applyVerticalDeltaClamped(inverted ? -float(dy) * worldPerPxY : float(dy) * worldPerPxY, scrollMinY, scrollMaxY);
 }
 
 void Scene::firstPersonKeyboardControls(float sensitivity) {
@@ -368,19 +469,23 @@ Scene::ClosestHit Scene::rayTraces() {
 	return hit;
 }
 
-void Scene::applyHover(Model* globalClosest) {
-    for (auto* m : models) {
-        if (!m) continue;
-        if (!m->rayTracingEnabled) continue;
+void Scene::applyHover(Model *globalClosest) {
+	for (auto *m : models) {
+		if (!m)
+			continue;
+		if (!m->rayTracingEnabled)
+			continue;
 
-        const bool isClosestHere = (m == globalClosest);
-        m->setMouseIsOver(isClosestHere);
+		const bool isClosestHere = (m == globalClosest);
+		m->setMouseIsOver(isClosestHere);
 
-        if (isClosestHere && m->onMouseHover) {
-            m->onMouseHover();
-        }
-    }
+		if (isClosestHere && m->onMouseHover) {
+			m->onMouseHover();
+		}
+	}
 }
+
+void Scene::fetchData() {}
 
 void Scene::updateScreenParams() {}
 

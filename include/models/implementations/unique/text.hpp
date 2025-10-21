@@ -6,6 +6,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <vulkan/vulkan_core.h>
+#include "textraytracing.hpp"
 
 class Text : public Model {
   public:
@@ -78,6 +79,7 @@ class Text : public Model {
 		glm::vec4 selectionColor = Colors::Yellow(0.5f);
 		Caret caret{};
 		BillboardParams billboardParams{};
+        float lineAdvancePx = 0.0f;
 	};
 
 	Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &params, const VkRenderPass &renderPass = Engine::renderPass);
@@ -86,6 +88,8 @@ class Text : public Model {
 
 	float getPixelWidth(const std::string &text, float scale = 1.0f) const;
 	float getPixelHeight() const;
+
+    std::optional<bool> isRightHalfClick(size_t letterIdx) const;
 
 	TextParams textParams{};
 
@@ -136,6 +140,14 @@ class Text : public Model {
 
 	// kerning cache
 	mutable std::unordered_map<uint64_t, float> kerningCache;
+
+	// --------- raytracing ---------
+	std::vector<TextRayTracing::GlyphSpanGPU> spansCPU{};
+	uint32_t spanCount = 0;
+	static constexpr uint32_t kMaxSpans = 8192; // adjust as needed
+
+	// Builds spans from current text params (UTF-8 byte accurate)
+	void rebuildPickingSpans(const std::string &s, const glm::vec3 &origin, float scale);
 
 	// --------- helpers ----------
 	static std::vector<uint32_t> defaultASCII();

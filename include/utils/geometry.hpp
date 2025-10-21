@@ -7,8 +7,8 @@ using std::string;
 
 namespace Geometry {
 
-inline glm::vec3 alignTextCentered(const Text &text, const string &str) {
-    float w = text.getPixelWidth(str);
+inline glm::vec3 alignTextCentered(const Text &text) {
+    float w = text.getPixelWidth(text.textParams.text);
     float h = text.getPixelHeight();
     return glm::vec3{-w / 2.0f, h / 3.3f, 0.0f};
 }

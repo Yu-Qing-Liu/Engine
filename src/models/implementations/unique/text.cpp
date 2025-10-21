@@ -1,5 +1,6 @@
 #include "text.hpp"
 #include "engine.hpp"
+#include "textraytracing.hpp"
 #include <algorithm>
 #include <cstring>
 #include <numeric>
@@ -111,7 +112,7 @@ struct RawGlyph {
 };
 
 Text::Text(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const FontParams &fontParams, const VkRenderPass &renderPass) : fontParams(fontParams), Model(scene, ubo, screenParams, Assets::shaderRootPath + "/unique/text", renderPass) {
-
+	rayTracing = std::make_unique<TextRayTracing>(this);
 	if (FT_Init_FreeType(&ft)) {
 		throw std::runtime_error("FREETYPE: Could not init library");
 	}
@@ -401,8 +402,15 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 
 	float x = origin.x, y = origin.y, z = origin.z;
 	uint32_t prev = 0;
-	float caretX = std::numeric_limits<float>::quiet_NaN();
 
+	// Track caret position on the *correct* line
+	float caretX = std::numeric_limits<float>::quiet_NaN();
+	float caretY = origin.y; // baseline of the line where the caret lives
+
+	// Line advance in *unscaled* pixels (then multiplied by 'scale' when used)
+	const float lineAdvancePx = (textParams.lineAdvancePx > 0.0f ? textParams.lineAdvancePx : getPixelHeight());
+
+	// Selection background batching (one rect per continuous run)
 	bool inSelRun = false;
 	float selRunX0 = 0.0f;
 
@@ -419,33 +427,63 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 		if (adv == 0)
 			break;
 
-		const size_t giStart = i;
-		const size_t giEnd = i + adv;
+		const size_t giStart = i;	  // byte index before this codepoint
+		const size_t giEnd = i + adv; // byte index after this codepoint
 
-		if (caretByte && *caretByte == giStart)
+		// --- caret BEFORE this codepoint (at giStart) ---
+		if (caretByte && *caretByte == giStart) {
 			caretX = x;
+			caretY = y; // capture current line baseline
+		}
 
+		// --- newline handling ---
+		if (cp == '\n') {
+			// Close any active selection run on this line
+			endSelRunIfAny(x);
+
+			// caret AFTER newline (at giEnd) = start of next line
+			if (caretByte && *caretByte == giEnd) {
+				// we'll reset x/y to next-line baseline, so set after the move
+			}
+
+			// Move to next line
+			x = origin.x;
+			y += lineAdvancePx * scale;
+
+			if (caretByte && *caretByte == giEnd) {
+				caretX = x; // start of next line
+				caretY = y; // baseline of next line
+			}
+
+			prev = 0;
+			i = giEnd;
+			continue;
+		}
+
+		// --- glyph lookup ---
 		auto it = glyphs.find(cp);
 		if (it == glyphs.end()) {
-			// advance by space if missing glyph
+			// Missing glyph: advance like a space (fallback)
 			auto sp = glyphs.find(uint32_t(' '));
 			x += (sp != glyphs.end() ? sp->second.advance : fontParams.pixelHeight * 0.5f) * scale;
 
-			const bool selectedNow = overlapsAny(giStart, giEnd, selRanges);
-			if (!selectedNow)
-				endSelRunIfAny(x);
-
-			if (caretByte && *caretByte == giEnd)
+			// caret AFTER this (giEnd)
+			if (caretByte && *caretByte == giEnd) {
 				caretX = x;
+				caretY = y;
+			}
+
 			i = giEnd;
 			prev = 0;
 			continue;
 		}
 
 		const GlyphMeta &g = it->second;
+
+		// Kerning before placing this glyph
 		x += kerning(prev, cp) * scale;
 
-		// selection state
+		// Selection bookkeeping for this codepoint
 		const bool selectedNow = overlapsAny(giStart, giEnd, selRanges);
 		if (selectedNow && !inSelRun) {
 			inSelRun = true;
@@ -455,13 +493,14 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 			endSelRunIfAny(x);
 		}
 
-		// glyph quad
+		// Emit glyph quad (bitmap coords from atlas)
 		const float w = g.size.x * scale;
 		const float h = g.size.y * scale;
 		const float x0 = x + g.bearing.x * scale;
 		const float x1 = x0 + w;
 		const float y0 = y - g.bearing.y * scale;
 		const float y1 = y0 + h;
+
 		const uint32_t flags = selectedNow ? 1u : 0u;
 		const uint32_t base = (uint32_t)outVerts.size();
 
@@ -471,19 +510,31 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 		outVerts.push_back({{x1, y0, z}, {g.uvMax.x, g.uvMin.y}, 1.0f, flags, w});
 		outIdx.insert(outIdx.end(), {base + 0, base + 1, base + 2, base + 2, base + 3, base + 0});
 
+		// Advance pen by glyph advance
 		x += g.advance * scale;
 		prev = cp;
 		i = giEnd;
 
-		if (caretByte && *caretByte == giEnd)
+		// --- caret AFTER this codepoint (at giEnd) ---
+		if (caretByte && *caretByte == giEnd) {
 			caretX = x;
+			caretY = y; // stays on current line
+		}
 	}
 
+	// Finish any selection at end-of-line
 	endSelRunIfAny(x);
 
+	// Emit caret (if requested)
 	if (caretByte) {
-		float cx = std::isnan(caretX) ? origin.x : caretX;
-		emitCaretQuad(cx, origin, scale, caretWidthPx, outVerts, outIdx);
+		// If caret never matched (e.g., at end of string), put it at the final pen position
+		if (std::isnan(caretX)) {
+			caretX = x;
+			caretY = y;
+		}
+		// IMPORTANT: use caretY (line baseline), not origin.y
+		glm::vec3 caretOrigin = {origin.x, caretY, origin.z};
+		emitCaretQuad(caretX, caretOrigin, scale, caretWidthPx, outVerts, outIdx);
 	}
 }
 
@@ -611,8 +662,100 @@ void Text::setupGraphicsPipeline() {
 	pipelineLayoutInfo.pPushConstantRanges = &pc;
 }
 
+void Text::rebuildPickingSpans(const std::string &s, const glm::vec3 &origin, float scale) {
+	spansCPU.clear();
+	spansCPU.reserve(std::max<size_t>(s.size(), 16));
+
+	float x = origin.x, y = origin.y, z = origin.z;
+	uint32_t prev = 0;
+	uint32_t letterIdx = 0; // 0-based codepoint index
+
+	const float lineAdvancePx = (textParams.lineAdvancePx > 0.0f ? textParams.lineAdvancePx : getPixelHeight());
+
+	for (size_t i = 0; i < s.size();) {
+		size_t adv = 0;
+		const uint32_t cp = utf8_decode_at(s, i, adv);
+		if (adv == 0)
+			break;
+
+		const size_t giStart = i;
+		const size_t giEnd = i + adv;
+
+		if (cp == '\n') {
+			x = origin.x;
+			y += lineAdvancePx * scale;
+			prev = 0;
+			i = giEnd;
+			++letterIdx;
+			continue;
+		}
+
+		auto it = glyphs.find(cp);
+		if (it == glyphs.end()) {
+			// advance by space if missing glyph (mirror buildGeometryTaggedUTF8)
+			auto sp = glyphs.find(uint32_t(' '));
+			x += (sp != glyphs.end() ? sp->second.advance : fontParams.pixelHeight * 0.5f) * scale;
+
+			i = giEnd;
+			prev = 0;
+			++letterIdx; // still count this codepoint position
+			continue;
+		}
+
+		const GlyphMeta &g = it->second;
+		x += kerning(prev, cp) * scale;
+
+		const float w = g.size.x * scale;
+		const float h = g.size.y * scale;
+		const float x0 = x + g.bearing.x * scale;
+		const float x1 = x0 + w;
+		const float y0 = y - g.bearing.y * scale;
+		const float y1 = y0 + h;
+
+		// --- IMPORTANT: std430-friendly struct: 4x vec4 + uvec4 (index + padding) ---
+		TextRayTracing::GlyphSpanGPU span{};
+		span.p0 = {x0, y0, z, 0.0f};
+		span.p1 = {x0, y1, z, 0.0f};
+		span.p2 = {x1, y1, z, 0.0f};
+		span.p3 = {x1, y0, z, 0.0f};
+		span.letterIndex = static_cast<uint32_t>(letterIdx);
+		span._p0 = span._p1 = span._p2 = 0u; // pad to 16B
+
+		spansCPU.push_back(span);
+
+		x += g.advance * scale;
+		prev = cp;
+		i = giEnd;
+		++letterIdx;
+	}
+
+	if (spansCPU.size() > kMaxSpans)
+		spansCPU.resize(kMaxSpans);
+}
+
+std::optional<bool> Text::isRightHalfClick(size_t letterIdx) const {
+	if (!rayTracing)
+		return std::nullopt;
+	const auto &rt = *rayTracing;
+	if (!rt.hitPos)
+		return std::nullopt; // no click/hit this frame
+
+	// Bounds check
+	if (letterIdx >= spansCPU.size())
+		return std::nullopt;
+
+	const auto &span = spansCPU[letterIdx];
+	// span.p0 = x0,y0 (left), span.p3 = x1,y0 (right) as you emitted in rebuildPickingSpans
+	const float x0 = span.p0.x;
+	const float x1 = span.p3.x;
+	const float mid = 0.5f * (x0 + x1);
+
+	// Compare hit x against mid. Coordinates are in the same model space the shader used.
+	return rt.hitPos->x >= mid;
+}
+
 void Text::render() {
-	copyUBO(); // keep your existing UBO path
+	copyMVP(); // keep your existing UBO path
 
 	const bool billboard = textParams.billboardParams.on;
 	const auto caretOpt = textParams.caret;
@@ -650,6 +793,12 @@ void Text::render() {
 		cache.reserve(est * 4 + 32, est * 6 + 48);
 		buildGeometryTaggedUTF8(cache.text, cache.origin, cache.scale, cache.sel, cache.caret, cache.caretPx, cache.verts, cache.idx);
 		cache.dirty = false;
+
+		rebuildPickingSpans(cache.text, cache.origin, cache.scale);
+		spanCount = static_cast<uint32_t>(spansCPU.size());
+		if (rayTracing) {
+			dynamic_cast<TextRayTracing *>(rayTracing.get())->uploadSpans(spansCPU);
+		}
 	}
 	if (cache.idx.empty())
 		return;

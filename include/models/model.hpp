@@ -57,19 +57,21 @@ class Model {
 	bool mouseIsOver{false};
 	bool selected{false};
 
-	MVP ubo{};
+	MVP mvp{};
 	ScreenParams &screenParams;
 
 	std::function<void()> onMouseHover;
 	std::function<void()> onMouseEnter;
 	std::function<void()> onMouseExit;
 
-	bool isOrtho() {
+	bool isOrtho() const {
 		constexpr float epsilon = 1e-5f;
-		return std::abs(ubo.proj[3][2]) < epsilon && std::abs(ubo.proj[3][3] - 1.0f) < epsilon;
-	};
+		return std::abs(mvp.proj[2][3]) < epsilon && std::abs(mvp.proj[3][3] - 1.0f) < epsilon;
+	}
 
+	int onMouseClickCbIdx = -1;
 	void setOnMouseClick(std::function<void(int, int, int)> cb);
+	int onKbCbIdx = -1;
 	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
 
 	void enableRayTracing(bool v) {
@@ -79,13 +81,11 @@ class Model {
 		}
 	}
 
-	virtual void enableBlur(bool on) {
-		if (on && !blur) {
+	virtual void enableBlur(const std::string &blurShaderPath = Assets::shaderRootPath + "/blur") {
+		if (!blur) {
 			blur = std::make_unique<BlurPipeline>(this);
+			blur->shaderPath = blurShaderPath;
 			blur->initialize();
-		}
-		if (!on && blur) {
-			blur.reset();
 		}
 	}
 
@@ -93,9 +93,15 @@ class Model {
 	void onMouseExitEvent();
 
 	void updateMVP(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void updateUniformBuffer(const MVP &ubo);
+	void updateMVP(const MVP &ubo);
 	void updateScreenParams(const ScreenParams &screenParams);
-	void copyUBO();
+	void translate(const vec3 &pos, const mat4 &model = mat4(1.0f));
+	void scale(const vec3 &scale, const mat4 &model = mat4(1.0f));
+	void rotate(float angle, const vec3 &rotation, const mat4 &model = mat4(1.0f));
+
+    vec3 getPosition();
+
+	void copyMVP();
 
 	virtual void buildBVH();
 	virtual void render();

@@ -5,21 +5,21 @@
 #include "scenes.hpp"
 
 Buttons::Buttons(Scenes &scenes) : Scene(scenes) {
-    background = make_unique<Texture>(
-        this,
-        orthographic,
-        screenParams,
-        Assets::textureRootPath + "/example/example.png", 
-        std::vector<Texture::Vertex> {
-            {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-            {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
-            {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-            {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-        },
-        std::vector<uint32_t> {
-            0, 1, 2, 2, 3, 0,
-        }
-    );
+	background = make_unique<Texture>(this, orthographic, screenParams, Assets::textureRootPath + "/example/example.png",
+									  std::vector<Texture::Vertex>{
+										  {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+										  {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}, {1.0f, 0.0f}},
+										  {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+										  {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+									  },
+									  std::vector<uint32_t>{
+										  0,
+										  1,
+										  2,
+										  2,
+										  3,
+										  0,
+									  });
 
 	button = make_unique<Button>(this, orthographic, screenParams, Text::FontParams{Fonts::ArialBold, 16});
 	button->setOnMouseClick([this](int button, int action, int mods) {
@@ -60,39 +60,39 @@ void Buttons::updateScreenParams() {
 void Buttons::swapChainUpdate() {
 	orthographic.proj = ortho(0.0f, screenParams.viewport.width, 0.0f, -screenParams.viewport.height, -1.0f, 1.0f);
 
-    auto width = screenParams.viewport.width;
-    auto height = screenParams.viewport.height;
-    float size = 1000.0f;
-    background->updateMVP(translate(mat4(1.0f), vec3((float) width / 2.0f, (float) height / 2.0f, 0.0f)) * scale(mat4(1.0f), vec3(size, size, 1.0f)), std::nullopt, orthographic.proj);
+	auto width = screenParams.viewport.width;
+	auto height = screenParams.viewport.height;
+	float size = 1000.0f;
+	background->updateMVP(translate(mat4(1.0f), vec3((float)width / 2.0f, (float)height / 2.0f, 0.0f)) * scale(mat4(1.0f), vec3(size, size, 1.0f)), std::nullopt, orthographic.proj);
 
-	button->updateUniformBuffers(orthographic);
-	Button::StyleParams bp;
+	auto &bp = button->params;
 	bp.center = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
 	bp.textCenter = {screenParams.viewport.width * 0.25f, screenParams.viewport.height * 0.25f};
 	bp.dim = {100.0f, 40.0f};
 	bp.outlineWidth = 5.0f;
 	bp.borderRadius = 16.0f;
 	bp.text = std::string("Click me!");
-	button->setParams(bp);
+	button->swapChainUpdate();
 
-	textInput->updateUniformBuffers(orthographic);
-	TextInput::StyleParams tp;
-	tp.center = {screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f};
-	tp.textCenter = {screenParams.viewport.width * 0.75, screenParams.viewport.height * 0.25f};
+	auto &tp = textInput->params;
+	tp.center = {width * 0.75f, height * 0.25f};
+	tp.textCenter = {width * 0.75, height * 0.25f};
 	tp.dim = {200.0f, 40.0f};
 	tp.outlineWidth = 3.0f;
 	tp.borderRadius = 8.0f;
-	textInput->setParams(tp);
+    textInput->swapChainUpdate();
 }
 
 void Buttons::updateComputeUniformBuffers() {}
 
 void Buttons::computePass() {}
 
-void Buttons::updateUniformBuffers() {}
+void Buttons::updateUniformBuffers() {
+    textInput->updateUniformBuffers(orthographic);
+}
 
-void Buttons::renderPass() { 
-    background->render();
-    button->render(); 
-    textInput->render();
+void Buttons::renderPass() {
+	background->render();
+	button->render();
+	textInput->render();
 }

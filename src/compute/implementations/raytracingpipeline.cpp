@@ -111,14 +111,14 @@ void RayTracingPipeline::updateComputeUniformBuffer() {
 
 	setRayTraceFromViewportPx(mousePx, mousePy, model->screenParams.viewport);
 
-	mat4 invVP = inverse(model->ubo.proj * model->ubo.view);
-	mat4 invV = inverse(model->ubo.view);
+	mat4 invVP = inverse(model->mvp.proj * model->mvp.view);
+	mat4 invV = inverse(model->mvp.view);
 
 	vec3 camPos = vec3(invV[3]);
 
 	PickingUBO p{};
 	p.invViewProj = invVP;
-	p.invModel = inverse(model->ubo.model);
+	p.invModel = inverse(model->mvp.model);
 	p.mouseNdc = rayTraceParams.mouseNdc;
 	p.camPos = rayTraceParams.camPos == vec3(0.0f) ? camPos : rayTraceParams.camPos;
 	p._pad = rayTraceParams._pad0;
