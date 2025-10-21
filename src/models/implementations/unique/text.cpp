@@ -500,8 +500,6 @@ void Text::buildGeometryTaggedUTF8(const std::string &s, const glm::vec3 &origin
 		const float x1 = x0 + w;
 		const float y0 = y - g.bearing.y * scale;
 		const float y1 = y0 + h;
-		const uint32_t flags = selectedNow ? 1u : 0u;
-		const uint32_t base = (uint32_t)outVerts.size();
 
 		const uint32_t flags = selectedNow ? 1u : 0u;
 		const uint32_t base = (uint32_t)outVerts.size();

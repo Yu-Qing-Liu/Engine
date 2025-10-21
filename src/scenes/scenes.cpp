@@ -19,14 +19,10 @@ Scenes::Scenes() {
 
 	currentScene = "Menu";
 
-	scenesContainer.emplace_back(make_shared<Background>(*this));
-	scenesContainer.emplace_back(make_shared<NavBar>(*this));
-	scenesContainer.emplace_back(make_shared<Menu>(*this));
-	scenesContainer.emplace_back(make_shared<Inventory>(*this, false));
-	scenesContainer.emplace_back(make_shared<Recipes>(*this, false));
-	scenesContainer.emplace_back(make_shared<Recipe>(*this, false));
-	scenesContainer.emplace_back(make_shared<AddRecipeStep>(*this, false));
-	scenesContainer.emplace_back(make_shared<AddIngredient>(*this, false));
+	scenesContainer.emplace_back(make_shared<Buttons>(*this));
+	scenesContainer.emplace_back(make_shared<Default>(*this));
+	scenesContainer.emplace_back(make_shared<Instancing>(*this));
+	scenesContainer.emplace_back(make_shared<RayTracing>(*this));
 	for (const auto &sc : scenesContainer) {
 		scenes[sc->getName()] = {sc};
 	}

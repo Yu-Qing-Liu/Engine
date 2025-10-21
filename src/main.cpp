@@ -2,9 +2,7 @@
 #include "dimgui.hpp"
 #include "engine.hpp"
 #include "events.hpp"
-#include "inventoryqueries.hpp"
 #include "pipeline.hpp"
-#include "recipesqueries.hpp"
 #include "scenes.hpp"
 #include "text.hpp"
 
@@ -303,8 +301,6 @@ int main() {
 	Assets::initialize();
 	AppData::openDB();
 	AppData::printTables();
-	RecipesQueries::createTable();
-	InventoryQueries::createTable();
 	Application app;
 	try {
 		app.run();
