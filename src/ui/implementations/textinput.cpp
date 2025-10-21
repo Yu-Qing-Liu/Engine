@@ -20,9 +20,9 @@ constexpr int KEY_KP_ENTER = 335;
 inline bool is_press_or_repeat(int action) { return action == Events::ACTION_PRESS || action == Events::ACTION_REPEAT; }
 
 inline bool is_empty(const std::string &s) {
-    return std::all_of(s.begin(), s.end(), [](unsigned char ch) {
-        return std::isspace(ch); // returns true for ' ', '\t', '\n', '\r', '\f', '\v'
-    });
+	return std::all_of(s.begin(), s.end(), [](unsigned char ch) {
+		return std::isspace(ch); // ' ', '\t', '\n', '\r', '\f', '\v'
+	});
 }
 
 } // namespace
@@ -34,32 +34,35 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 	textField->enableMouseDrag = true;
 
 	// --- character input callback ---
-	auto charInputCallback = [this](unsigned int codepoint) {
-		if (!selected)
+	Events::characterInputCallbacks.push_back([this](unsigned int codepoint) {
+		if (!selected || !textField || !textField->textModel)
 			return;
 
-		if (std::isspace(static_cast<char>(codepoint)) && codepoint != 32) {
+		// Allow space ' ' (U+0020); skip other ASCII whitespace; allow non-ASCII
+		if (codepoint < 128 && std::isspace(static_cast<unsigned char>(codepoint)) && codepoint != 32) {
 			return;
 		}
 
 		textField->insertCodepointAtCaretInto(text, codepoint);
 		textField->onTextChangedExternally();
-        textField->wrap();
+		textField->wrap();
 		textField->viewBottom();
-	};
+	});
 
 	// --- keyboard press handler ---
-	auto kbPress = [this](int key, int scancode, int action, int mods) {
+	Events::keyboardCallbacks.push_back([this](int key, int scancode, int action, int mods) {
 		(void)scancode;
 		(void)mods;
 		if (!selected || !is_press_or_repeat(action))
+			return;
+		if (!textField || !textField->textModel)
 			return;
 
 		switch (key) {
 		case KEY_BACKSPACE:
 			textField->backspaceAtCaretInto(text);
 			textField->onTextChangedExternally();
-            textField->wrap();
+			textField->wrap();
 			textField->viewBottom();
 			break;
 
@@ -67,17 +70,18 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		case KEY_KP_ENTER:
 			textField->insertCodepointAtCaretInto(text, '\n');
 			textField->onTextChangedExternally();
-            textField->wrap();
+			textField->wrap();
 			textField->viewBottom();
 			break;
 
 		case KEY_TAB:
+			// insert 4 spaces
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->insertCodepointAtCaretInto(text, ' ');
 			textField->onTextChangedExternally();
-            textField->wrap();
+			textField->wrap();
 			textField->viewBottom();
 			break;
 
@@ -96,120 +100,133 @@ TextInput::TextInput(Scene *scene, const Model::MVP &mvp, Model::ScreenParams &s
 		default:
 			break;
 		}
-	};
+	});
 
-	auto mousePress = [this](int button, int action, int mods) {
+	// --- mouse press handler ---
+	Events::mouseCallbacks.push_back([this](int button, int action, int mods) {
 		(void)button;
 		(void)mods;
-		// Selection toggled by whether the mouse/pointer is over us on click
-		if (action == Events::ACTION_PRESS) {
-			selected = textModel->rayTracing->hitPos || container->rayTracing->hitPos;
-			if (selected) {
-				container->params.color = params.activeBgColor;
-				container->params.outlineColor = params.activeOutlineColor;
+		if (action != Events::ACTION_PRESS)
+			return;
+
+		// Re-fetch internals safely each time
+		Text *tm = (textField ? textField->textModel.get() : nullptr);
+		const bool hitText = (tm && tm->rayTracing && tm->rayTracing->hitPos);
+		const bool hitBox = (container && container->rayTracing && container->rayTracing->hitPos);
+
+		selected = hitText || hitBox;
+
+		if (selected) {
+			container->params.color = params.activeBgColor;
+			container->params.outlineColor = params.activeOutlineColor;
 #if ANDROID_VK
-				Events::showSoftKeyboard(true);
+			Events::showSoftKeyboard(true);
 #endif
-			} else {
-				container->params.color = params.bgColor;
-				container->params.outlineColor = params.outlineColor;
+		} else {
+			container->params.color = params.bgColor;
+			container->params.outlineColor = params.outlineColor;
+			if (textField)
 				textField->viewTop();
 #if ANDROID_VK
-				Events::hideSoftKeyboard(true);
+			Events::hideSoftKeyboard(true);
 #endif
-			}
 		}
-	};
-
-	Events::characterInputCallbacks.push_back(charInputCallback);
-	Events::keyboardCallbacks.push_back(kbPress);
-	Events::mouseCallbacks.push_back(mousePress);
+	});
 }
 
 void TextInput::swapChainUpdate() {
 	auto &p = params;
+
+	// Container visuals + transform
 	container->params.color = p.bgColor;
 	container->params.outlineColor = p.outlineColor;
 	container->params.outlineWidth = p.outlineWidth;
 	container->params.borderRadius = p.borderRadius;
 	container->updateMVP(translate(mat4(1.0f), vec3(p.center, 0.0f)) * scale(mat4(1.0f), vec3(p.dim, 1.0f)), mvp.view, mvp.proj);
 
-	textField->params.center = vec2(p.center.x - p.dim.x * 0.5, p.center.y - p.dim.y * 0.5);
+	// TextField layout + MVP
+	textField->params.center = vec2(p.center.x - p.dim.x * 0.5f, p.center.y - p.dim.y * 0.5f);
 	textField->params.dim = p.dim;
 	textField->params.lineSpacing = p.lineSpacing;
 	textField->params.scrollBarOffset = p.borderRadius;
 	textField->mvp = mvp;
+
+	// This recreates textField->textModel internally.
 	textField->swapChainUpdate();
 
-	textModel = textField->textModel.get();
-	caret = &textModel->textParams.caret;
-	textModel->enableRayTracing(true);
+	// Enable ray tracing after creation
+	if (textField->textModel) {
+		textField->textModel->enableRayTracing(true);
 
-	textModel->setOnMouseClick([&](int button, int action, int mods) {
-		if (!textField->textModel->rayTracing->hitMapped) {
-			return;
-		}
-		if (action != Events::ACTION_PRESS || button != Events::MOUSE_BUTTON_LEFT) {
-			return;
-		}
-		if (!selected) {
-			return;
-		}
+		// Rebind click handler on the *current* textModel; guard every access
+		textField->textModel->setOnMouseClick([this](int button, int action, int mods) {
+			(void)mods;
+			if (action != Events::ACTION_PRESS || button != Events::MOUSE_BUTTON_LEFT)
+				return;
+			if (!selected || !textField || !textField->textModel)
+				return;
+			Text *tm = textField->textModel.get();
+			if (!tm || !tm->rayTracing || !tm->rayTracing->hitMapped)
+				return;
 
-		// primId == caret position (codepoint index) in the *wrapped* string
-		const int prim = textField->textModel->rayTracing->hitMapped->primId;
-		size_t cp = prim < 0 ? 0u : static_cast<size_t>(prim);
+			// primId == caret position (codepoint index) in the *wrapped* string
+			const int prim = tm->rayTracing->hitMapped->primId;
+			size_t cp = prim < 0 ? 0u : static_cast<size_t>(prim);
 
-		// Decide left vs right half of the clicked glyph
-		size_t glyphIndex = cp;
-		if (auto right = textModel->isRightHalfClick(glyphIndex)) {
-			if (*right) {
-				// place caret *after* the clicked glyph
-				cp = glyphIndex + 1;
+			// Decide left vs right half of the clicked glyph
+			size_t glyphIndex = cp;
+			if (auto right = tm->isRightHalfClick(glyphIndex)) {
+				cp = *right ? glyphIndex + 1 : glyphIndex;
 			} else {
-				// place caret *before* the clicked glyph (keep cp as glyphIndex)
-				cp = glyphIndex;
+				// Fallback: behave like "after" to feel natural
+				cp = glyphIndex + 1;
 			}
-		} else {
-			// Fallback: behave like "after" to feel natural
-			cp = glyphIndex + 1;
-		}
 
-		// We set caret directly in *wrapped* coordinates
-		textField->setCaretFromWrappedCpIndex(cp);
-	});
+			// Set caret directly in *wrapped* coordinates
+			textField->setCaretFromWrappedCpIndex(cp);
+		});
+	}
 }
 
-void TextInput::updateUniformBuffers(optional<Model::MVP> mvp) {
-	textField->updateUniformBuffers(mvp);
-	container->updateMVP(std::nullopt, mvp->view, mvp->proj);
+void TextInput::updateUniformBuffers(std::optional<Model::MVP> mvpOpt) {
+	// Keep the field responsive even if no external MVP is passed this frame
+	if (textField) {
+		textField->updateUniformBuffers(mvpOpt);
+	}
+
+	if (mvpOpt) {
+		container->updateMVP(std::nullopt, mvpOpt->view, mvpOpt->proj);
+	} else {
+		// No override: safest is to *not* fabricate view/proj from empties.
+		container->updateMVP(std::nullopt, std::nullopt, std::nullopt);
+	}
 }
 
 void TextInput::render() {
 	Widget::render();
+
+	// Not ready yet? Skip.
+	if (!textField || !textField->textModel)
+		return;
+
+	Text *tm = textField->textModel.get();
+
+	// Decide content + colors
 	if (selected) {
-		if (is_empty(text)) {
-			textField->params.text = "";
-			textModel->textParams.color = params.activeTextColor;
-			textModel->textParams.caret.on = true;
-			textField->render();
-		} else {
-			textField->params.text = text;
-			textModel->textParams.color = params.activeTextColor;
-			textModel->textParams.caret.on = true;
-			textField->render();
-		}
+		textField->params.text = is_empty(text) ? "" : text;
+		tm->textParams.color = params.activeTextColor;
+		tm->textParams.caret.on = true;
 	} else {
 		if (is_empty(text)) {
 			textField->params.text = params.placeholderText;
-			textModel->textParams.color = params.placeholderTextColor;
-			textModel->textParams.caret.on = false;
-			textField->render();
+			tm->textParams.color = params.placeholderTextColor;
+			tm->textParams.caret.on = false;
 		} else {
 			textField->params.text = text;
-			textModel->textParams.color = params.textColor;
-			textModel->textParams.caret.on = false;
-			textField->render();
+			tm->textParams.color = params.textColor;
+			tm->textParams.caret.on = false;
 		}
 	}
+
+	textField->render();
 }

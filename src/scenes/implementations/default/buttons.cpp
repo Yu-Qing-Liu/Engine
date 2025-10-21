@@ -75,8 +75,8 @@ void Buttons::swapChainUpdate() {
 	button->swapChainUpdate();
 
 	auto &tp = textInput->params;
-	tp.center = {screenParams.viewport.width * 0.75f, screenParams.viewport.height * 0.25f};
-	tp.textCenter = {screenParams.viewport.width * 0.75, screenParams.viewport.height * 0.25f};
+	tp.center = {width * 0.75f, height * 0.25f};
+	tp.textCenter = {width * 0.75, height * 0.25f};
 	tp.dim = {200.0f, 40.0f};
 	tp.outlineWidth = 3.0f;
 	tp.borderRadius = 8.0f;
@@ -87,7 +87,9 @@ void Buttons::updateComputeUniformBuffers() {}
 
 void Buttons::computePass() {}
 
-void Buttons::updateUniformBuffers() {}
+void Buttons::updateUniformBuffers() {
+    textInput->updateUniformBuffers(orthographic);
+}
 
 void Buttons::renderPass() {
 	background->render();

@@ -613,7 +613,7 @@ void TextField::updateUniformBuffers(optional<Model::MVP> mvp) {
 		scrollBar->updateMVP(std::nullopt, mvp->view, mvp->proj);
 	} else {
 		textModel->updateMVP(std::nullopt, pan);
-		scrollBar->updateMVP(std::nullopt, std::nullopt, mvp->proj);
+		scrollBar->updateMVP(std::nullopt, std::nullopt, this->mvp.proj);
 	}
 	updateSlider();
 }

@@ -19,13 +19,13 @@ class TextInput : public Widget {
 		vec2 dim{200.0f, 64.0f};		   // size in pixels (W,H)
 		vec4 bgColor{Colors::White(0.05)}; // white fill
 		vec4 activeBgColor{Colors::White(0.10)};
-		vec4 outlineColor{Colors::Gray(0.25)}; // black outline
+		vec4 outlineColor{Colors::Gray(0.25)}; // outline
 		vec4 activeOutlineColor{Colors::Blue};
 		float outlineWidth{1.0f};  // px
 		float borderRadius{12.0f}; // px
 		float lineSpacing{0.0f};
 
-		string placeholderText{"Enter Text!"};
+		std::string placeholderText{"Enter Text!"};
 		vec4 placeholderTextColor{Colors::Gray};
 
 		vec4 textColor{Colors::White};
@@ -35,16 +35,12 @@ class TextInput : public Widget {
 	TextInput(Scene *scene, const Model::MVP &ubo, Model::ScreenParams &screenParams, const Text::FontParams &textParams, const VkRenderPass &renderPass = Engine::renderPass);
 
 	void swapChainUpdate();
-
-	void updateUniformBuffers(optional<Model::MVP> mvp);
-
+	void updateUniformBuffers(std::optional<Model::MVP> mvp = std::nullopt);
 	void render() override;
 
 	bool selected = false;
 	Params params{};
-	string text{""};
+	std::string text{""};
 
 	std::unique_ptr<TextField> textField;
-	Text *textModel;
-	Text::Caret *caret;
 };
