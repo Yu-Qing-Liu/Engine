@@ -4,6 +4,7 @@
 AppDir/
 appdata/
 *.AppImage
+vcpkg/
 
 ##### Windows
 # Windows thumbnail cache files
