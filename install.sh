@@ -1,23 +1,15 @@
-#!/usr/bin/env bash
-set -e
+#!/bin/sh
 
-# Install Nix if not available
-if ! command -v nix >/dev/null 2>&1; then
-  echo "[INFO] Nix not found. Installing Nix..."
-  curl -L https://nixos.org/nix/install | sh
+set -e  # exit immediately on any error
 
-  # Add Nix to the current shell session
-  if [ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
-    . "$HOME/.nix-profile/etc/profile.d/nix.sh"
-  elif [ -e "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh" ]; then
-    . "/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
-  fi
-
-  # Enable flakes
-  mkdir -p ~/.config/nix
-  echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+# Bootstrap vcpkg if not already present
+if [ ! -d "vcpkg" ]; then
+    echo "Cloning vcpkg..."
+    git clone https://github.com/microsoft/vcpkg.git --recursive
+    ./vcpkg/bootstrap-vcpkg.sh
+else
+    echo "vcpkg already exists, skipping clone."
 fi
 
-# Enter the dev shell
-exec nix develop --impure -c $SHELL
-
+echo "Installing dependencies via vcpkg..."
+./vcpkg/vcpkg install --clean-after-build
