@@ -1,212 +1,270 @@
 #pragma once
 
-#include <condition_variable>
-#include <functional>
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEFAULT_ALIGNED_TYPES
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
 #include "assets.hpp"
-#include "blurpipeline.hpp"
-#include "engine.hpp"
-#include "platform.hpp"
-#include "raytracingpipeline.hpp"
-#include <array>
+#include "pipeline.hpp"
+#include "raypicking.hpp"
+
+#include <functional>
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <optional>
-#include <string>
+#include <span>
 #include <vulkan/vulkan_core.h>
 
 using namespace glm;
-using std::array;
-using std::optional;
-using std::string;
 using std::vector;
 
 class Scene;
+class Engine;
+
+struct VPMatrix {
+	mat4 view{1.0f};
+	mat4 proj{1.0f};
+	uint32_t billboard = 0u;
+};
 
 class Model {
   public:
-	Model(Model &&) = delete;
-	Model(const Model &) = delete;
-	Model &operator=(Model &&) = delete;
-	Model &operator=(const Model &) = delete;
+	Model() : scene(nullptr) {}
+	Model(Scene *scene);
+	~Model();
 
-	struct MVP {
-		mat4 model;
-		mat4 view;
-		mat4 proj;
+	struct VertexSource {
+		const void *data = nullptr;
+		size_t bytes = 0;
+		uint32_t stride = 0;
 	};
 
-	struct ScreenParams {
-		VkViewport viewport{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
-		VkRect2D scissor{{1, 1}, {1, 1}};
+	struct VertexAttr {
+		uint32_t location = 0, binding = 0;
+		VkFormat fmt = VK_FORMAT_R32G32B32_SFLOAT;
+		uint32_t offset = 0;
 	};
 
-	Model(Scene *scene, const MVP &ubo, ScreenParams &screenParams, const string &shaderPath, const VkRenderPass &renderPass = Engine::renderPass);
-	virtual ~Model();
+	struct IndexSource {
+		const uint32_t *data = nullptr;
+		size_t count = 0;
+	};
 
-	const VkRenderPass &renderPass;
+	struct Mesh {
+		VertexSource vsrc;
+		IndexSource isrc;
+		std::vector<VertexAttr> vertexAttrs;
+	};
 
-	std::unique_ptr<RayTracingPipeline> rayTracing;
-	std::unique_ptr<BlurPipeline> blur;
+	struct InitInfo {
+		VkDescriptorPool dpool{};
+		VkSampleCountFlagBits samples{VK_SAMPLE_COUNT_1_BIT};
+		Assets::ShaderModules shaders;
+		Mesh mesh;
+		uint32_t maxInstances{1};
+		uint32_t instanceStrideBytes{0};
+	};
 
-	bool rayTracingEnabled = false;
-	bool mouseIsOver{false};
-	bool selected{false};
+	bool isVisible() { return visible; }
+	void swapChainUpdate(float vw, float vh, float fbw, float fbh);
+	void tick(double timeSinceLastFrameMs, double timeMs);
 
-	MVP mvp{};
-	ScreenParams &screenParams;
-
-	std::function<void()> onMouseHover;
-	std::function<void()> onMouseEnter;
-	std::function<void()> onMouseExit;
-
-	bool isOrtho() const {
-		constexpr float epsilon = 1e-5f;
-		return std::abs(mvp.proj[2][3]) < epsilon && std::abs(mvp.proj[3][3] - 1.0f) < epsilon;
+	template <typename D> bool getInstance(int id, D &out) const {
+		auto it = idToSlot.find(id);
+		if (it == idToSlot.end())
+			return false;
+		if (iStride != sizeof(D))
+			return false; // stride/type mismatch
+		const uint32_t slot = it->second;
+		const uint8_t *src = cpu.data() + slot * iStride;
+		std::memcpy(&out, src, sizeof(D)); // safe, no aliasing/alignment issues
+		return true;
 	}
 
-	int onMouseClickCbIdx = -1;
-	void setOnMouseClick(std::function<void(int, int, int)> cb);
-	int onKbCbIdx = -1;
-	void setOnKeyboardKeyPress(std::function<void(int, int, int, int)> cb);
-
-	void enableRayTracing(bool v) {
-		rayTracingEnabled = v;
-		if (v) {
-			rayTracing->initialize();
+	template <typename D> void upsertInstance(int id, const D &d) {
+		if (has(id)) {
+			setInstance<D>(id, d);
+		} else {
+			std::span<const uint8_t> bytes{reinterpret_cast<const uint8_t *>(&d), sizeof(D)};
+			upsertBytes(id, bytes);
 		}
 	}
 
-	virtual void enableBlur(const std::string &blurShaderPath = Assets::shaderRootPath + "/blur") {
-		if (!blur) {
-			blur = std::make_unique<BlurPipeline>(this);
-			blur->shaderPath = blurShaderPath;
-			blur->initialize();
-		}
-	}
+  public:
+	std::function<void(Model *, float, float, float, float)> onScreenResize;
+	std::function<void(Model *, double, double)> onTick;
+	std::function<void(Model *)> onMouseSelect;
+	std::function<void(Model *)> onMouseDeselect;
+	std::function<void(Model *, uint32_t)> onMouseClick;
 
-	void setMouseIsOver(bool over);
-	void onMouseExitEvent();
+  public:
+	virtual void init();
+	void destroy();
 
-	void updateMVP(optional<mat4> model = std::nullopt, optional<mat4> view = std::nullopt, optional<mat4> proj = std::nullopt);
-	void updateMVP(const MVP &ubo);
-	void updateScreenParams(const ScreenParams &screenParams);
-	void translate(const vec3 &pos, const mat4 &model = mat4(1.0f));
-	void scale(const vec3 &scale, const mat4 &model = mat4(1.0f));
-	void rotate(float angle, const vec3 &rotation, const mat4 &model = mat4(1.0f));
+  public:
+	void enableRayPicking();
+	std::unique_ptr<RayPicking> picking;
 
-    vec3 getPosition();
+  public:
+	void setView(const mat4 &V);
+	void setProj(const mat4 &P);
+	void billboard(bool enable);
+	void setViewport(float w, float h, float x = 0.f, float y = 0.f);
+	void setFrameBuffer(float w, float h);
 
-	void copyMVP();
+	VPMatrix &getVP() { return vp; }
+	const VkViewport &getViewport() const { return viewport; }
 
-	virtual void buildBVH();
-	virtual void render();
+  public:
+	Scene *getScene() { return scene; }
+	Engine *getEngine() { return engine.get(); }
+	Pipeline *getPipeline() { return pipeline.get(); }
 
-	VkBuffer vertexBuffer = VK_NULL_HANDLE;
-	VkBuffer indexBuffer = VK_NULL_HANDLE;
+  public:
+	void setMaxInstances(uint32_t maxInstances) { initInfo.maxInstances = maxInstances; }
+	bool has(int id) const { return idToSlot.count(id); }
+	void upsertBytes(int id, std::span<const uint8_t> bytes);
+	void erase(int id);
+	uint32_t instanceCount() const { return count; }
+	uint32_t instanceStride() const { return iStride; }
+	uint8_t *mappedInstancePtr() { return mappedSSBO; }
 
-	VkVertexInputBindingDescription bindingDescription;
-	vector<VkVertexInputAttributeDescription> attributeDescriptions;
-	VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-	vector<VkDescriptorSet> descriptorSets;
+  public:
+	bool mouseIsOver();
+	uint32_t getPickedInstance();
+	void setIsSelected(bool selected) { selected_ = selected; }
+	bool selected() { return selected_; }
 
-	Assets::ShaderModules shaderProgram;
-
-	vector<uint32_t> indices;
+  public:
+	virtual void compute(VkCommandBuffer cmd);
+	virtual void record(VkCommandBuffer cmd);
+	virtual void recordUI(VkCommandBuffer cmd, uint32_t blurLayerIdx);
 
   protected:
 	Scene *scene;
+	std::shared_ptr<Engine> engine;
+	std::unique_ptr<Pipeline> pipeline;
+	InitInfo initInfo{};
+	float fbw{1.f}, fbh{1.f};
 
-	std::function<void(int, int, int, int)> onKeyboardKeyPress;
+	VkViewport viewport{};
+	VkRect2D scissor{};
+	VPMatrix vp{};
 
-	string shaderPath;
+	bool selected_ = false;
+	bool pickingDispatched_ = false;
 
-	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-	VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-	VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+	virtual void pushConstants(VkCommandBuffer cmd, VkPipelineLayout pipeLayout) {}
+	virtual uint32_t createDescriptorPool();
+	virtual void createDescriptors();
+	virtual void createGraphicsPipeline();
 
-	vector<VkPipelineShaderStageCreateInfo> shaderStages;
+	virtual void syncPickingInstances() {};
+	template <typename D> void syncPickingInstances() {
+		if (!picking)
+			return;
 
-	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	VkDescriptorPoolSize poolSize{};
-	VkDescriptorPoolCreateInfo poolInfo{};
-	VkDescriptorSetAllocateInfo allocInfo{};
-
-	// Graphics pipeline
-	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-	VkPipelineViewportStateCreateInfo viewportState{};
-	VkPipelineRasterizationStateCreateInfo rasterizer{};
-	VkPipelineMultisampleStateCreateInfo multisampling{};
-	VkPipelineDepthStencilStateCreateInfo depthStencil{};
-	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-	VkPipelineColorBlendStateCreateInfo colorBlending{};
-	vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-	VkPipelineDynamicStateCreateInfo dynamicState{};
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	VkGraphicsPipelineCreateInfo pipelineInfo{};
-
-	vector<VkBuffer> mvpBuffers;
-	vector<VkDeviceMemory> mvpBuffersMemory;
-	vector<void *> mvpBuffersMapped;
-
-	VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
-	VkDeviceMemory indexBufferMemory = VK_NULL_HANDLE;
-
-	virtual void createDescriptorSetLayout();
-	virtual void createUniformBuffers();
-	template <typename U> void createUniformBuffers(vector<VkBuffer> &uniformBuffers, vector<VkDeviceMemory> &uniformBuffersMemory, vector<void *> &uniformBuffersMapped) {
-		VkDeviceSize bufferSize = sizeof(U);
-
-		uniformBuffers.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-		uniformBuffersMemory.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-		uniformBuffersMapped.resize(Engine::MAX_FRAMES_IN_FLIGHT);
-
-		for (size_t i = 0; i < Engine::MAX_FRAMES_IN_FLIGHT; i++) {
-			Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-			vkMapMemory(Engine::device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+		if (iStride == 0 || count == 0) {
+			// no instances -> tell picker there are none
+			picking->uploadInstances(std::span<const RayPicking::InstanceXformGPU>{}, std::span<const int>{});
+			pickingInstancesDirty = false;
+			return;
 		}
+
+		std::vector<RayPicking::InstanceXformGPU> inst;
+		std::vector<int> ids;
+		inst.reserve(count);
+		ids.reserve(count);
+
+		// Inverse map: slot -> id (because idToSlot is id -> slot)
+		std::vector<int> slotToId(count, -1);
+		for (auto &kv : idToSlot) {
+			int id = kv.first;
+			uint32_t slot = kv.second;
+			if (slot < slotToId.size())
+				slotToId[slot] = id;
+		}
+
+		// Precompute camera rotation (world-space) for billboarded models
+		// vp.view is the current view matrix used for this Model.
+		glm::mat3 camRot(1.0f);
+		if (vp.billboard) {
+			// View = R^T * T in typical camera math
+			// inverse(view) has R and -R*t; its upper 3x3 is the camera world rotation.
+			glm::mat3 Rinv = glm::mat3(glm::inverse(vp.view));
+			camRot = Rinv; // columns: camera right, up, forward in world space
+		}
+
+		for (uint32_t slot = 0; slot < count; ++slot) {
+			const uint8_t *p = cpu.data() + slot * iStride;
+
+			// Read full instance struct so we can grab the model mat at the right offset.
+			D src{};
+			std::memcpy(&src, p, sizeof(D));
+
+			glm::mat4 modelMtx = src.model;
+
+			if (vp.billboard) {
+				// Decompose original model to get translation + scale
+				glm::vec3 pos = glm::vec3(modelMtx[3]);
+
+				glm::vec3 col0 = glm::vec3(modelMtx[0]);
+				glm::vec3 col1 = glm::vec3(modelMtx[1]);
+				glm::vec3 col2 = glm::vec3(modelMtx[2]);
+
+				float sx = glm::length(col0);
+				float sy = glm::length(col1);
+				float sz = glm::length(col2);
+
+				// Build a model matrix whose axes follow the camera, but keep the
+				// original per-axis scale and translation.
+				glm::mat4 billM(1.0f);
+				billM[0] = glm::vec4(camRot[0] * sx, 0.0f); // right
+				billM[1] = glm::vec4(camRot[1] * sy, 0.0f); // up
+				billM[2] = glm::vec4(camRot[2] * sz, 0.0f); // forward
+				billM[3] = glm::vec4(pos, 1.0f);			// translation
+
+				modelMtx = billM;
+			}
+
+			RayPicking::InstanceXformGPU x{};
+			x.model = modelMtx;
+			x.invModel = glm::inverse(modelMtx);
+
+			inst.push_back(x);
+			ids.push_back(slotToId[slot]); // keep your logical ids
+		}
+
+		picking->uploadInstances(inst, ids);
+		pickingInstancesDirty = false;
 	}
 
-	virtual void createDescriptorPool();
-	virtual void createDescriptorSets();
+  protected:
+	bool visible = true;
+	bool pickingInstancesDirty = true;
+	bool ssboDirty = true;
+	bool uboDirty = true;
 
-	virtual void createVertexBuffer();
-	template <typename V> void createVertexBuffer(const std::vector<V> &vertices) {
-		if (vertices.empty())
-			throw std::runtime_error("Create Vertex Buffer: No vertices");
-		VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+	// buffers (host-visible for brevity)
+	VkBuffer vbuf{}, ibuf{}, ubo{}, ssbo{};
+	VkDeviceMemory vmem{}, imem{}, umem{}, smem{};
+	uint8_t *mappedSSBO{nullptr}; // persistently mapped for speed
 
-		VkBuffer stg;
-		VkDeviceMemory stgMem;
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stg, stgMem);
+	// mesh
+	Mesh mesh{};
+	uint32_t indexCount{};
 
-		void *data = nullptr;
-		vkMapMemory(Engine::device, stgMem, 0, bufferSize, 0, &data);
-		std::memcpy(data, vertices.data(), (size_t)bufferSize);
-		vkUnmapMemory(Engine::device, stgMem);
-
-		Engine::createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-
-		Engine::copyBuffer(stg, vertexBuffer, bufferSize);
-
-		vkDestroyBuffer(Engine::device, stg, nullptr);
-		vkFreeMemory(Engine::device, stgMem, nullptr);
-	}
-
-	virtual void createIndexBuffer();
-	virtual void createBindingDescriptions() = 0;
-	virtual void setupGraphicsPipeline();
-
-	void createGraphicsPipeline();
+	// instances
+	uint32_t maxInstances{}, iStride{}, count{};
+	std::vector<uint8_t> cpu;
+	std::unordered_map<int, uint32_t> idToSlot;
 
   private:
-	std::mutex m;
-	Platform::jthread watcher;
-	std::condition_variable cv;
+	template <typename D> bool setInstance(int id, const D &value) {
+		auto it = idToSlot.find(id);
+		if (it == idToSlot.end())
+			return false;
+		if (iStride != sizeof(D))
+			return false;
+		const uint32_t slot = it->second;
+		uint8_t *dst = cpu.data() + slot * iStride;
+		std::memcpy(dst, &value, sizeof(D));
+		ssboDirty = true;
+		pickingInstancesDirty = true;
+		return true;
+	}
 };

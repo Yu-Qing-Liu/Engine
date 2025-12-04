@@ -1,114 +1,93 @@
 #pragma once
 
 #include "model.hpp"
-#include <memory>
 
-using std::make_unique;
-using std::unique_ptr;
+#include <boost/graph/adjacency_list.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/glm.hpp>
+#include <string>
+#include <unordered_map>
 
 class Scenes;
 
+// Vertex payload is a raw pointer; ownership is kept in Scene::ownedModels_
+using ModelGraph = boost::adjacency_list<boost::vecS,			// out-edge container
+										 boost::vecS,			// vertex container (no deletions)
+										 boost::bidirectionalS, // allow parent lookup
+										 Model *,				// vertex data: non-owning pointer
+										 boost::no_property>;
+
+using ModelNode = ModelGraph::vertex_descriptor;
+
 class Scene {
   public:
-	Scene(Scenes &scenes, bool show = true);
-	Scene(Scene &&) = delete;
-	Scene(const Scene &) = delete;
-	Scene &operator=(Scene &&) = delete;
-	Scene &operator=(const Scene &) = delete;
+	Scene();
+	Scene(Scenes *scenes, bool show = true);
 	virtual ~Scene() = default;
 
-	struct ClosestHit {
-		Model *model = nullptr;
-		float distance = std::numeric_limits<float>::infinity();
-	};
+	// --- Graph API (single-root model hierarchy) ---
+	// Root is a dummy node (payload=nullptr). Use addChild() to attach real models under root.
+	ModelNode addChild(const std::string &name, Model *m, ModelNode parent = ModelNode()); // parent defaults to root
+	void link(ModelNode parent, ModelNode child);										   // reparent child
+	void detach(ModelNode node);														   // move under root (no standalones)
 
-	virtual std::string getName() = 0;
+	// --- Name lookups ---
+	bool has(const std::string &name) const;
+	ModelNode nodeByName(const std::string &name) const;	// throws if not found
+	ModelNode tryNodeByName(const std::string &name) const; // returns ModelNode() if not found
+	Model *modelByName(const std::string &name);			// nullptr if not found
+	const Model *modelByName(const std::string &name) const;
 
-	vector<Model *> models;
-	bool is3D = true;
-	bool show = true;
-	bool disabled = false;
+	// --- Accessors ---
+	Model &obj(ModelNode v) { return *modelGraph_[v]; }
+	const Model &obj(ModelNode v) const { return *modelGraph_[v]; }
+	ModelNode root() const { return rootNode; }
+	const ModelGraph &getModelGraph() const { return modelGraph_; }
 
-	void updateRayTraceUniformBuffers();
-	ClosestHit rayTraces();
-	void applyHover(Model *globalClosest);
+	bool isVisible() const { return visible; }
+	void setVisible(bool v) { visible = v; }
 
-	void disable() {
-		disabled = true;
-		onDisable();
-	}
+	const Scenes &getScenes() const { return *scenes; }
 
-	void enable() {
-		disabled = false;
-		onEnable();
-	}
+	void setParent(Scene *parent) { this->parent = parent; }
 
-	virtual void onDisable() {};
-	virtual void onEnable() {};
+	float vpx() const { return vpx_; }
+	float vpy() const { return vpy_; }
+	float vpw() const { return vpw_; }
+	float vph() const { return vph_; }
 
-	virtual void fetchData();
+	void setSceneVpx(float vpx) { vpx_ = vpx; }
+	void setSceneVpy(float vpy) { vpy_ = vpy; }
+	void setSceneVpw(float vpw) { vpw_ = vpw; }
+	void setSceneVph(float vph) { vph_ = vph; }
 
-	virtual void updateScreenParams();
+	void setFbw(float fbw) { fbw_ = fbw; }
+	void setFbh(float fbh) { fbh_ = fbh; }
 
-	virtual void updateComputeUniformBuffers();
-	virtual void computePass();
-
-	virtual void updateUniformBuffers();
-	virtual void renderPass();
-	virtual void renderPass1();
-	virtual void swapChainUpdate();
+	VPMatrix &getCamera() { return camera; }
 
   protected:
-	Scenes &scenes;
-	Model::ScreenParams screenParams;
+	Scenes *scenes = nullptr;
+	Scene *parent = nullptr;
+	bool visible = true;
 
-	Model::MVP mvp{};
+	VPMatrix camera{};
 
-	float fovH = 0.0f;
-	float fovV = 0.0f;
-	float baseH = 0.0f;
-	float baseW = 0.0f;
+	float vpx_ = 0.f;
+	float vpy_ = 0.f;
+	float vpw_ = 0.f;
+	float vph_ = 0.f;
 
-	static bool mouseMode;
-
-	// Camera state (meters)
-	glm::vec3 camPos{12.0f, 12.0f, 12.0f};
-	glm::vec3 camPosOrtho{12.0f, 12.0f, 12.0f};
-	glm::vec3 camTarget{0.0f, 0.0f, 0.0f};
-	glm::vec3 camUp{0.0f, 0.0f, 1.0f};
-	float camSpeed = 1.0f;
-
-	// FPS mouselook state
-	float yaw = 0.0f;		  // radians, wraps freely
-	float pitch = 0.0f;		  // radians, clamp to ~(-89°, +89°)
-	float mouseSens = 0.001f; // tweak to taste
-	vec3 lookAtCoords = {0.0f, 0.0f, 0.0f};
-
-	// mouse-aim state
-	double lastPointerX = -1.0;
-	double lastPointerY = -1.0;
-
-	vec2 viewCenter = vec2{0.0f};
-	float zoom = 1.0f;
-
-	std::array<bool, GLFW_KEY_LAST + 1> keyDown{};
-
-	bool scrollTopInit = false;
-	float scrollTopY = 0.0f;
-
-	void disableMouseMode();
-	void enableMouseMode();
-
-	void firstPersonMouseControls();
-	void firstPersonKeyboardControls(float sensitivity = 1.0f);
-
-	void mapMouseControls();
-	void mapKeyboardControls();
-
-	void mouseDragY(float &scrollMinY, float &scrollMaxY, bool inverted);
-
-	std::function<void(double)> mouseScrollCallback;
+    float fbw_ = 0.f;
+    float fbh_ = 0.f;
 
   private:
-	void applyVerticalDeltaClamped(float dy, float minY, float maxY);
+	ModelGraph modelGraph_;
+	ModelNode rootNode = ModelNode();
+
+	std::unordered_map<std::string, ModelNode> nameToNode_;
+
+	void ensureRootExists();
+	void registerName(const std::string &name, ModelNode v);
 };

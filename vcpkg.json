@@ -1,14 +1,24 @@
 {
+  "name": "quadruped",
+  "version-string": "0.1.0",
   "dependencies": [
-    "vulkan",
-    "vulkan-sdk-components",
-    "vulkan-validationlayers",
+    { 
+      "name": "imgui",
+      "features": ["glfw-binding", "vulkan-binding", "freetype", "freetype-svg"] 
+    },
+    "boost-graph",
+    "cyclonedds",
+    "cyclonedds-cxx",
+    "lunasvg",
     "glfw3",
-    "assimp",
-    "shaderc",
     "glm",
-    "openssl",
+    "assimp",
     "freetype",
-    "libpqxx"
+    "openssl",
+    "vulkan",
+    "vulkan-loader",
+    "vulkan-headers",
+    "vulkan-validationlayers",
+    "shaderc"
   ]
 }
