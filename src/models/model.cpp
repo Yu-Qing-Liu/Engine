@@ -309,7 +309,7 @@ void Model::createGraphicsPipeline() {
 		pipeline->createVertexInputBindingDescription(1, iStride, VK_VERTEX_INPUT_RATE_INSTANCE);
 	}
 
-	pipeline->graphicsPipeline.rasterizationStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
+	pipeline->graphicsPipeline.rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
 
 	pipeline->graphicsPipeline.depthStencilStateCI.depthTestEnable = VK_TRUE;
 	pipeline->graphicsPipeline.depthStencilStateCI.depthWriteEnable = VK_TRUE;
