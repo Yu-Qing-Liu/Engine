@@ -50,6 +50,84 @@ inline float camDist(const mat4 &view, const vec3 &lookAt = vec3(0.0f)) {
 	return length(camPos - lookAt);
 }
 
+inline void lookFromAbove(glm::mat4 &view, const glm::vec3 &camTarget) {
+	// Inverse view gives us camera position and basis
+	glm::mat4 invView = glm::inverse(view);
+	glm::vec3 camPos = glm::vec3(invView[3]);
+	glm::vec3 oldUp = glm::vec3(invView[1]);
+
+	if (!glm::any(glm::isnan(oldUp)))
+		oldUp = glm::normalize(oldUp);
+	else
+		oldUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
+	// Current forward from camera to scene
+	glm::vec3 f = -glm::vec3(invView[2]);
+	if (!glm::any(glm::isnan(f)))
+		f = glm::normalize(f);
+	else
+		f = glm::vec3(0.0f, -1.0f, 0.0f);
+
+	// 1) Snap forward to the nearest world axis (±X, ±Y, ±Z)
+	const glm::vec3 worldAxes[3] = {glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1)};
+
+	float bestAbsDot = -1.0f;
+	glm::vec3 forward = f;
+
+	for (int i = 0; i < 3; ++i) {
+		float d = glm::dot(f, worldAxes[i]);
+		float ad = std::abs(d);
+		if (ad > bestAbsDot) {
+			bestAbsDot = ad;
+			forward = (d >= 0.0f) ? worldAxes[i] : -worldAxes[i];
+		}
+	}
+
+	// 2) Choose an up axis orthogonal to forward, as close as possible to oldUp
+	glm::vec3 upCandidates[3] = {glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1)};
+
+	glm::vec3 up = glm::vec3(0, 1, 0);
+	float bestUpScore = -1.0f;
+
+	for (int i = 0; i < 3; ++i) {
+		glm::vec3 c = upCandidates[i];
+
+		// Must be (almost) orthogonal to forward
+		if (std::abs(glm::dot(c, forward)) > 0.01f)
+			continue;
+
+		float score = std::abs(glm::dot(c, oldUp));
+		if (score > bestUpScore) {
+			bestUpScore = score;
+			// Keep same general "sense" as oldUp if possible
+			up = (glm::dot(c, oldUp) >= 0.0f) ? c : -c;
+		}
+	}
+
+	// Re-orthogonalize just in case
+	glm::vec3 right = glm::normalize(glm::cross(forward, up));
+	up = glm::normalize(glm::cross(right, forward));
+
+	// 3) Keep the signed distance along forward from target to current eye
+	float dist = glm::dot(camPos - camTarget, forward);
+	if (std::abs(dist) < 1e-4f) {
+		dist = glm::length(camPos - camTarget);
+		if (dist < 0.001f)
+			dist = 1.0f;
+	}
+
+	// 4) New eye: same axis, same distance, centered on camTarget
+	glm::vec3 newEye = camTarget + forward * dist;
+
+	view = glm::lookAt(newEye, camTarget, up);
+}
+
+inline void lookFromBehind(mat4 &view, const vec3 &camTarget, float dist = 3.0f, float height = 3.0f) {
+	const vec3 up(0.0f, 0.0f, 1.0f);
+	vec3 eye = camTarget + vec3(-dist, 0.f, height);
+	view = glm::lookAt(eye, camTarget, up);
+}
+
 inline void cameraOrthographic(mat4 &view, AxisPlane plane, float dist = 1.f, vec3 camLookAt = vec3(0.f)) {
 	vec3 eye(0.0f);
 	vec3 up(dist);

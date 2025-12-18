@@ -1,3 +1,4 @@
+#include "camera.hpp"
 #include "events.hpp"
 #include "mouse.hpp"
 
@@ -19,7 +20,7 @@ using unregisterCb = std::function<void()>;
 // ----------------------------------------------------
 // First-person camera: WASD + mouse look
 // ----------------------------------------------------
-inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition = []() { return true; }) {
+inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = []() { return true; }) {
 	struct State {
 		glm::vec3 position{0.0f};
 		float yaw = 0.0f;
@@ -39,39 +40,39 @@ inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition 
 	};
 	auto state = std::make_shared<State>();
 
-	// Initialize from existing view matrix
-	{
-		glm::mat4 invView = glm::inverse(view);
-		state->position = glm::vec3(invView[3]);
-
-		// camera forward direction (camera -> forward)
-		glm::vec3 dir = -glm::vec3(invView[2]); // -Z of view matrix
-		if (!glm::any(glm::isnan(dir))) {
-			dir = glm::normalize(dir);
-			state->pitch = std::asin(glm::clamp(dir.y, -1.0f, 1.0f));
-			state->yaw = std::atan2(dir.x, -dir.z);
-		}
-	}
-
 	auto recalcView = [state, &view, condition]() {
 		if (!condition()) {
 			return;
+		}
+
+		if (state->position == vec3(0.0f)) {
+			// Initialize from existing view matrix
+			{
+				glm::mat4 invView = glm::inverse(view);
+				state->position = glm::vec3(invView[3]);
+
+				// camera forward direction (camera -> forward)
+				glm::vec3 dir = -glm::vec3(invView[2]);
+				if (!glm::any(glm::isnan(dir))) {
+					dir = glm::normalize(dir);
+					state->pitch = std::asin(glm::clamp(dir.z, -1.0f, 1.0f));
+					state->yaw = std::atan2(dir.y, dir.x);
+				}
+			}
 		}
 
 		const float pitchLimit = glm::radians(89.0f);
 		state->pitch = glm::clamp(state->pitch, -pitchLimit, pitchLimit);
 
 		glm::vec3 dir;
-		dir.x = std::cos(state->pitch) * std::sin(state->yaw);
-		dir.y = std::sin(state->pitch);
-		dir.z = -std::cos(state->pitch) * std::cos(state->yaw);
+		dir.x = cos(state->pitch) * cos(state->yaw);
+		dir.y = cos(state->pitch) * sin(state->yaw);
+		dir.z = sin(state->pitch);
 		dir = glm::normalize(dir);
 
-		const glm::vec3 up(0.0f, 1.0f, 0.0f);
+		const glm::vec3 up(0.0f, 0.0f, 1.0f);
 		view = glm::lookAt(state->position, state->position + dir, up);
 	};
-
-	recalcView();
 
 	// Mouse look (infinite by recentering cursor every frame)
 	auto cursorEvent = Events::registerCursor([state, recalcView, condition](GLFWwindow *win, float mx, float my) {
@@ -83,7 +84,14 @@ inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition 
 			state->window = win;
 
 		// Hide/disable cursor (optional but nice for FPS-style)
-		glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		auto mode = glfwGetInputMode(win, GLFW_CURSOR);
+		if (mode == GLFW_CURSOR_NORMAL) {
+			state->firstMouse = true;
+			state->position = vec3(0.f);
+			state->yaw = 0.0f;
+			state->pitch = 0.0f;
+			glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		}
 
 		int w, h;
 		glfwGetWindowSize(win, &w, &h);
@@ -101,7 +109,7 @@ inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition 
 		float dy = my - static_cast<float>(centerY);
 
 		const float sensitivity = 0.0025f;
-		state->yaw += dx * sensitivity;
+		state->yaw -= dx * sensitivity;
 		state->pitch -= dy * sensitivity;
 
 		// Recenter so we never hit window borders
@@ -154,12 +162,12 @@ inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition 
 
 		// Reconstruct direction vectors from yaw/pitch
 		glm::vec3 forward;
-		forward.x = std::cos(state->pitch) * std::sin(state->yaw);
-		forward.y = std::sin(state->pitch);
-		forward.z = -std::cos(state->pitch) * std::cos(state->yaw);
+		forward.x = cos(state->pitch) * cos(state->yaw);
+		forward.y = cos(state->pitch) * sin(state->yaw);
+		forward.z = sin(state->pitch);
 		forward = glm::normalize(forward);
 
-		const glm::vec3 up(0.0f, 1.0f, 0.0f);
+		const glm::vec3 up(0.0f, 0.0f, 1.0f);
 		glm::vec3 right = glm::normalize(glm::cross(forward, up));
 
 		const float moveSpeed = 5.0f; // units per second
@@ -210,13 +218,13 @@ inline unregisterCb cameraAWSD(glm::mat4 &view, std::function<bool()> condition 
 // ----------------------------------------------------
 // 2D map camera: pan + zoom
 // ----------------------------------------------------
-inline unregisterCb camera2D(glm::mat4 &view, glm::mat4 &proj, const float &vpx, const float &vpy, const float &vpw, const float &vph, const float &fbw, const float &fbh, std::function<bool()> condition) {
+inline unregisterCb camera2D(mat4 &view, const mat4 &proj, const float &vpx, const float &vpy, const float &vpw, const float &vph, const float &fbw, const float &fbh, std::function<bool()> condition) {
 
 	struct State {
 		// Camera basis & position
 		glm::vec3 camPos{0.0f, 0.0f, 0.0f};
 		glm::vec3 forward{0.0f, 0.0f, -1.0f};
-		glm::vec3 up{0.0f, 1.0f, 0.0f};
+		glm::vec3 up{0.0f, 0.0f, 1.0f};
 		glm::vec3 right{1.0f, 0.0f, 0.0f};
 
 		// Plane we are "looking at"
@@ -464,7 +472,7 @@ inline unregisterCb camera2D(glm::mat4 &view, glm::mat4 &proj, const float &vpx,
 // ----------------------------------------------------
 // 3D orbit camera: click-drag rotate + scroll zoom
 // ----------------------------------------------------
-inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { return true; }) {
+inline unregisterCb camera3D(mat4 &view, const vec3 &target, std::function<bool()> condition = [] { return true; }) {
 	/*
 	 * 3D Map camera
 	 * Mouse click-drag -> rotate cam
@@ -472,8 +480,7 @@ inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { 
 	 */
 
 	struct State {
-		glm::vec3 target{0.0f, 0.0f, 0.0f};
-		float distance = 10.0f;
+		float distance = 0.0f;
 		float yaw = 0.0f;
 		float pitch = glm::radians(30.0f);
 
@@ -484,25 +491,27 @@ inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { 
 	};
 	auto state = std::make_shared<State>();
 
-	// Try to infer initial orbit from existing view
-	{
-		mat4 invView = glm::inverse(view);
-		vec3 camPos = vec3(invView[3]);
-
-		state->distance = glm::length(camPos - state->target);
-		if (state->distance < 0.1f)
-			state->distance = 0.1f;
-
-		vec3 dir = glm::normalize(state->target - camPos); // camera -> target
-		if (!glm::any(glm::isnan(dir))) {
-			state->pitch = std::asin(glm::clamp(dir.y, -1.0f, 1.0f));
-			state->yaw = std::atan2(dir.x, -dir.z);
-		}
-	}
-
-	auto recalcView = [state, &view, condition]() {
+	auto recalcView = [state, &view, &target, condition]() {
 		if (!condition()) {
 			return;
+		}
+
+		if (state->distance == 0.0f) {
+			// Try to infer initial orbit from existing view
+			{
+				mat4 invView = glm::inverse(view);
+				vec3 camPos = vec3(invView[3]);
+
+				state->distance = glm::length(camPos - target);
+				if (state->distance < 0.1f)
+					state->distance = 0.1f;
+
+				vec3 dir = glm::normalize(target - camPos); // camera -> target
+				if (!glm::any(glm::isnan(dir))) {
+					state->pitch = std::asin(glm::clamp(dir.z, -1.0f, 1.0f));
+					state->yaw = std::atan2(dir.y, dir.x);
+				}
+			}
 		}
 
 		const float pitchLimit = glm::radians(89.0f);
@@ -510,18 +519,16 @@ inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { 
 		state->distance = (glm::max)(state->distance, 0.1f);
 
 		vec3 dir;
-		dir.x = std::cos(state->pitch) * std::sin(state->yaw);
-		dir.y = std::sin(state->pitch);
-		dir.z = -std::cos(state->pitch) * std::cos(state->yaw);
+		dir.x = cos(state->pitch) * cos(state->yaw);
+		dir.y = cos(state->pitch) * sin(state->yaw);
+		dir.z = sin(state->pitch);
 		dir = glm::normalize(dir);
 
-		vec3 camPos = state->target - dir * state->distance;
-		const vec3 up(0.0f, 1.0f, 0.0f);
+		vec3 camPos = target - dir * state->distance;
+		const vec3 up(0.0f, 0.0f, 1.0f);
 
-		view = glm::lookAt(camPos, state->target, up);
+		view = glm::lookAt(camPos, target, up);
 	};
-
-	recalcView();
 
 	auto cursorEvent = Events::registerCursor([state, recalcView, condition](GLFWwindow *win, float mx, float my) {
 		if (!condition()) {
@@ -547,7 +554,7 @@ inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { 
 		state->lastY = my;
 
 		const float rotSpeed = 0.005f;
-		state->yaw += dx * rotSpeed;
+		state->yaw -= dx * rotSpeed;
 		state->pitch -= dy * rotSpeed;
 
 		recalcView();
@@ -590,6 +597,49 @@ inline unregisterCb camera3D(mat4 &view, std::function<bool()> condition = [] { 
 		Events::unregisterMouseClick(mouseEvent);
 		Events::unregisterScroll(scrollEvent);
 	};
+}
+
+inline unregisterCb camera2DZoom(mat4 &view, const vec3 &target, std::function<bool()> condition = [] { return true; }) {
+	// Scroll: dolly in/out along the line from camera to target
+	auto scrollEvent = Events::registerScroll([&view, &target, condition](double /*xoff*/, double yoff) {
+		if (!condition())
+			return;
+		if (yoff == 0.0)
+			return;
+
+		// Reconstruct camera position and up vector from current view
+		glm::mat4 invView = glm::inverse(view);
+		glm::vec3 camPos = glm::vec3(invView[3]); // camera world position
+		glm::vec3 up = glm::vec3(invView[1]);	  // camera "up" in world
+
+		if (!glm::any(glm::isnan(up)))
+			up = glm::normalize(up);
+		else
+			up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+		// Direction from camera to target
+		glm::vec3 toTarget = target - camPos;
+		float dist = glm::length(toTarget);
+		if (dist <= 0.0f)
+			return;
+
+		glm::vec3 dir = toTarget / dist; // normalized
+
+		// Zoom by changing distance only
+		const float zoomFactor = 1.1f;
+		if (yoff > 0.0)
+			dist /= zoomFactor; // zoom in
+		else
+			dist *= zoomFactor; // zoom out
+
+		dist = (glm::max)(dist, 0.1f); // clamp min distance
+
+		// New camera position, still looking at the same target
+		camPos = target - dir * dist;
+		view = glm::lookAt(camPos, target, up);
+	});
+
+	return [scrollEvent]() { Events::unregisterScroll(scrollEvent); };
 }
 
 } // namespace UserInput

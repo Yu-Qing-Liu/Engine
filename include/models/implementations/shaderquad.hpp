@@ -1,7 +1,7 @@
 #pragma once
 
-#include "engine.hpp"
 #include "model.hpp"
+#include "scene.hpp"
 
 template <typename PC> class ShaderQuad : public Model {
   public:
@@ -19,16 +19,22 @@ template <typename PC> class ShaderQuad : public Model {
 	void setFragmentShader(const std::string &fragmentShader) { this->fragmentShader = fragmentShader; }
 
 	void init() override {
-		engine = scene->getScenes().getEngine();
+		engine = scene->getEngine();
 		buildUnitQuadMesh();
 		initInfo.instanceStrideBytes = sizeof(InstanceData);
-		initInfo.shaders = Assets::compileShaderProgram(Assets::shaderRootPath + "/shaderquad", engine->getDevice());
-		initInfo.shaders.fragmentShader = Assets::compileShaderProgram(fragmentShader, shaderc_glsl_fragment_shader, engine->getDevice());
+		initInfo.shaders = Assets::compileShaderProgram(Assets::shaderRootPath + "/shaderquad", scene->getDevice());
+		initInfo.shaders.fragmentShader = Assets::compileShaderProgram(fragmentShader, shaderc_glsl_fragment_shader, scene->getDevice());
 
 		pipeline->graphicsPipeline.pushConstantRangeCount = 1;
 		pipeline->graphicsPipeline.pushContantRanges.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		pipeline->graphicsPipeline.pushContantRanges.offset = 0;
 		pipeline->graphicsPipeline.pushContantRanges.size = sizeof(PC);
+
+		Model::init();
+
+		// Ensure a default instance exists
+		InstanceData placeholder{};
+		upsertInstance(0, placeholder);
 	}
 
 	void record(VkCommandBuffer cmd) override {
@@ -38,8 +44,10 @@ template <typename PC> class ShaderQuad : public Model {
 
 	void enableDepth() { enableDepth_ = true; }
 
-  private:
+  protected:
 	PC pc{};
+
+  private:
 	std::string fragmentShader;
 	bool enableDepth_ = false;
 
