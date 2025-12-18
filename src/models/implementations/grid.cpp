@@ -43,6 +43,7 @@ void Grid::buildUnitQuadMesh() {
 		{5, 1, F::VK_FORMAT_R32G32B32A32_SFLOAT, uint32_t(offsetof(InstanceData, color))},
 		{6, 1, F::VK_FORMAT_R32_SFLOAT, uint32_t(offsetof(InstanceData, cellSize))},
 		{7, 1, F::VK_FORMAT_R32_SFLOAT, uint32_t(offsetof(InstanceData, lineWidth))},
+		{8, 1, F::VK_FORMAT_R32_UINT, uint32_t(offsetof(InstanceData, plane))},
 	};
 
 	initInfo.mesh = m;

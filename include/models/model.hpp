@@ -60,6 +60,7 @@ class Model {
 	};
 
 	bool isVisible() { return visible; }
+	void hide() { visible = false; }
 	void swapChainUpdate(float vw, float vh, float fbw, float fbh);
 	void tick(double timeSinceLastFrameMs, double timeMs);
 

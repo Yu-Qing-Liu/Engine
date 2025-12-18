@@ -1,4 +1,6 @@
 #include "scene.hpp"
+#include "engine.hpp"
+#include "scenes.hpp"
 #include <boost/graph/graph_traits.hpp>
 #include <stdexcept>
 #include <vector>
@@ -6,6 +8,10 @@
 Scene::Scene() : scenes(nullptr), visible(true), rootNode(ModelNode()) { ensureRootExists(); }
 
 Scene::Scene(Scenes *scenes, bool show) : scenes(scenes), visible(show) { ensureRootExists(); }
+
+std::shared_ptr<Engine> Scene::getEngine() { return scenes->getEngine(); }
+
+VkDevice Scene::getDevice() { return getEngine()->getDevice(); }
 
 void Scene::ensureRootExists() {
 	if (rootNode == ModelNode() || boost::num_vertices(modelGraph_) == 0) {

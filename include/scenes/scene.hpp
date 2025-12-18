@@ -65,7 +65,11 @@ class Scene {
 	void setFbw(float fbw) { fbw_ = fbw; }
 	void setFbh(float fbh) { fbh_ = fbh; }
 
+	std::shared_ptr<Engine> getEngine();
+	VkDevice getDevice();
+
 	VPMatrix &getCamera() { return camera; }
+	vec3 &getCamTarget() { return camTarget; }
 
   protected:
 	Scenes *scenes = nullptr;
@@ -73,14 +77,15 @@ class Scene {
 	bool visible = true;
 
 	VPMatrix camera{};
+	vec3 camTarget = vec3(0.f);
 
 	float vpx_ = 0.f;
 	float vpy_ = 0.f;
 	float vpw_ = 0.f;
 	float vph_ = 0.f;
 
-    float fbw_ = 0.f;
-    float fbh_ = 0.f;
+	float fbw_ = 0.f;
+	float fbh_ = 0.f;
 
   private:
 	ModelGraph modelGraph_;
