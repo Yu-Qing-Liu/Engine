@@ -75,6 +75,7 @@
             cyclonedds-cxx
             plutovg
             lunasvg
+            boost
 
             # Project Dependencies
             cudaPackages.cudatoolkit
