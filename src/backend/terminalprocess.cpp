@@ -8,7 +8,6 @@
 
 #include <atomic>
 #include <cstring>
-#include <iostream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -216,7 +215,7 @@ void TerminalProcess::init(Text *textModel) {
 	// --- Input wiring ---
 	// Characters: modify inputLine, we handle echo/editing.
 	charRegId = Events::registerCharacterInput([this](unsigned int codepoint) {
-		if (!this->textModel || !this->textModel->selected())
+		if (!this->textModel)
 			return;
 		if (!running.load())
 			return;
@@ -233,7 +232,7 @@ void TerminalProcess::init(Text *textModel) {
 	});
 
 	keyRegId = Events::registerKeyPress([this](int key, int /*scancode*/, int action, int mods) {
-		if (!this->textModel || !this->textModel->selected())
+		if (!this->textModel)
 			return;
 
 		if (!running.load() || !backend || backend->master_fd < 0)

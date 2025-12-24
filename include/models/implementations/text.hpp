@@ -4,7 +4,6 @@
 #include "assets.hpp"
 #include "colors.hpp"
 #include "model.hpp"
-#include "rectangle.hpp"
 
 #include <freetype/freetype.h>
 #include <memory>
@@ -77,7 +76,7 @@ class Text : public Model {
 
 	void showCaret();
 	void hideCaret();
-	void enableTextSelection(bool enable);
+	void enableFeatures();
 	void setCaretColor(const glm::vec4 &color);
 
 	void enableDepth() { cull_ = true; }
@@ -130,6 +129,8 @@ class Text : public Model {
 	std::vector<Vertex> cpuVerts;
 	std::vector<uint32_t> cpuIdx;
 
+	std::function<void(uint32_t)> onCaretChange;
+
 	void writeAtlasDescriptor();
 
   protected:
@@ -155,7 +156,6 @@ class Text : public Model {
 	std::vector<pair<size_t, size_t>> selectionRanges{};
 	glm::vec4 selectionColor = Colors::Yellow(0.5f);
 	bool selecting = false;
-	bool enableTextSelection_ = false;
 	float lineSpacing = 0.f;
 
 	vec4 baseColor = Colors::White;
@@ -179,6 +179,7 @@ class Text : public Model {
 	glm::vec2 lastMousePx_{0.0f};
 
 	std::string textSelectMouseClickEventId = "";
+	std::string textClickMouseClickEventId = "";
 	std::string textSelectMouseMoveEventId = "";
 
 	// dirty flags

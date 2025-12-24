@@ -20,7 +20,7 @@ using unregisterCb = std::function<void()>;
 // ----------------------------------------------------
 // First-person camera: WASD + mouse look
 // ----------------------------------------------------
-inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = []() { return true; }) {
+inline unregisterCb cameraAWSD(mat4 &view, const float &vpx, const float &vpy, const float &vpw, const float &vph, std::function<bool()> condition = []() { return true; }) {
 	struct State {
 		glm::vec3 position{0.0f};
 		float yaw = 0.0f;
@@ -75,10 +75,9 @@ inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = [](
 	};
 
 	// Mouse look (infinite by recentering cursor every frame)
-	auto cursorEvent = Events::registerCursor([state, recalcView, condition](GLFWwindow *win, float mx, float my) {
-		if (!condition()) {
+	auto cursorEvent = Events::registerCursor([state, recalcView, condition, &vpx, &vpy, &vpw, &vph](GLFWwindow *win, float mx, float my) {
+		if (!condition())
 			return;
-		}
 
 		if (!state->window)
 			state->window = win;
@@ -90,13 +89,30 @@ inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = [](
 			state->position = vec3(0.f);
 			state->yaw = 0.0f;
 			state->pitch = 0.0f;
+			glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 			glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		}
 
-		int w, h;
-		glfwGetWindowSize(win, &w, &h);
-		const double centerX = w * 0.5;
-		const double centerY = h * 0.5;
+		int winW, winH;
+		glfwGetWindowSize(win, &winW, &winH);
+
+		int fbW, fbH;
+		glfwGetFramebufferSize(win, &fbW, &fbH);
+
+		// Convert framebuffer pixels -> window coords (cursor space)
+		const double sx = (fbW > 0) ? (double)winW / (double)fbW : 1.0;
+		const double sy = (fbH > 0) ? (double)winH / (double)fbH : 1.0;
+
+		// vpx/vpy/vpw/vph are Vulkan viewport values (framebuffer pixel space).
+		// Vulkan: y is top-left when vph > 0. (If vph < 0, it flips Y.)
+		const double vpX_win = (double)vpx * sx;
+		const double vpY_win = (double)vpy * sy;
+		const double vpW_win = (double)vpw * sx;
+		const double vpH_win = (double)vph * sy;
+
+		// Center works even if vpH is negative.
+		const double centerX = vpX_win + vpW_win * 0.5;
+		const double centerY = vpY_win + vpH_win * 0.5;
 
 		if (state->firstMouse) {
 			glfwSetCursorPos(win, centerX, centerY);
@@ -104,7 +120,7 @@ inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = [](
 			return;
 		}
 
-		// Relative movement from window center
+		// Relative movement from viewport center
 		float dx = mx - static_cast<float>(centerX);
 		float dy = my - static_cast<float>(centerY);
 
@@ -112,7 +128,7 @@ inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = [](
 		state->yaw -= dx * sensitivity;
 		state->pitch -= dy * sensitivity;
 
-		// Recenter so we never hit window borders
+		// Recenter to viewport center so we never hit borders
 		glfwSetCursorPos(win, centerX, centerY);
 
 		recalcView();
@@ -212,6 +228,7 @@ inline unregisterCb cameraAWSD(mat4 &view, std::function<bool()> condition = [](
 
 		// Restore cursor state if we disabled it
 		glfwSetInputMode(state->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		glfwSetInputMode(state->window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
 	};
 }
 

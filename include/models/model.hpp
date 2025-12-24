@@ -106,6 +106,7 @@ class Model {
 	void billboard(bool enable);
 	void setViewport(float w, float h, float x = 0.f, float y = 0.f);
 	void setFrameBuffer(float w, float h);
+	void setRenderingDepth(size_t depth) { renderingDepth = depth; }
 
 	VPMatrix &getVP() { return vp; }
 	const VkViewport &getViewport() const { return viewport; }
@@ -148,6 +149,8 @@ class Model {
 
 	bool selected_ = false;
 	bool pickingDispatched_ = false;
+
+	size_t renderingDepth = 0;
 
 	virtual void pushConstants(VkCommandBuffer cmd, VkPipelineLayout pipeLayout) {}
 	virtual uint32_t createDescriptorPool();

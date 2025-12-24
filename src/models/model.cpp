@@ -399,13 +399,13 @@ void Model::record(VkCommandBuffer cmd) {
 		auto bestPick = getScene()->getScenes().getRayPicked();
 
 		if (picking->hitInfo.hit) {
-			if (bestPick == nullptr) {
-				getScene()->getScenes().setRayPicked(this);
-			} else if (picking->hitInfo.rayLen <= bestPick->picking->hitInfo.rayLen) {
+			if (!bestPick || renderingDepth > bestPick->renderingDepth || (renderingDepth == bestPick->renderingDepth && picking->hitInfo.rayLen < bestPick->picking->hitInfo.rayLen)) {
+				bestPick = this;
 				getScene()->getScenes().setRayPicked(this);
 			}
 		} else {
 			if (bestPick == this) {
+				bestPick = nullptr;
 				getScene()->getScenes().setRayPicked(nullptr);
 			}
 		}
