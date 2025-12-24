@@ -31,10 +31,6 @@ template <typename PC> class ShaderQuad : public Model {
 		pipeline->graphicsPipeline.pushContantRanges.size = sizeof(PC);
 
 		Model::init();
-
-		// Ensure a default instance exists
-		InstanceData placeholder{};
-		upsertInstance(0, placeholder);
 	}
 
 	void record(VkCommandBuffer cmd) override {
@@ -43,6 +39,7 @@ template <typename PC> class ShaderQuad : public Model {
 	}
 
 	void enableDepth() { enableDepth_ = true; }
+	PC &getPC() { return pc; }
 
   protected:
 	PC pc{};

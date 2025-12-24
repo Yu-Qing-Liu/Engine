@@ -17,7 +17,6 @@
 #include <codecvt>
 #include <freetype/ftmodapi.h>
 #include <locale>
-#include <optional>
 #include <unordered_set>
 
 // ========================= Shared Text Arena =========================
@@ -1629,10 +1628,10 @@ void Text::layoutAndBuild() {
 		const float cx = 0.5f * (r.x + r.z);
 		// baseline and per-slot height (pixels)
 		const float baseline = (caretPosition < caretBaselines.size()) ? caretBaselines[caretPosition] : y;
-		const float hPx = (caretPosition < caretHeightsPx.size()) ? std::max(0.0f, caretHeightsPx[caretPosition]) : 0.0f;
-		// caret spans [baseline - hPx, baseline], shifted left by its width
-		const float yTop = baseline - hPx;
-		const float yBot = baseline;
+		const float t = (float)ft->face->size->metrics.ascender / 64.0f;
+		const float b = (float)-ft->face->size->metrics.descender / 64.0f; // descender is negative
+		const float yTop = baseline - t;
+		const float yBot = baseline + b;
 		const float halfW = 1.0f * onePxLocalX;
 		pushCaretQuad({cx - halfW + onePxLocalX, yTop, cx + halfW + onePxLocalX, yBot}, caretColor);
 	}
@@ -1664,12 +1663,12 @@ void Text::layoutAndBuild() {
 		pc.textExtentY = h;
 	}
 
-	// Update caret hitboxes for interaction
-	if (features.caret) {
-		buildCaretVisualAndHitboxes(caretSlots);
-	}
 	if (features.selection) {
 		buildCharVisualAndHitboxes(charRects);
+	}
+
+	if (features.caret) {
+		buildCaretVisualAndHitboxes(caretSlots);
 	}
 }
 
@@ -1725,6 +1724,9 @@ void Text::init() {
 
 	// NOW sets exist → bind the atlas
 	writeAtlasDescriptor();
+
+	// Enable features if any
+	enableFeatures();
 }
 
 void Text::setSelection(const std::vector<pair<size_t, size_t>> &ranges) { selectionRanges = ranges; }
@@ -1797,7 +1799,7 @@ void Text::createGraphicsPipeline() {
 		pipeline->graphicsPipeline.depthStencilStateCI.depthWriteEnable = VK_FALSE;
 	} else {
 		pipeline->graphicsPipeline.rasterizationStateCI.cullMode = VK_CULL_MODE_FRONT_BIT;
-    }
+	}
 }
 
 void Text::syncPickingInstances() { /* text is not pickable */ }
@@ -1908,14 +1910,24 @@ float Text::getContentHeightScreenPx(float bottomPadding) const {
 	return heightPx + bottomPadding;
 }
 
-void Text::enableTextSelection(bool enable) {
-	if (enable == enableTextSelection_)
-		return;
+void Text::enableFeatures() {
+	if (features.caret) {
+		textClickMouseClickEventId = Events::registerMouseClick([this](int button, int action, int mods) {
+			if (button != Events::MOUSE_BUTTON_LEFT)
+				return;
 
-	if (enable) {
-		enableTextSelection_ = true;
+			if (action != Events::ACTION_PRESS) {
+				return;
+			}
 
-		// Clear any existing selection
+			auto pos = getCaretHoverPosition();
+			if (onCaretChange) {
+				onCaretChange(pos);
+			}
+		});
+	}
+
+	if (features.selection) {
 		clearSelectionBox();
 
 		// --- Mouse button events (start / end drag) ---
@@ -1947,7 +1959,7 @@ void Text::enableTextSelection(bool enable) {
 			}
 		});
 
-		textSelectMouseMoveEventId = Events::registerCursor([this](GLFWwindow* win, double mx, double my) {
+		textSelectMouseMoveEventId = Events::registerCursor([this](GLFWwindow *win, double mx, double my) {
 			glm::vec2 vpPx = windowToViewportPx((float)mx, (float)my);
 			lastMousePx_ = vpPx;
 
@@ -1971,19 +1983,9 @@ void Text::enableTextSelection(bool enable) {
 
 	} else {
 		// Disable selection: clear state & unregister events
-		enableTextSelection_ = false;
 		selecting = false;
 		dragSelectionStarted = false;
 		clearSelectionBox();
-
-		if (!textSelectMouseClickEventId.empty()) {
-			Events::unregisterMouseClick(textSelectMouseClickEventId);
-			textSelectMouseClickEventId.clear();
-		}
-		if (!textSelectMouseMoveEventId.empty()) {
-			Events::unregisterCursor(textSelectMouseMoveEventId);
-			textSelectMouseMoveEventId.clear();
-		}
 	}
 }
 

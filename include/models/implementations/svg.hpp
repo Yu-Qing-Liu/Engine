@@ -28,6 +28,12 @@ class SVG : public Model {
 		glm::vec2 uvOffset{0.0f};
 	};
 
+	// CPU pixels for staging
+	struct CpuPixels {
+		int w{0}, h{0}, comp{4};
+		std::vector<uint8_t> rgba;
+	};
+
 	// Same API as Image: single- or multi-frame per instance
 	void upsert(int id, const string &path);
 	void upsert(int id, const vector<string> &paths);
@@ -64,12 +70,6 @@ class SVG : public Model {
 		VkImageView view{VK_NULL_HANDLE};
 		VkSampler sampler{VK_NULL_HANDLE};
 		uint32_t w{0}, h{0};
-	};
-
-	// CPU pixels for staging
-	struct CpuPixels {
-		int w{0}, h{0}, comp{4};
-		std::vector<uint8_t> rgba;
 	};
 
 	bool set1Dirty = false;

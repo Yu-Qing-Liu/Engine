@@ -52,10 +52,10 @@ class Scene {
 
 	void setParent(Scene *parent) { this->parent = parent; }
 
-	float vpx() const { return vpx_; }
-	float vpy() const { return vpy_; }
-	float vpw() const { return vpw_; }
-	float vph() const { return vph_; }
+	const float &vpx() { return vpx_; }
+	const float &vpy() { return vpy_; }
+	const float &vpw() { return vpw_; }
+	const float &vph() { return vph_; }
 
 	void setSceneVpx(float vpx) { vpx_ = vpx; }
 	void setSceneVpy(float vpy) { vpy_ = vpy; }

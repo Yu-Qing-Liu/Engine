@@ -60,21 +60,26 @@ void Scenes::initializeRenderingOrder() {
 	if (boost::num_vertices(graph) == 0)
 		return;
 
-	// Seed the stack with *children of the root*, not the root itself.
-	std::vector<SceneNode> stack;
+	// Seed stack with children of root, each at depth 0
+	struct Item {
+		SceneNode node;
+		size_t depth;
+	};
+	std::vector<Item> stack;
+
 	for (auto [eb, ee] = boost::out_edges(rootNode, graph); eb != ee; ++eb)
-		stack.push_back(boost::target(*eb, graph));
+		stack.push_back({boost::target(*eb, graph), 0});
 
 	while (!stack.empty()) {
-		SceneNode cur = stack.back();
+		Item item = stack.back();
 		stack.pop_back();
 
+		SceneNode cur = item.node;
+		size_t sceneDepth = item.depth;
+
 		const Scene *sc = graph[cur];
-		if (!sc) {
-			// Shouldn't happen if we only pushed real children,
-			// but guard anyway.
+		if (!sc)
 			continue;
-		}
 
 		// ----- build model layers for this scene -----
 		std::vector<std::vector<ModelNode>> layers;
@@ -87,19 +92,22 @@ void Scenes::initializeRenderingOrder() {
 		for (size_t li = 0; li < layers.size(); ++li) {
 			auto &dst = renderingOrder[li + 1];
 			for (ModelNode mn : layers[li]) {
-				// vertex payload is Model*; no const_cast needed
 				Model *mp = g[mn];
-				if (mp)
+				if (mp) {
+					// Raytracing priority: ALL models in this scene share the same priority
+					mp->setRenderingDepth(sceneDepth);
+					// Keep existing rendering order logic unchanged
 					dst.push_back(mp);
+				}
 			}
 		}
 
-		// push children scenes (reverse for stable order)
+		// push children scenes (reverse for stable order), depth+1
 		std::vector<SceneNode> kids;
 		for (auto [eb, ee] = boost::out_edges(cur, graph); eb != ee; ++eb)
 			kids.push_back(boost::target(*eb, graph));
 		for (auto it = kids.rbegin(); it != kids.rend(); ++it)
-			stack.push_back(*it);
+			stack.push_back({*it, sceneDepth + 1});
 	}
 }
 

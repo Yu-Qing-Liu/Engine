@@ -26,11 +26,61 @@ std::string getExtLower(const std::string &p) {
 	return ext;
 }
 
-static inline glm::vec2 pixelCropScale(uint32_t texW, uint32_t texH, float viewW, float viewH) {
-	auto s = glm::vec2((texW > 0 ? viewW / float(texW) : 1.0f), (texH > 0 ? viewH / float(texH) : 1.0f));
-	return glm::clamp(s, glm::vec2(0.0f), glm::vec2(1.0f));
+// static inline glm::vec2 pixelCropScale(uint32_t texW, uint32_t texH, float viewW, float viewH) {
+// 	auto s = glm::vec2((texW > 0 ? viewW / float(texW) : 1.0f), (texH > 0 ? viewH / float(texH) : 1.0f));
+// 	return glm::clamp(s, glm::vec2(0.0f), glm::vec2(1.0f));
+// }
+// static inline glm::vec2 pixelCropOffset(const glm::vec2 &scale) { return (glm::vec2(1.0f) - scale) * 0.5f; }
+
+static SVG::CpuPixels cropAlphaTight(const SVG::CpuPixels &in, uint8_t alphaThreshold, int pad) {
+	const int w = in.w, h = in.h;
+	if (w <= 0 || h <= 0)
+		return in;
+
+	int minx = w, miny = h, maxx = -1, maxy = -1;
+
+	// Find bounds where alpha > threshold
+	for (int y = 0; y < h; ++y) {
+		const uint8_t *row = in.rgba.data() + size_t(y) * size_t(w) * 4;
+		for (int x = 0; x < w; ++x) {
+			uint8_t a = row[x * 4 + 3];
+			if (a > alphaThreshold) {
+				minx = std::min(minx, x);
+				miny = std::min(miny, y);
+				maxx = std::max(maxx, x);
+				maxy = std::max(maxy, y);
+			}
+		}
+	}
+
+	// If fully transparent, return as-is
+	if (maxx < minx || maxy < miny)
+		return in;
+
+	// Add padding
+	minx = std::max(0, minx - pad);
+	miny = std::max(0, miny - pad);
+	maxx = std::min(w - 1, maxx + pad);
+	maxy = std::min(h - 1, maxy + pad);
+
+	const int cw = (maxx - minx + 1);
+	const int ch = (maxy - miny + 1);
+
+	SVG::CpuPixels out;
+	out.w = cw;
+	out.h = ch;
+	out.comp = 4;
+	out.rgba.resize(size_t(cw) * size_t(ch) * 4);
+
+	for (int y = 0; y < ch; ++y) {
+		const uint8_t *src = in.rgba.data() + size_t(miny + y) * size_t(w) * 4 + size_t(minx) * 4;
+		uint8_t *dst = out.rgba.data() + size_t(y) * size_t(cw) * 4;
+		std::memcpy(dst, src, size_t(cw) * 4);
+	}
+
+	return out;
 }
-static inline glm::vec2 pixelCropOffset(const glm::vec2 &scale) { return (glm::vec2(1.0f) - scale) * 0.5f; }
+
 } // namespace
 
 SVG::SVG(Scene *scene) : Model(scene) {}
@@ -148,23 +198,11 @@ void SVG::setFrame(int id, uint32_t frameIndex) {
 	const uint32_t cap = std::max(1u, std::min<uint32_t>((uint32_t)imageInfos.size(), kTexArraySize));
 	const uint32_t global = std::min(base + instanceLocalFrame[id], (cap ? cap : 1u) - 1u);
 
-	glm::vec2 uvScale(1.0f), uvOffset(0.0f);
-	if (global < gpuTextures.size()) {
-		const uint32_t tw = std::max(1u, gpuTextures[global].w);
-		const uint32_t th = std::max(1u, gpuTextures[global].h);
-
-		const float viewW = (viewport.width > 0.0f) ? viewport.width : 1.0f;
-		const float viewH = (viewport.height > 0.0f) ? viewport.height : 1.0f;
-
-		uvScale = pixelCropScale(tw, th, viewW, viewH);
-		uvOffset = pixelCropOffset(uvScale);
-	}
-
 	InstanceData data{};
 	data.model = instanceModel.count(id) ? instanceModel[id] : glm::mat4(1.0f);
 	data.frameIndex = global;
-	data.uvScale = uvScale;
-	data.uvOffset = uvOffset;
+	data.uvScale = glm::vec2(1.0f);
+	data.uvOffset = glm::vec2(0.0f);
 
 	upsertInternal(id, data);
 	ensureSet1Ready();
@@ -201,16 +239,16 @@ void SVG::recalcUV() {
 		const uint32_t global = std::min(base + local, (cap ? cap : 1u) - 1u);
 
 		glm::vec2 uvScale(1.0f), uvOffset(0.0f);
-		if (global < gpuTextures.size()) {
-			const uint32_t tw = std::max(1u, gpuTextures[global].w);
-			const uint32_t th = std::max(1u, gpuTextures[global].h);
+		// if (global < gpuTextures.size()) {
+		// 	const uint32_t tw = std::max(1u, gpuTextures[global].w);
+		// 	const uint32_t th = std::max(1u, gpuTextures[global].h);
 
-			const float viewW = (viewport.width > 0.0f) ? viewport.width : 1.0f;
-			const float viewH = (viewport.height > 0.0f) ? viewport.height : 1.0f;
+		// 	const float viewW = (viewport.width > 0.0f) ? viewport.width : 1.0f;
+		// 	const float viewH = (viewport.height > 0.0f) ? viewport.height : 1.0f;
 
-			uvScale = pixelCropScale(tw, th, viewW, viewH);
-			uvOffset = pixelCropOffset(uvScale);
-		}
+		// 	uvScale = pixelCropScale(tw, th, viewW, viewH);
+		// 	uvOffset = pixelCropOffset(uvScale);
+		// }
 
 		InstanceData data{};
 		data.model = instanceModel.count(id) ? instanceModel[id] : glm::mat4(1.0f);
@@ -319,16 +357,16 @@ void SVG::rebuildTexturePool() {
 		const uint32_t global = std::min(base + local, (cap ? cap : 1u) - 1u);
 
 		glm::vec2 uvScale(1.0f), uvOffset(0.0f);
-		if (global < gpuTextures.size()) {
-			const uint32_t tw = std::max(1u, gpuTextures[global].w);
-			const uint32_t th = std::max(1u, gpuTextures[global].h);
+		// if (global < gpuTextures.size()) {
+		// 	const uint32_t tw = std::max(1u, gpuTextures[global].w);
+		// 	const uint32_t th = std::max(1u, gpuTextures[global].h);
 
-			const float viewW = (viewport.width > 0.0f) ? viewport.width : 1.0f;
-			const float viewH = (viewport.height > 0.0f) ? viewport.height : 1.0f;
+		// 	const float viewW = (viewport.width > 0.0f) ? viewport.width : 1.0f;
+		// 	const float viewH = (viewport.height > 0.0f) ? viewport.height : 1.0f;
 
-			uvScale = pixelCropScale(tw, th, viewW, viewH);
-			uvOffset = pixelCropOffset(uvScale);
-		}
+		// 	uvScale = pixelCropScale(tw, th, viewW, viewH);
+		// 	uvOffset = pixelCropOffset(uvScale);
+		// }
 
 		InstanceData data{};
 		data.model = instanceModel[id];
@@ -376,7 +414,7 @@ void SVG::loadAllFramesCPU(const std::map<int, std::vector<std::string>> &list) 
 				// ---- LunaSVG path ----
 				auto document = lunasvg::Document::loadFromFile(p);
 				if (document) {
-					auto bitmap = document->renderToBitmap();
+					auto bitmap = document->renderToBitmap(256, 256);
 					if (!bitmap.isNull()) {
 						const int w = bitmap.width();
 						const int h = bitmap.height();
@@ -388,6 +426,8 @@ void SVG::loadAllFramesCPU(const std::map<int, std::vector<std::string>> &list) 
 						cp.rgba.resize(static_cast<size_t>(w) * static_cast<size_t>(h) * 4);
 
 						std::memcpy(cp.rgba.data(), rgba, cp.rgba.size());
+
+                        cp = cropAlphaTight(cp, /*alphaThreshold=*/1, /*pad=*/1);
 						ok = true;
 					}
 				}
@@ -482,7 +522,7 @@ void SVG::uploadAllFramesGPU() {
 
 		VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
 		ici.imageType = VK_IMAGE_TYPE_2D;
-		ici.format = VK_FORMAT_R8G8B8A8_SRGB;
+		ici.format = VK_FORMAT_B8G8R8A8_SRGB;
 		ici.extent = {(uint32_t)cp.w, (uint32_t)cp.h, 1};
 		ici.mipLevels = 1;
 		ici.arrayLayers = 1;
@@ -524,7 +564,7 @@ void SVG::uploadAllFramesGPU() {
 		VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
 		vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		vci.image = newTextures[i].image;
-		vci.format = VK_FORMAT_R8G8B8A8_SRGB;
+		vci.format = VK_FORMAT_B8G8R8A8_SRGB;
 		vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		vci.subresourceRange.levelCount = 1;
 		vci.subresourceRange.layerCount = 1;
