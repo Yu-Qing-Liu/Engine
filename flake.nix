@@ -20,7 +20,7 @@
         };
       in {
         devShells.default = pkgs.mkShell {
-          name = "ROS";
+          name = "VULKAN";
 
           NIX_CFLAGS_COMPILE = pkgs.lib.concatStringsSep " " [
             "-I${pkgs.urdfdom-headers}/include/urdfdom_headers"
