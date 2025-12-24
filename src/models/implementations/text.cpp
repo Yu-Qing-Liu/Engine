@@ -6,6 +6,7 @@
 #include "events.hpp"
 #include "memory.hpp"
 #include "mouse.hpp"
+#include "rectangle.hpp"
 #include "scenes.hpp"
 
 #include <ft2build.h>
