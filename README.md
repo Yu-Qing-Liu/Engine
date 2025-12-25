@@ -1,4 +1,4 @@
-<h3 align="center">Quadruped UI</h3>
+<h3 align="center">Vulkan Rendering Engine</h3>
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 
 ---
 
-<p align="center"> User interface for quadruped control.
+<p align="center"> Core engine code for 3D application development.
     <br> 
 </p>
 
@@ -61,8 +61,6 @@ These instructions will get you a copy of the project up and running on your loc
 2. Run nix develop . in quadruped/gui. (Where the flake.nix  file is)
 3. Build the project using cmake or use the launch.sh script.
 
-
-*** Note that the flake contains the dependencies for ROS and quadruped development.
 
 ## ✍️ Authors <a name = "authors"></a>
 
